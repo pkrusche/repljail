@@ -1,0 +1,22 @@
+Package: replr
+Type: Package
+Title: Isolated REPL functionality for R
+Version: 0.1.0
+Author: Peter Krusche <pkrusche@gmail.com>
+Maintainer: Peter Krusche <pkrusche@gmail.com>
+Description: Provides isolated REPL functionality for R, allowing users to execute R code in a separate environment.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Imports: 
+    mirai,
+    nanonext,
+    processx,
+    evaluate,
+    R6,
+    uuid
+Suggests:
+    pryr,
+    testthat (>= 3.0.0)
