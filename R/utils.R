@@ -72,7 +72,7 @@ get_available_port <- function(start_port = 5555, max_attempts = 100) {
     tryCatch(
       {
         sock <- nanonext::socket("rep", listen = paste0("tcp://127.0.0.1:", port))
-        nanonext::close(sock)
+        close(sock)
         return(port)
       },
       error = function(e) {
@@ -88,7 +88,10 @@ get_available_port <- function(start_port = 5555, max_attempts = 100) {
 #'
 #' Run all initialization checks when package is loaded
 #'
+#' @param libname character, library name
+#' @param pkgname character, package name
 #' @return invisible(TRUE) if successful
+#' @noRd
 .onLoad <- function(libname, pkgname) {
   # Check dependencies silently during package load
   tryCatch(

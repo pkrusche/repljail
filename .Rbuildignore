@@ -1,1 +1,7 @@
+^.*\.Rproj$
+^\.Rproj\.user$
+^CLAUDE\.md$
+^TODO\.md$
+^\.lintr$
+^\.jj$
 ^LICENSE\.md$

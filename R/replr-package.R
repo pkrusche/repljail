@@ -5,7 +5,7 @@
 #'
 #' @section Main Classes:
 #' \itemize{
-#'   \item \code{\link{RREPLSession}} - Main class for managing isolated R sessions
+#'   \item \code{RREPLSession} - Main class for managing isolated R sessions
 #' }
 #'
 #' @section Key Features:
@@ -17,10 +17,11 @@
 #'   \item Configurable timeouts and resource limits
 #' }
 #'
-#' @docType package
 #' @name replr
-#' @importFrom nanonext socket close
+#' @importFrom nanonext socket
 #' @importFrom processx process
 #' @importFrom R6 R6Class
 #' @importFrom uuid UUIDgenerate
+#' @importFrom evaluate evaluate
+#' @importFrom mirai mirai
 NULL
