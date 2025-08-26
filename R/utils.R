@@ -106,3 +106,172 @@ get_available_port <- function(start_port = 5555, max_attempts = 100) {
 
   invisible(TRUE)
 }
+
+#' Start Worker Process
+#'
+#' Spawn a worker R process using processx that runs the worker script
+#'
+#' @param port integer, port number for the worker to listen on
+#' @param timeout numeric, timeout in seconds to wait for worker startup
+#' @return list with process object and connection info
+#' @export
+start_worker <- function(port = NULL, timeout = 10) {
+  # Check prerequisites
+  check_dependencies()
+  check_process_requirements()
+  
+  # Get available port if not specified
+  if (is.null(port)) {
+    port <- get_available_port()
+  }
+  
+  # Find worker script
+  worker_script <- system.file("worker.R", package = "replr")
+  if (worker_script == "" || !file.exists(worker_script)) {
+    # Fallback to inst/worker.R in development mode
+    possible_paths <- c(
+      file.path(getwd(), "inst", "worker.R"),
+      file.path(dirname(getwd()), "inst", "worker.R"),
+      file.path(system.file(package = "replr"), "worker.R")
+    )
+    
+    worker_script <- ""
+    for (path in possible_paths) {
+      if (file.exists(path)) {
+        worker_script <- path
+        break
+      }
+    }
+    
+    if (worker_script == "" || !file.exists(worker_script)) {
+      stop("Worker script not found. Tried paths: ", paste(possible_paths, collapse = ", "))
+    }
+  }
+  
+  # Start the worker process
+  proc <- processx::process$new(
+    command = "Rscript",
+    args = c(worker_script, as.character(port)),
+    stdout = "|",
+    stderr = "|",
+    cleanup = TRUE,
+    cleanup_tree = TRUE
+  )
+  
+  # Wait for worker to start up
+  start_time <- Sys.time()
+  worker_ready <- FALSE
+  
+  while (difftime(Sys.time(), start_time, units = "secs") < timeout) {
+    if (!proc$is_alive()) {
+      # Process died
+      stdout_lines <- proc$read_output_lines()
+      stderr_lines <- proc$read_error_lines()
+      stop("Worker process failed to start:\nSTDOUT: ", paste(stdout_lines, collapse = "\n"),
+           "\nSTDERR: ", paste(stderr_lines, collapse = "\n"))
+    }
+    
+    # Try to connect to worker
+    tryCatch({
+      sock <- create_req_socket(port, timeout = 1)
+      # Simple ping test
+      result <- send_request(sock, "1", id = "ping")
+      if (!is.null(result)) {
+        close_socket(sock)
+        worker_ready <- TRUE
+        break
+      }
+      close_socket(sock)
+    }, error = function(e) {
+      # Worker not ready yet, continue waiting
+    })
+    
+    Sys.sleep(0.5)  # Longer delay between attempts
+  }
+  
+  if (!worker_ready) {
+    # Clean up failed process
+    if (proc$is_alive()) {
+      proc$kill()
+    }
+    stop("Worker process did not become ready within ", timeout, " seconds")
+  }
+  
+  list(
+    process = proc,
+    port = port,
+    started_at = Sys.time()
+  )
+}
+
+#' Send Command to Worker
+#'
+#' Send an R command to a running worker process and get the result
+#'
+#' @param worker_info list, worker info returned by start_worker()
+#' @param code character, R code to execute
+#' @param timeout numeric, timeout in seconds for command execution
+#' @return response list from worker
+#' @export
+send_command <- function(worker_info, code, timeout = 30) {
+  if (is.null(worker_info$process) || !worker_info$process$is_alive()) {
+    stop("Worker process is not running")
+  }
+  
+  # Create socket connection
+  sock <- create_req_socket(worker_info$port, timeout = timeout)
+  
+  tryCatch({
+    # Send request
+    response <- send_request(sock, code)
+    
+    if (is.null(response)) {
+      stop("No response from worker (timeout or communication error)")
+    }
+    
+    response
+  }, finally = {
+    close_socket(sock)
+  })
+}
+
+#' Stop Worker Process
+#'
+#' Gracefully stop a worker process
+#'
+#' @param worker_info list, worker info returned by start_worker()
+#' @param timeout numeric, timeout in seconds to wait for graceful shutdown
+#' @return logical, TRUE if stopped successfully
+#' @export
+stop_worker <- function(worker_info, timeout = 5) {
+  if (is.null(worker_info$process)) {
+    return(TRUE)
+  }
+  
+  proc <- worker_info$process
+  
+  if (!proc$is_alive()) {
+    return(TRUE)
+  }
+  
+  # Try graceful shutdown first
+  tryCatch({
+    proc$signal(2)  # SIGINT
+  }, error = function(e) {
+    # Signal failed, proceed to kill
+  })
+  
+  # Wait for graceful shutdown
+  start_time <- Sys.time()
+  while (proc$is_alive() && difftime(Sys.time(), start_time, units = "secs") < timeout) {
+    Sys.sleep(0.1)
+  }
+  
+  # Force kill if still alive
+  if (proc$is_alive()) {
+    proc$kill()
+    Sys.sleep(0.1)
+  }
+  
+  !proc$is_alive()
+}
