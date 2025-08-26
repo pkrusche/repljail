@@ -4,14 +4,14 @@
 
 ### 1. Project Setup
 - [x] Initialize R package structure (DESCRIPTION, NAMESPACE, R/, man/)
-- [ ] Update DESCRIPTION with all required dependencies
+- [x] Update DESCRIPTION with all required dependencies
 - [x] Create LICENSE file (MIT license specified in DESCRIPTION)
-- [ ] Set up basic package documentation structure
+- [x] Set up basic package documentation structure
 
 ### 2. Core Dependencies Setup
-- [ ] Add imports to DESCRIPTION: processx, evaluate, R6, uuid, pryr
-- [ ] Verify nanonext and mirai compatibility (both are listed in DESCRIPTION)
-- [ ] Create utility functions for package loading and dependency checks
+- [x] Add imports to DESCRIPTION: processx, evaluate, R6, uuid (pryr remains in Suggests as optional)
+- [x] Verify nanonext and mirai compatibility (both are listed in DESCRIPTION)
+- [x] Create utility functions for package loading and dependency checks
 
 ### 3. Basic Process Management
 - [ ] Implement `R/utils.R` - utility functions for process management
