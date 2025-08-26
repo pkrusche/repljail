@@ -10,13 +10,16 @@ Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
-Imports: 
+Imports:
     mirai,
     nanonext,
     processx,
     evaluate,
     R6,
-    uuid
+    uuid,
+    cli
 Suggests:
     pryr,
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    here,
+    devtools

@@ -24,4 +24,5 @@
 #' @importFrom uuid UUIDgenerate
 #' @importFrom evaluate evaluate
 #' @importFrom mirai mirai
+#' @importFrom cli cli_alert_info cli_alert_success cli_alert_warning cli_alert_danger style_dim style_bold col_blue col_green col_yellow col_red
 NULL

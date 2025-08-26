@@ -1,4 +1,8 @@
 linters: linters_with_defaults(
-    line_length_linter(120)
+  line_length_linter(120)
   )
-exclusions: list()
+exclusions: list(
+    ".lintr",
+    ".Rbuildignore",
+    "DESCRIPTION"
+    )
