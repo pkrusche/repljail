@@ -58,9 +58,12 @@ This pre-configured environment allows GitHub Copilot to:
 
 ## Verification
 
-After the container starts, run these commands to verify the setup:
+After the container starts, the environment will automatically run a comprehensive test via `test-environment.R`. You can also manually verify the setup:
 
 ```bash
+# Run the full environment test
+Rscript .devcontainer/test-environment.R
+
 # Check R version
 R --version
 

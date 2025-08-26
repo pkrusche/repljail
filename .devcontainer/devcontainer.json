@@ -14,10 +14,7 @@
       ]
     }
   },
-  "postCreateCommand": [
-    "R --version",
-    "Rscript -e 'cat(\"Checking required packages:\\n\"); sapply(c(\"mirai\", \"nanonext\", \"processx\", \"evaluate\", \"R6\", \"uuid\"), function(x) { if(requireNamespace(x, quietly=TRUE)) cat(x, \":\", as.character(packageVersion(x)), \"\\n\") else cat(x, \": NOT FOUND\\n\") })'"
-  ],
+  "postCreateCommand": "Rscript .devcontainer/test-environment.R",
   "remoteUser": "rstudio",
   "features": {
     "ghcr.io/devcontainers/features/common-utils:2": {
