@@ -1,0 +1,29 @@
+{
+  "name": "R Environment for replr",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "REditorSupport.r",
+        "ms-vscode.vscode-json",
+        "GitHub.copilot",
+        "GitHub.copilot-chat"
+      ]
+    }
+  },
+  "postCreateCommand": [
+    "R --version",
+    "Rscript -e 'cat(\"Checking required packages:\\n\"); sapply(c(\"mirai\", \"nanonext\", \"processx\", \"evaluate\", \"R6\", \"uuid\"), function(x) { if(requireNamespace(x, quietly=TRUE)) cat(x, \":\", as.character(packageVersion(x)), \"\\n\") else cat(x, \": NOT FOUND\\n\") })'"
+  ],
+  "remoteUser": "rstudio",
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": true,
+      "configureZshAsDefaultShell": true,
+      "installOhMyZsh": true
+    }
+  }
+}
