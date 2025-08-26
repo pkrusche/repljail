@@ -12,17 +12,23 @@
 #' @return nanonext socket object
 create_req_socket <- function(port, timeout = 5) {
   socket_url <- paste0("tcp://127.0.0.1:", port)
-  
-  tryCatch({
-    sock <- nanonext::socket("req", dial = socket_url, autostart = NA)
-    
-    # Set timeout for receive operations (timeout in milliseconds)
-    nanonext::opt(sock, "recv-timeout") <- as.integer(timeout * 1000)
-    
-    sock
-  }, error = function(e) {
-    stop("Failed to create REQ socket on port ", port, ": ", e$message)
-  })
+
+  tryCatch(
+    {
+      debug_log("Creating REQ socket for {socket_url}")
+      sock <- nanonext::socket("req", dial = socket_url, autostart = NA)
+
+      # Set timeout for receive operations (timeout in milliseconds)
+      nanonext::opt(sock, "recv-timeout") <- as.integer(timeout * 1000)
+
+      debug_success("REQ socket created successfully for port {port}")
+      sock
+    },
+    error = function(e) {
+      debug_error("Failed to create REQ socket on port {port}: {e$message}")
+      stop("Failed to create REQ socket on port ", port, ": ", e$message)
+    }
+  )
 }
 
 #' Send Request to Worker
@@ -33,30 +39,45 @@ create_req_socket <- function(port, timeout = 5) {
 #' @param code character, R code to execute
 #' @param id character, optional request ID (auto-generated if NULL)
 #' @param options list, optional execution options
+#' @param timeout integer, timeout in seconds for the request
 #' @return response list from worker, or NULL if timeout/error
-send_request <- function(socket, code, id = NULL, options = list()) {
+send_request <- function(
+  socket,
+  code,
+  id = NULL,
+  options = list(),
+  timeout = 5
+) {
   if (is.null(id)) {
     id <- uuid::UUIDgenerate()
   }
-  
+
   request <- list(
     id = id,
     code = code,
     options = options
   )
-  
-  tryCatch({
-    # Send request
-    nanonext::send(socket, request)
-    
-    # Receive response
-    response <- nanonext::recv(socket)
-    
-    response
-  }, error = function(e) {
-    warning("Communication error: ", e$message)
-    NULL
-  })
+
+  timeout <- as.integer(timeout * 1000) # Convert to milliseconds
+
+  tryCatch(
+    {
+      # Send request
+      debug_log("Sending request ID: {id}")
+      nanonext::send(socket, request)
+
+      # Receive response
+      response <- nanonext::recv(socket, block = timeout)
+
+      debug_log("Received response from request ID: {id}")
+      response
+    },
+    error = function(e) {
+      debug_error("Communication error for request {id}: {e$message}")
+      warning("Communication error: ", e$message)
+      NULL
+    }
+  )
 }
 
 #' Close Socket
@@ -66,11 +87,17 @@ send_request <- function(socket, code, id = NULL, options = list()) {
 #' @param socket nanonext socket object
 close_socket <- function(socket) {
   if (!is.null(socket)) {
-    tryCatch({
-      close(socket)
-    }, error = function(e) {
-      warning("Error closing socket: ", e$message)
-    })
+    tryCatch(
+      {
+        debug_log("Closing socket")
+        close(socket)
+        debug_success("Socket closed successfully")
+      },
+      error = function(e) {
+        debug_error("Error closing socket: {e$message}")
+        warning("Error closing socket: ", e$message)
+      }
+    )
   }
 }
 
@@ -81,7 +108,15 @@ close_socket <- function(socket) {
 #' @param socket nanonext socket object
 #' @return logical, TRUE if connection is working
 test_socket_connection <- function(socket) {
+  debug_log("Testing socket connection with ping")
   response <- send_request(socket, "1 + 1", id = "ping")
-  
-  !is.null(response) && response$status == "success"
+
+  is_working <- !is.null(response) && response$status == "success"
+  if (is_working) {
+    debug_success("Socket connection test successful")
+  } else {
+    debug_warn("Socket connection test failed")
+  }
+
+  is_working
 }

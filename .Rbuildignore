@@ -5,3 +5,5 @@
 ^\.lintr$
 ^\.jj$
 ^LICENSE\.md$
+^\.devcontainer$
+^\.github$

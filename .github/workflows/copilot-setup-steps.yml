@@ -2,7 +2,7 @@ name: GitHub Copilot Setup Steps
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 0 * * 0'  # Weekly validation
+    - cron: "0 0 * * 0" # Weekly validation
 
 jobs:
   setup-environment:
@@ -11,7 +11,7 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        
+
       - name: Install system dependencies
         run: |
           sudo apt-get update
@@ -35,37 +35,38 @@ jobs:
             software-properties-common \
             dirmngr \
             gpg-agent
-            
+
       - name: Setup R
         uses: r-lib/actions/setup-r@v2
         with:
-          r-version: '4.3.2'
+          r-version: "4.3.2"
           use-public-rspm: true
-          
+
       - name: Configure R repository
         run: |
           echo 'options(repos = c(CRAN = "https://cran.rstudio.com/"))' | sudo tee -a /usr/lib/R/etc/Rprofile.site
-          
+
       - name: Install required R packages (core dependencies)
         run: |
           Rscript -e "install.packages('R6', repos='https://cran.rstudio.com/', dependencies=TRUE)"
           Rscript -e "install.packages('uuid', repos='https://cran.rstudio.com/', dependencies=TRUE)"
           Rscript -e "install.packages('processx', repos='https://cran.rstudio.com/', dependencies=TRUE)"
           Rscript -e "install.packages('evaluate', repos='https://cran.rstudio.com/', dependencies=TRUE)"
-          
+          Rscript -e "install.packages('here', repos='https://cran.rstudio.com/', dependencies=TRUE)"
+
       - name: Install messaging and async packages
         run: |
           Rscript -e "install.packages('nanonext', repos='https://cran.rstudio.com/', dependencies=TRUE)"
           Rscript -e "install.packages('mirai', repos='https://cran.rstudio.com/', dependencies=TRUE)"
-          
+
       - name: Install suggested packages
         run: |
           Rscript -e "install.packages(c('pryr', 'testthat'), repos='https://cran.rstudio.com/', dependencies=TRUE)"
-          
+
       - name: Install R development tools
         run: |
           Rscript -e "install.packages(c('devtools', 'roxygen2', 'pkgdown', 'lintr', 'remotes'), repos='https://cran.rstudio.com/', dependencies=TRUE)"
-          
+
       - name: Verify package installation
         run: |
           Rscript -e "
@@ -79,7 +80,7 @@ jobs:
             }
           })
           "
-          
+
       - name: Test environment setup
         run: |
           if [ -f .devcontainer/test-environment.R ]; then
