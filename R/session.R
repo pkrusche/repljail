@@ -52,7 +52,18 @@ RREPLSession <- R6::R6Class(
       private$.stopped <- FALSE
 
       # Register finalizer for automatic cleanup
-      reg.finalizer(self, private$finalize, onexit = TRUE)
+      reg.finalizer(self, function(obj) {
+        if (!private$.stopped && !is.null(private$.worker_info)) {
+          tryCatch(
+            {
+              stop_worker(private$.worker_info, timeout = 2)
+            },
+            error = function(e) {
+              # Silent cleanup - worker may already be dead
+            }
+          )
+        }
+      }, onexit = TRUE)
     },
 
     #' @description
@@ -143,20 +154,6 @@ RREPLSession <- R6::R6Class(
   ),
   private = list(
     .worker_info = NULL,
-    .stopped = FALSE,
-
-    # Finalizer for automatic cleanup
-    finalize = function() {
-      if (!private$.stopped && !is.null(private$.worker_info)) {
-        tryCatch(
-          {
-            stop_worker(private$.worker_info, timeout = 2)
-          },
-          error = function(e) {
-            # Silent cleanup - worker may already be dead
-          }
-        )
-      }
-    }
+    .stopped = FALSE
   )
 )

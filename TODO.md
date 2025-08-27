@@ -1,14 +1,16 @@
 # Implementation Tasks for replr
 
-## ✅ Current Status: MVP Complete!
+## ✅ Current Status: Full Package Complete!
 
-**The replr package is now functionally complete with a working isolated R REPL system!**
+**The replr package is now fully implemented with both functional and object-oriented interfaces!**
 
 - ✅ **Phase 1 & 2**: Core functionality fully implemented
-- ✅ **74 tests passing**: Comprehensive test coverage
+- ✅ **Phase 3**: Advanced features and comprehensive testing complete
+- ✅ **122 tests passing**: Complete test coverage including R6 class tests
 - ✅ **Package passes R CMD check**: No errors or warnings
 - ✅ **Debug logging system**: Full cli-based logging with configurable output
-- ✅ **Working MVP**: Start workers, execute R code, handle errors, stop workers
+- ✅ **Two interfaces**: Functional API + R6 class with automatic cleanup
+- ✅ **Production ready**: Robust error handling, finalizers, and resource management
 
 **Key Features Working:**
 - Process isolation with separate R worker processes
@@ -18,6 +20,8 @@
 - Multiple concurrent workers with isolation
 - Configurable debug logging with cli styling
 - Automatic port management and conflict resolution
+- **RREPLSession R6 class** with automatic cleanup and finalizers
+- **Functional interface** for simple use cases
 - Comprehensive test suite covering all functionality
 
 ## Phase 1: Basic Infrastructure
@@ -56,6 +60,9 @@
 - [x] Implement automatic port selection and conflict resolution
 - [x] Create R6 class wrapper (RREPLSession) with automatic cleanup
 - [x] Add finalizer for automatic cleanup in R6 class
+- [x] Fix finalizer argument mismatch issue for proper garbage collection
+- [x] Implement active bindings (port, pid, started_at) in R6 class
+- [x] Add comprehensive R6 class methods (execute, is_alive, stop, get_info)
 
 ## Phase 2: Core Execution Engine
 
@@ -110,6 +117,8 @@
 - [x] Create `tests/testthat/test-worker.R` - worker process tests
 - [x] Add `tests/testthat/test-end-to-end.R` - comprehensive workflow tests
 - [x] Create `tests/testthat/test-debug-integration.R` - debug logging tests
+- [x] Add `tests/testthat/test-session.R` - complete R6 class testing
+- [x] Test finalizer cleanup and garbage collection
 - [ ] Add stress tests for concurrent sessions and memory usage
 - [ ] Create performance benchmarking tests
 
@@ -122,6 +131,9 @@
 - [x] Test memory management and cleanup
 - [x] Test command line argument validation
 - [x] Test debug flag functionality
+- [x] Test R6 class initialization and destruction
+- [x] Test R6 active bindings (port, pid, started_at)
+- [x] Test finalizer cleanup and resource management
 
 ### 12. Integration Tests
 - [x] Test complete execution workflow
@@ -131,6 +143,9 @@
 - [x] Test warning handling
 - [x] Test worker isolation
 - [x] Test port conflict resolution
+- [x] Test R6 class end-to-end workflow
+- [x] Test multiple R6 sessions independence
+- [x] Test R6 class graceful worker death handling
 - [ ] Test long-running operations with timeouts
 - [ ] Test plot generation and capture in detail
 
@@ -182,9 +197,11 @@
 
 ### 19. Pre-release Checklist
 - [x] Run R CMD check without warnings or errors
-- [x] Ensure all tests pass (74 tests passing)
+- [x] Ensure all tests pass (122 tests passing)
 - [x] Verify documentation completeness
 - [x] Check ASCII compliance for CRAN
+- [x] Fix finalizer garbage collection issues
+- [x] Test both functional and R6 interfaces
 - [ ] Check full CRAN policy compliance
 - [ ] Create NEWS.md file
 
@@ -205,21 +222,24 @@
 - Document any deviations from the original CLAUDE.md design
 
 **Current Architecture:**
-- Uses functional interface (start_worker, send_command, stop_worker) instead of R6 class
+- **Dual interface**: Both functional (start_worker, send_command, stop_worker) AND R6 class (RREPLSession)
+- **R6 class benefits**: Automatic cleanup via finalizers, cleaner OOP syntax, active bindings
+- **Functional interface**: Simple API for basic use cases and integration
 - Implemented robust debug logging system with cli package
 - Full error handling and recovery without automatic restart (by design)
 - All communication working reliably with nanonext
+- **Finalizer system**: Proper garbage collection cleanup with correct argument signatures
 
 ## Testing Commands
 
 ```r
 # Development workflow
 devtools::load_all()
-devtools::test()      # 74 tests pass
+devtools::test()      # 122 tests pass
 devtools::check()     # No errors/warnings
 devtools::document()
 
-# Manual testing (current functional interface)
+# Manual testing (functional interface)
 library(replr)
 
 # Enable debug logging to see detailed output
@@ -238,4 +258,20 @@ print(result2$status)  # "success"
 
 # Stop worker
 stop_worker(worker)
+
+# Manual testing (R6 class interface)
+# Create session with automatic cleanup
+session <- RREPLSession$new()
+
+# Execute code with cleaner syntax
+result <- session$execute("x <- 42; x * 2")
+print(result$result$output)  # "84"
+
+# Access session info
+print(session$port)      # Port number
+print(session$pid)       # Process ID
+print(session$is_alive()) # TRUE
+
+# Stop explicitly (or let finalizer clean up automatically)
+session$stop()
 ```

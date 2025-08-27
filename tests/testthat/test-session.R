@@ -2,10 +2,6 @@
 here::i_am("tests/testthat/test-session.R")
 
 test_that("RREPLSession can be created and initialized", {
-  skip_if_not_installed("nanonext")
-  skip_if_not_installed("processx")
-  skip_if_not_installed("R6")
-
   session <- RREPLSession$new(timeout = 10)
 
   # Check object structure
@@ -23,10 +19,6 @@ test_that("RREPLSession can be created and initialized", {
 })
 
 test_that("RREPLSession execute method works correctly", {
-  skip_if_not_installed("nanonext")
-  skip_if_not_installed("processx")
-  skip_if_not_installed("R6")
-
   session <- RREPLSession$new(timeout = 10)
 
   tryCatch({
@@ -54,10 +46,6 @@ test_that("RREPLSession execute method works correctly", {
 })
 
 test_that("RREPLSession handles worker death gracefully", {
-  skip_if_not_installed("nanonext")
-  skip_if_not_installed("processx")
-  skip_if_not_installed("R6")
-
   session <- RREPLSession$new(timeout = 10)
 
   tryCatch({

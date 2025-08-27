@@ -14,6 +14,7 @@
 - **🐛 Debug Logging**: Beautiful CLI-styled debug output with configurable verbosity
 - **🌐 Cross-Platform**: Works on Windows, macOS, and Linux
 - **🎯 Multiple Workers**: Run concurrent isolated sessions simultaneously
+- **🔗 Dual Interface**: Both functional API and R6 class with automatic cleanup
 
 ## Installation
 
@@ -370,16 +371,17 @@ This package has comprehensive test coverage and follows R package development b
 ```r
 # Development workflow
 devtools::load_all()      # Load package for testing
-devtools::test()          # Run all tests (74 tests)
+devtools::test()          # Run all tests (122 tests)
 devtools::check()         # R CMD check (passes cleanly)  
 devtools::document()      # Generate documentation
 
-# Current test status: ✅ 74 tests passing, 0 errors/warnings
+# Current test status: ✅ 122 tests passing, 0 errors/warnings
 ```
 
 ### Architecture Notes
 
-- **Functional API**: Uses `start_worker()` / `send_command()` / `stop_worker()` pattern rather than R6 classes
+- **Dual Interface**: Both functional (`start_worker()` / `send_command()` / `stop_worker()`) AND R6 class (`RREPLSession`) 
+- **Automatic Cleanup**: R6 class provides finalizers for automatic resource management
 - **Process-based isolation**: True isolation via separate R processes, not just environments
 - **Robust communication**: Built on `nanonext` for reliable messaging with automatic serialization
 - **Error resilience**: Workers survive crashes and continue processing requests
