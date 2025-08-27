@@ -1,5 +1,5 @@
 # Use the official Rocker R image as base
-FROM rocker/r-ver:4.3.2
+FROM rocker/r-ver:4.4
 
 # Install system dependencies required for R packages
 RUN apt-get update && apt-get install -y \
@@ -19,6 +19,8 @@ RUN apt-get update && apt-get install -y \
     libjpeg-dev \
     libgit2-dev \
     libssh2-1-dev \
+    cmake \
+    libmagick++-dev \
     zsh \
     && rm -rf /var/lib/apt/lists/*
 
@@ -37,18 +39,13 @@ RUN Rscript -e "install.packages('mirai', repos='https://cran.rstudio.com/', dep
 RUN Rscript -e "install.packages(c('pryr', 'testthat'), repos='https://cran.rstudio.com/', dependencies=TRUE)"
 
 # Install R development tools
-RUN Rscript -e "install.packages(c('devtools', 'roxygen2', 'pkgdown', 'lintr', 'remotes'), repos='https://cran.rstudio.com/', dependencies=TRUE)"
+RUN Rscript -e "install.packages(c('devtools', 'roxygen2', 'pkgdown', 'lintr', 'remotes', 'here'), repos='https://cran.rstudio.com/', dependencies=TRUE)"
 
-# Create rstudio user if it doesn't exist
-RUN if ! id -u rstudio > /dev/null 2>&1; then \
-    useradd -m -s /bin/bash rstudio && \
-    echo "rstudio:rstudio" | chpasswd && \
-    usermod -aG sudo rstudio; \
-    fi
+RUN Rscript -e "install.packages(c('mirai', 'languageserver', 'httpgd'), repos='https://cran.rstudio.com/', dependencies=TRUE)"
 
 # Verify installation by checking package versions
 RUN Rscript -e "cat('Required packages installed:\\n'); \
-    required <- c('mirai', 'nanonext', 'processx', 'evaluate', 'R6', 'uuid'); \
+    required <- c('here', 'mirai', 'nanonext', 'processx', 'evaluate', 'R6', 'uuid'); \
     sapply(required, function(x) { \
         if(requireNamespace(x, quietly=TRUE)) { \
             cat(x, ':', as.character(packageVersion(x)), '\\n') \
@@ -63,9 +60,6 @@ WORKDIR /workspaces/replr
 # Add health check
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
   CMD Rscript -e "stopifnot(requireNamespace('nanonext', quietly=TRUE))" || exit 1
-
-# Switch to rstudio user
-USER rstudio
 
 # Set default command
 CMD ["/bin/bash"]
