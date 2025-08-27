@@ -54,8 +54,8 @@
 - [x] Implement process health checking
 - [x] Add graceful shutdown with fallback to force termination
 - [x] Implement automatic port selection and conflict resolution
-- [ ] Create R6 class wrapper (RREPLSession) - optional enhancement
-- [ ] Add finalizer for automatic cleanup in R6 class
+- [x] Create R6 class wrapper (RREPLSession) with automatic cleanup
+- [x] Add finalizer for automatic cleanup in R6 class
 
 ## Phase 2: Core Execution Engine
 

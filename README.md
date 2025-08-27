@@ -29,6 +29,8 @@ devtools::install_github("pkrusche/replr")
 
 ## Quick Start
 
+### Functional Interface
+
 ```r
 library(replr)
 
@@ -41,6 +43,27 @@ print(result$result$output)  # [1] "4"
 
 # Stop the worker when done
 stop_worker(worker)
+```
+
+### Object-Oriented Interface (R6 Class)
+
+```r
+library(replr)
+
+# Create a new isolated R session
+session <- RREPLSession$new()
+
+# Execute R code in the isolated process
+result <- session$execute("2 + 2")
+print(result$result$output)  # [1] "4"
+
+# Check session status
+session$is_alive()  # TRUE
+session$port        # Port number
+session$pid         # Process ID
+
+# Stop the session (or it will auto-cleanup on garbage collection)
+session$stop()
 ```
 
 ## Detailed Usage Examples
@@ -117,6 +140,60 @@ print(result$result$output)      # "42"
 stop_worker(worker)
 ```
 
+### Object-Oriented Interface with RREPLSession
+
+The `RREPLSession` R6 class provides a more convenient object-oriented interface with automatic resource management:
+
+```r
+library(replr)
+
+# Create a new session (automatically starts worker)
+session <- RREPLSession$new()
+
+# Execute code using the object
+result1 <- session$execute("x <- 10")
+result2 <- session$execute("x * 2")
+print(result2$result$output)  # "20"
+
+# Access session information
+session$is_alive()    # TRUE
+session$port          # Port number (e.g., 5555)
+session$pid           # Process ID
+session$started_at    # Start timestamp
+
+# Get detailed session info
+info <- session$get_info()
+print(info)
+
+# Session automatically cleans up when object is garbage collected
+# Or explicitly stop it:
+session$stop()
+```
+
+#### Benefits of the R6 Interface
+
+- **Automatic cleanup**: Sessions are automatically stopped when the object is garbage collected
+- **Cleaner syntax**: Object-oriented method calls instead of passing worker info around
+- **Better encapsulation**: All session state is contained within the object
+- **Active bindings**: Easy access to session properties like `port`, `pid`, `started_at`
+
+```r
+# Multiple independent sessions
+session1 <- RREPLSession$new()
+session2 <- RREPLSession$new()
+
+# Each has its own isolated environment
+session1$execute("x <- 100")
+session2$execute("x <- 200")
+
+session1$execute("x")  # Returns 100
+session2$execute("x")  # Returns 200
+
+# Clean up both
+session1$stop()
+session2$stop()
+```
+
 ### Debug Logging
 
 ```r
@@ -191,11 +268,22 @@ stop_worker(worker)
 
 ## API Reference
 
-### Core Functions
+### Core Functions (Functional Interface)
 
 - **`start_worker(port = NULL, timeout = 10)`** - Start an isolated R worker process
 - **`send_command(worker_info, code, timeout = 30)`** - Execute R code in worker 
 - **`stop_worker(worker_info, timeout = 5)`** - Gracefully stop worker process
+
+### RREPLSession R6 Class (Object-Oriented Interface)
+
+- **`RREPLSession$new(port = NULL, timeout = 10)`** - Create new session
+- **`session$execute(code, timeout = 30)`** - Execute R code
+- **`session$is_alive()`** - Check if worker process is running
+- **`session$stop(timeout = 5)`** - Stop the session
+- **`session$get_info()`** - Get session information
+- **`session$port`** - Active binding for port number
+- **`session$pid`** - Active binding for process ID  
+- **`session$started_at`** - Active binding for start timestamp
 
 ### Debug Functions
 
