@@ -50,11 +50,11 @@ RREPLSession <- R6::R6Class(
     initialize = function(port = NULL, timeout = 10) {
       private$.worker_info <- start_worker(port = port, timeout = timeout)
       private$.stopped <- FALSE
-      
+
       # Register finalizer for automatic cleanup
       reg.finalizer(self, private$finalize, onexit = TRUE)
     },
-    
+
     #' @description
     #' Execute R code in the worker process
     #' @param code character, R code to execute
@@ -64,14 +64,14 @@ RREPLSession <- R6::R6Class(
       if (private$.stopped) {
         stop("Session has been stopped")
       }
-      
+
       if (!self$is_alive()) {
         stop("Worker process is not running")
       }
-      
+
       send_command(private$.worker_info, code, timeout = timeout)
     },
-    
+
     #' @description
     #' Check if worker process is alive
     #' @return logical, TRUE if worker is running
@@ -79,11 +79,11 @@ RREPLSession <- R6::R6Class(
       if (private$.stopped || is.null(private$.worker_info)) {
         return(FALSE)
       }
-      
+
       proc <- private$.worker_info$process
       !is.null(proc) && proc$is_alive()
     },
-    
+
     #' @description
     #' Stop the worker process gracefully
     #' @param timeout numeric, timeout in seconds for graceful shutdown
@@ -92,13 +92,13 @@ RREPLSession <- R6::R6Class(
       if (private$.stopped || is.null(private$.worker_info)) {
         return(TRUE)
       }
-      
+
       result <- stop_worker(private$.worker_info, timeout = timeout)
       private$.stopped <- TRUE
-      
+
       result
     },
-    
+
     #' @description
     #' Get worker process information
     #' @return list with process details
@@ -106,7 +106,7 @@ RREPLSession <- R6::R6Class(
       if (is.null(private$.worker_info)) {
         return(NULL)
       }
-      
+
       list(
         port = private$.worker_info$port,
         pid = if (self$is_alive()) private$.worker_info$process$get_pid() else NA,
@@ -116,31 +116,35 @@ RREPLSession <- R6::R6Class(
       )
     }
   ),
-  
   active = list(
     #' @field port Port number used by the worker
     port = function() {
-      if (is.null(private$.worker_info)) return(NA_integer_)
+      if (is.null(private$.worker_info)) {
+        return(NA_integer_)
+      }
       private$.worker_info$port
     },
-    
+
     #' @field pid Process ID of the worker
     pid = function() {
-      if (!self$is_alive()) return(NA_integer_)
+      if (!self$is_alive()) {
+        return(NA_integer_)
+      }
       private$.worker_info$process$get_pid()
     },
-    
+
     #' @field started_at Timestamp when worker was started
     started_at = function() {
-      if (is.null(private$.worker_info)) return(as.POSIXct(NA))
+      if (is.null(private$.worker_info)) {
+        return(as.POSIXct(NA))
+      }
       private$.worker_info$started_at
     }
   ),
-  
   private = list(
     .worker_info = NULL,
     .stopped = FALSE,
-    
+
     # Finalizer for automatic cleanup
     finalize = function() {
       if (!private$.stopped && !is.null(private$.worker_info)) {
