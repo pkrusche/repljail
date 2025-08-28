@@ -337,6 +337,93 @@ list(
 - **☁️ Cloud Services**: Secure R code execution in multi-tenant environments
 - **🧪 Testing Frameworks**: Isolated test environments that don't pollute the main session
 - **📊 Report Generation**: Isolated rendering without affecting the main analysis
+- **🤖 ellmer Integration**: Specialized tools for LLM agents to create and manage REPL sessions
+
+## ellmer Tools for LLM Agents
+
+`replr` includes specialized tools designed for the ellmer package, allowing LLM agents to easily create and manage isolated R REPL sessions. These tools provide a standardized interface with structured responses optimized for LLM consumption.
+
+### ellmer Tools Overview
+
+The ellmer tools provide session management with automatic cleanup and structured responses:
+
+```r
+# Create a new REPL session for an LLM agent
+result <- ellmer_create_repl_session()
+session_id <- result$data$session_id
+
+# Execute R code in the session
+exec_result <- ellmer_execute_code(session_id, "data <- mtcars; summary(data$mpg)")
+if (exec_result$success) {
+  cat("Output:", exec_result$data$output)
+}
+
+# List all active sessions
+sessions <- ellmer_list_sessions()
+cat("Active sessions:", sessions$data$count)
+
+# Clean up when done
+ellmer_stop_session(session_id)
+```
+
+### ellmer API Functions
+
+- **`ellmer_create_repl_session(session_id = NULL, timeout = 10)`** - Create a new isolated REPL session
+- **`ellmer_execute_code(session_id, code, timeout = 30)`** - Execute R code in a session
+- **`ellmer_get_session_info(session_id)`** - Get detailed session information
+- **`ellmer_list_sessions()`** - List all active sessions with their status
+- **`ellmer_stop_session(session_id, timeout = 5)`** - Stop a specific session
+- **`ellmer_cleanup_sessions()`** - Remove dead sessions from registry
+- **`ellmer_stop_all_sessions(timeout = 5)`** - Stop all active sessions
+
+### ellmer Response Format
+
+All ellmer tools return standardized responses:
+
+```r
+list(
+  success = TRUE/FALSE,           # Operation success status
+  message = "descriptive text",   # Human-readable message
+  data = list(...),              # Operation-specific data
+  error = "error details"        # Error information (if applicable)
+)
+```
+
+### Multiple Session Management
+
+ellmer tools support multiple concurrent sessions with automatic isolation:
+
+```r
+# Create multiple sessions for different analyses
+analysis1 <- ellmer_create_repl_session("data_exploration")
+analysis2 <- ellmer_create_repl_session("model_building")
+
+# Each session maintains its own isolated environment
+ellmer_execute_code("data_exploration", "dataset <- mtcars")
+ellmer_execute_code("model_building", "dataset <- iris")
+
+# Sessions are completely isolated
+result1 <- ellmer_execute_code("data_exploration", "names(dataset)")
+result2 <- ellmer_execute_code("model_building", "names(dataset)")
+# result1 shows mtcars columns, result2 shows iris columns
+
+# Clean up all sessions at once
+ellmer_stop_all_sessions()
+```
+
+### Error Handling in ellmer
+
+ellmer tools provide robust error handling while maintaining session stability:
+
+```r
+# Execute code that generates an error
+error_result <- ellmer_execute_code(session_id, "stop('Something went wrong')")
+# Returns: success = FALSE, data$status = "error", data$errors = ["Something went wrong"]
+
+# Session continues to work after errors
+recovery <- ellmer_execute_code(session_id, "2 + 2")  
+# Returns: success = TRUE, data$output = "4"
+```
 
 ## Development Environment
 

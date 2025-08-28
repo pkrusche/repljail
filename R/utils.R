@@ -145,6 +145,11 @@ start_worker <- function(port = NULL, timeout = 10) {
     worker_args <- c(worker_args, "--debug")
   }
 
+  # Prepare environment for worker process
+  worker_env <- Sys.getenv()
+  # Pass current library paths to worker
+  worker_env[["R_LIBS_USER"]] <- paste(.libPaths(), collapse = .Platform$path.sep)
+  
   # Start the worker process
   proc <- processx::process$new(
     command = file.path(R.home("bin"), "Rscript"),
@@ -152,7 +157,8 @@ start_worker <- function(port = NULL, timeout = 10) {
     stdout = "|",
     stderr = "|",
     cleanup = TRUE,
-    cleanup_tree = TRUE
+    cleanup_tree = TRUE,
+    env = worker_env
   )
 
   # Wait for worker to start up
