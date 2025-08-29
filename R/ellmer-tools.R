@@ -1,6 +1,6 @@
 #' replr Tools for REPL Session Management
 #'
-#' This module provides tools designed specifically for ellmer LLM agents to
+#' This module provides tools designed specifically for LLM agents (e.g. in ellmer) to
 #' create, manage, and use isolated R REPL sessions. These functions provide
 #' a standardized interface with session tracking and structured responses
 #' optimized for LLM consumption.
@@ -24,7 +24,7 @@
 
 #' Create a New REPL Session for replr
 #'
-#' Creates a new isolated R REPL session that can be used by an ellmer LLM agent.
+#' Creates a new isolated R REPL session that can be used by an LLM agent.
 #' Each session runs in a separate R process and maintains its own environment.
 #'
 #' @param session_id character, optional custom session ID. If NULL, a UUID will be generated.
@@ -44,51 +44,54 @@
 #' result <- replr_create_repl_session("my_analysis_session")
 #' }
 replr_create_repl_session <- function(session_id = NULL, timeout = 10) {
-  tryCatch({
-    # Generate session ID if not provided
-    if (is.null(session_id)) {
-      session_id <- uuid::UUIDgenerate()
-    }
-    
-    # Check if session ID already exists
-    if (exists(session_id, envir = .replr_sessions)) {
-      return(list(
+  tryCatch(
+    {
+      # Generate session ID if not provided
+      if (is.null(session_id)) {
+        session_id <- uuid::UUIDgenerate()
+      }
+
+      # Check if session ID already exists
+      if (exists(session_id, envir = .replr_sessions)) {
+        return(list(
+          success = FALSE,
+          message = paste("Session ID already exists:", session_id),
+          data = NULL,
+          error = "DUPLICATE_SESSION_ID"
+        ))
+      }
+
+      # Create new REPL session
+      session <- RREPLSession$new(timeout = timeout)
+
+      # Store in registry
+      assign(session_id, session, envir = .replr_sessions)
+
+      # Get session information
+      session_info <- session$get_info()
+
+      list(
+        success = TRUE,
+        message = paste("Successfully created REPL session:", session_id),
+        data = list(
+          session_id = session_id,
+          port = session_info$port,
+          pid = session_info$pid,
+          started_at = as.character(session_info$started_at),
+          is_alive = session$is_alive()
+        ),
+        error = NULL
+      )
+    },
+    error = function(e) {
+      list(
         success = FALSE,
-        message = paste("Session ID already exists:", session_id),
+        message = paste("Failed to create REPL session:", e$message),
         data = NULL,
-        error = "DUPLICATE_SESSION_ID"
-      ))
+        error = as.character(e$message)
+      )
     }
-    
-    # Create new REPL session
-    session <- RREPLSession$new(timeout = timeout)
-    
-    # Store in registry
-    assign(session_id, session, envir = .replr_sessions)
-    
-    # Get session information
-    session_info <- session$get_info()
-    
-    list(
-      success = TRUE,
-      message = paste("Successfully created REPL session:", session_id),
-      data = list(
-        session_id = session_id,
-        port = session_info$port,
-        pid = session_info$pid,
-        started_at = as.character(session_info$started_at),
-        is_alive = session$is_alive()
-      ),
-      error = NULL
-    )
-  }, error = function(e) {
-    list(
-      success = FALSE,
-      message = paste("Failed to create REPL session:", e$message),
-      data = NULL,
-      error = as.character(e$message)
-    )
-  })
+  )
 }
 
 #' Execute R Code in a REPL Session
@@ -120,67 +123,70 @@ replr_create_repl_session <- function(session_id = NULL, timeout = 10) {
 #' ")
 #' }
 replr_execute_code <- function(session_id, code, timeout = 30) {
-  tryCatch({
-    # Check if session exists
-    if (!exists(session_id, envir = .replr_sessions)) {
-      return(list(
+  tryCatch(
+    {
+      # Check if session exists
+      if (!exists(session_id, envir = .replr_sessions)) {
+        return(list(
+          success = FALSE,
+          message = paste("Session not found:", session_id),
+          data = NULL,
+          error = "SESSION_NOT_FOUND"
+        ))
+      }
+
+      # Get session
+      session <- get(session_id, envir = .replr_sessions)
+
+      # Check if session is still alive
+      if (!session$is_alive()) {
+        return(list(
+          success = FALSE,
+          message = paste("Session is not alive:", session_id),
+          data = NULL,
+          error = "SESSION_DEAD"
+        ))
+      }
+
+      # Execute code
+      result <- session$execute(code, timeout = timeout)
+
+      # Extract and structure the results
+      execution_data <- list(
+        session_id = session_id,
+        status = result$status,
+        output = result$result$output,
+        warnings = result$result$warnings,
+        errors = result$result$errors,
+        visible = result$result$visible,
+        plots = length(result$result$plots), # Just count, not full plot objects
+        execution_time = result$execution_time,
+        request_id = result$id
+      )
+
+      # Determine overall success
+      is_success <- result$status == "success"
+
+      list(
+        success = is_success,
+        message = if (is_success) {
+          "Code executed successfully"
+        } else {
+          paste("Code execution failed:", paste(result$result$errors, collapse = "; "))
+        },
+        data = execution_data,
+        error = if (!is_success) result$result$errors else NULL
+      )
+    },
+    error = function(e) {
+      list(
         success = FALSE,
-        message = paste("Session not found:", session_id),
+        message = paste("Error executing code in session", session_id, ":", e$message),
         data = NULL,
-        error = "SESSION_NOT_FOUND"
-      ))
+        error = as.character(e$message)
+      )
     }
-    
-    # Get session
-    session <- get(session_id, envir = .replr_sessions)
-    
-    # Check if session is still alive
-    if (!session$is_alive()) {
-      return(list(
-        success = FALSE,
-        message = paste("Session is not alive:", session_id),
-        data = NULL,
-        error = "SESSION_DEAD"
-      ))
-    }
-    
-    # Execute code
-    result <- session$execute(code, timeout = timeout)
-    
-    # Extract and structure the results
-    execution_data <- list(
-      session_id = session_id,
-      status = result$status,
-      output = result$result$output,
-      warnings = result$result$warnings,
-      errors = result$result$errors,
-      visible = result$result$visible,
-      plots = length(result$result$plots),  # Just count, not full plot objects
-      execution_time = result$execution_time,
-      request_id = result$id
-    )
-    
-    # Determine overall success
-    is_success <- result$status == "success"
-    
-    list(
-      success = is_success,
-      message = if (is_success) {
-        "Code executed successfully"
-      } else {
-        paste("Code execution failed:", paste(result$result$errors, collapse = "; "))
-      },
-      data = execution_data,
-      error = if (!is_success) result$result$errors else NULL
-    )
-  }, error = function(e) {
-    list(
-      success = FALSE,
-      message = paste("Error executing code in session", session_id, ":", e$message),
-      data = NULL,
-      error = as.character(e$message)
-    )
-  })
+  )
 }
 
 #' Get Information About a REPL Session
@@ -200,44 +206,47 @@ replr_execute_code <- function(session_id, code, timeout = 30) {
 #' }
 #' }
 replr_get_session_info <- function(session_id) {
-  tryCatch({
-    # Check if session exists
-    if (!exists(session_id, envir = .replr_sessions)) {
-      return(list(
+  tryCatch(
+    {
+      # Check if session exists
+      if (!exists(session_id, envir = .replr_sessions)) {
+        return(list(
+          success = FALSE,
+          message = paste("Session not found:", session_id),
+          data = NULL,
+          error = "SESSION_NOT_FOUND"
+        ))
+      }
+
+      # Get session
+      session <- get(session_id, envir = .replr_sessions)
+
+      # Get session information
+      session_info <- session$get_info()
+
+      list(
+        success = TRUE,
+        message = paste("Retrieved information for session:", session_id),
+        data = list(
+          session_id = session_id,
+          port = session_info$port,
+          pid = session_info$pid,
+          started_at = as.character(session_info$started_at),
+          is_alive = session_info$is_alive,
+          stopped = session_info$stopped
+        ),
+        error = NULL
+      )
+    },
+    error = function(e) {
+      list(
         success = FALSE,
-        message = paste("Session not found:", session_id),
+        message = paste("Error getting session info for", session_id, ":", e$message),
         data = NULL,
-        error = "SESSION_NOT_FOUND"
-      ))
+        error = as.character(e$message)
+      )
     }
-    
-    # Get session
-    session <- get(session_id, envir = .replr_sessions)
-    
-    # Get session information
-    session_info <- session$get_info()
-    
-    list(
-      success = TRUE,
-      message = paste("Retrieved information for session:", session_id),
-      data = list(
-        session_id = session_id,
-        port = session_info$port,
-        pid = session_info$pid,
-        started_at = as.character(session_info$started_at),
-        is_alive = session_info$is_alive,
-        stopped = session_info$stopped
-      ),
-      error = NULL
-    )
-  }, error = function(e) {
-    list(
-      success = FALSE,
-      message = paste("Error getting session info for", session_id, ":", e$message),
-      data = NULL,
-      error = as.character(e$message)
-    )
-  })
+  )
 }
 
 #' Stop a REPL Session
@@ -258,43 +267,46 @@ replr_get_session_info <- function(session_id) {
 #' }
 #' }
 replr_stop_session <- function(session_id, timeout = 5) {
-  tryCatch({
-    # Check if session exists
-    if (!exists(session_id, envir = .replr_sessions)) {
-      return(list(
+  tryCatch(
+    {
+      # Check if session exists
+      if (!exists(session_id, envir = .replr_sessions)) {
+        return(list(
+          success = FALSE,
+          message = paste("Session not found:", session_id),
+          data = NULL,
+          error = "SESSION_NOT_FOUND"
+        ))
+      }
+
+      # Get session
+      session <- get(session_id, envir = .replr_sessions)
+
+      # Stop the session
+      stop_result <- session$stop(timeout = timeout)
+
+      # Remove from registry
+      rm(list = session_id, envir = .replr_sessions)
+
+      list(
+        success = TRUE,
+        message = paste("Successfully stopped and removed session:", session_id),
+        data = list(
+          session_id = session_id,
+          stopped_successfully = stop_result
+        ),
+        error = NULL
+      )
+    },
+    error = function(e) {
+      list(
         success = FALSE,
-        message = paste("Session not found:", session_id),
+        message = paste("Error stopping session", session_id, ":", e$message),
         data = NULL,
-        error = "SESSION_NOT_FOUND"
-      ))
+        error = as.character(e$message)
+      )
     }
-    
-    # Get session
-    session <- get(session_id, envir = .replr_sessions)
-    
-    # Stop the session
-    stop_result <- session$stop(timeout = timeout)
-    
-    # Remove from registry
-    rm(list = session_id, envir = .replr_sessions)
-    
-    list(
-      success = TRUE,
-      message = paste("Successfully stopped and removed session:", session_id),
-      data = list(
-        session_id = session_id,
-        stopped_successfully = stop_result
-      ),
-      error = NULL
-    )
-  }, error = function(e) {
-    list(
-      success = FALSE,
-      message = paste("Error stopping session", session_id, ":", e$message),
-      data = NULL,
-      error = as.character(e$message)
-    )
-  })
+  )
 }
 
 #' List All Active REPL Sessions
@@ -315,54 +327,57 @@ replr_stop_session <- function(session_id, timeout = 5) {
 #' }
 #' }
 replr_list_sessions <- function() {
-  tryCatch({
-    session_ids <- ls(envir = .replr_sessions)
-    
-    if (length(session_ids) == 0) {
-      return(list(
+  tryCatch(
+    {
+      session_ids <- ls(envir = .replr_sessions)
+
+      if (length(session_ids) == 0) {
+        return(list(
+          success = TRUE,
+          message = "No active sessions found",
+          data = list(
+            count = 0,
+            sessions = list()
+          ),
+          error = NULL
+        ))
+      }
+
+      # Collect information about all sessions
+      sessions_info <- list()
+      for (session_id in session_ids) {
+        session <- get(session_id, envir = .replr_sessions)
+        session_info <- session$get_info()
+
+        sessions_info[[length(sessions_info) + 1]] <- list(
+          session_id = session_id,
+          port = session_info$port,
+          pid = session_info$pid,
+          started_at = as.character(session_info$started_at),
+          is_alive = session_info$is_alive,
+          stopped = session_info$stopped
+        )
+      }
+
+      list(
         success = TRUE,
-        message = "No active sessions found",
+        message = paste("Found", length(session_ids), "active sessions"),
         data = list(
-          count = 0,
-          sessions = list()
+          count = length(session_ids),
+          sessions = sessions_info
         ),
         error = NULL
-      ))
-    }
-    
-    # Collect information about all sessions
-    sessions_info <- list()
-    for (session_id in session_ids) {
-      session <- get(session_id, envir = .replr_sessions)
-      session_info <- session$get_info()
-      
-      sessions_info[[length(sessions_info) + 1]] <- list(
-        session_id = session_id,
-        port = session_info$port,
-        pid = session_info$pid,
-        started_at = as.character(session_info$started_at),
-        is_alive = session_info$is_alive,
-        stopped = session_info$stopped
+      )
+    },
+    error = function(e) {
+      list(
+        success = FALSE,
+        message = paste("Error listing sessions:", e$message),
+        data = NULL,
+        error = as.character(e$message)
       )
     }
-    
-    list(
-      success = TRUE,
-      message = paste("Found", length(session_ids), "active sessions"),
-      data = list(
-        count = length(session_ids),
-        sessions = sessions_info
-      ),
-      error = NULL
-    )
-  }, error = function(e) {
-    list(
-      success = FALSE,
-      message = paste("Error listing sessions:", e$message),
-      data = NULL,
-      error = as.character(e$message)
-    )
-  })
+  )
 }
 
 #' Clean Up Dead REPL Sessions
@@ -379,43 +394,46 @@ replr_list_sessions <- function() {
 #' cat("Cleaned up", result$data$cleaned_count, "dead sessions")
 #' }
 replr_cleanup_sessions <- function() {
-  tryCatch({
-    session_ids <- ls(envir = .replr_sessions)
-    cleaned_count <- 0
-    dead_sessions <- character(0)
-    
-    for (session_id in session_ids) {
-      session <- get(session_id, envir = .replr_sessions)
-      
-      if (!session$is_alive()) {
-        # Try to stop it gracefully first
-        tryCatch(session$stop(timeout = 1), error = function(e) {})
-        
-        # Remove from registry
-        rm(list = session_id, envir = .replr_sessions)
-        cleaned_count <- cleaned_count + 1
-        dead_sessions <- c(dead_sessions, session_id)
+  tryCatch(
+    {
+      session_ids <- ls(envir = .replr_sessions)
+      cleaned_count <- 0
+      dead_sessions <- character(0)
+
+      for (session_id in session_ids) {
+        session <- get(session_id, envir = .replr_sessions)
+
+        if (!session$is_alive()) {
+          # Try to stop it gracefully first
+          tryCatch(session$stop(timeout = 1), error = function(e) {})
+
+          # Remove from registry
+          rm(list = session_id, envir = .replr_sessions)
+          cleaned_count <- cleaned_count + 1
+          dead_sessions <- c(dead_sessions, session_id)
+        }
       }
+
+      list(
+        success = TRUE,
+        message = paste("Cleaned up", cleaned_count, "dead sessions"),
+        data = list(
+          cleaned_count = cleaned_count,
+          dead_sessions = dead_sessions,
+          remaining_sessions = length(ls(envir = .replr_sessions))
+        ),
+        error = NULL
+      )
+    },
+    error = function(e) {
+      list(
+        success = FALSE,
+        message = paste("Error during cleanup:", e$message),
+        data = NULL,
+        error = as.character(e$message)
+      )
     }
-    
-    list(
-      success = TRUE,
-      message = paste("Cleaned up", cleaned_count, "dead sessions"),
-      data = list(
-        cleaned_count = cleaned_count,
-        dead_sessions = dead_sessions,
-        remaining_sessions = length(ls(envir = .replr_sessions))
-      ),
-      error = NULL
-    )
-  }, error = function(e) {
-    list(
-      success = FALSE,
-      message = paste("Error during cleanup:", e$message),
-      data = NULL,
-      error = as.character(e$message)
-    )
-  })
+  )
 }
 
 #' Stop All REPL Sessions
@@ -433,42 +451,48 @@ replr_cleanup_sessions <- function() {
 #' cat("Stopped", result$data$stopped_count, "sessions")
 #' }
 replr_stop_all_sessions <- function(timeout = 5) {
-  tryCatch({
-    session_ids <- ls(envir = .replr_sessions)
-    stopped_count <- 0
-    errors <- character(0)
-    
-    for (session_id in session_ids) {
-      tryCatch({
-        session <- get(session_id, envir = .replr_sessions)
-        session$stop(timeout = timeout)
-        stopped_count <- stopped_count + 1
-      }, error = function(e) {
-        errors <<- c(errors, paste(session_id, ":", e$message))
-      })
+  tryCatch(
+    {
+      session_ids <- ls(envir = .replr_sessions)
+      stopped_count <- 0
+      errors <- character(0)
+
+      for (session_id in session_ids) {
+        tryCatch(
+          {
+            session <- get(session_id, envir = .replr_sessions)
+            session$stop(timeout = timeout)
+            stopped_count <- stopped_count + 1
+          },
+          error = function(e) {
+            errors <<- c(errors, paste(session_id, ":", e$message))
+          }
+        )
+      }
+
+      # Clear the entire registry
+      rm(list = ls(envir = .replr_sessions), envir = .replr_sessions)
+
+      list(
+        success = length(errors) == 0,
+        message = paste("Stopped", stopped_count, "sessions"),
+        data = list(
+          stopped_count = stopped_count,
+          total_sessions = length(session_ids),
+          errors = errors
+        ),
+        error = if (length(errors) > 0) errors else NULL
+      )
+    },
+    error = function(e) {
+      list(
+        success = FALSE,
+        message = paste("Error stopping all sessions:", e$message),
+        data = NULL,
+        error = as.character(e$message)
+      )
     }
-    
-    # Clear the entire registry
-    rm(list = ls(envir = .replr_sessions), envir = .replr_sessions)
-    
-    list(
-      success = length(errors) == 0,
-      message = paste("Stopped", stopped_count, "sessions"),
-      data = list(
-        stopped_count = stopped_count,
-        total_sessions = length(session_ids),
-        errors = errors
-      ),
-      error = if (length(errors) > 0) errors else NULL
-    )
-  }, error = function(e) {
-    list(
-      success = FALSE,
-      message = paste("Error stopping all sessions:", e$message),
-      data = NULL,
-      error = as.character(e$message)
-    )
-  })
+  )
 }
 
 # ellmer Tool Definitions
@@ -479,20 +503,13 @@ replr_create_repl_session_tool <- function() {
   # Try to use ellmer::tool if available, otherwise return a basic structure
   if (requireNamespace("ellmer", quietly = TRUE)) {
     ellmer::tool(
+      replr_create_repl_session,
       name = "replr_create_repl_session",
       description = "Create a new isolated R REPL session for executing R code",
-      parameters = list(
-        session_id = list(
-          type = "string",
-          description = "Optional custom session ID. If not provided, a UUID will be generated."
-        ),
-        timeout = list(
-          type = "number", 
-          description = "Timeout in seconds for session startup",
-          default = 10
-        )
-      ),
-      fn = replr_create_repl_session
+      arguments = list(
+        session_id = ellmer::type_string("Optional custom session ID. If not provided, a UUID will be generated.", required = FALSE),
+        timeout = ellmer::type_number("Timeout in seconds for session startup", required = FALSE)
+      )
     )
   } else {
     # Fallback structure if ellmer is not available
@@ -512,26 +529,14 @@ replr_create_repl_session_tool <- function() {
 replr_execute_code_tool <- function() {
   if (requireNamespace("ellmer", quietly = TRUE)) {
     ellmer::tool(
+      replr_execute_code,
       name = "replr_execute_code",
       description = "Execute R code in an isolated REPL session and return structured results",
-      parameters = list(
-        session_id = list(
-          type = "string",
-          description = "ID of the session to execute code in",
-          required = TRUE
-        ),
-        code = list(
-          type = "string", 
-          description = "R code to execute in the session",
-          required = TRUE
-        ),
-        timeout = list(
-          type = "number",
-          description = "Timeout in seconds for code execution",
-          default = 30
-        )
-      ),
-      fn = replr_execute_code
+      arguments = list(
+        session_id = ellmer::type_string("ID of the session to execute code in", required = TRUE),
+        code = ellmer::type_string("R code to execute in the session", required = TRUE),
+        timeout = ellmer::type_number("Timeout in seconds for code execution", required = FALSE)
+      )
     )
   } else {
     list(
@@ -551,20 +556,16 @@ replr_execute_code_tool <- function() {
 replr_get_session_info_tool <- function() {
   if (requireNamespace("ellmer", quietly = TRUE)) {
     ellmer::tool(
+      replr_get_session_info,
       name = "replr_get_session_info",
       description = "Get detailed information about a REPL session including status and process info",
-      parameters = list(
-        session_id = list(
-          type = "string",
-          description = "ID of the session to query",
-          required = TRUE
-        )
-      ),
-      fn = replr_get_session_info
+      arguments = list(
+        session_id = ellmer::type_string("ID of the session to query", required = TRUE)
+      )
     )
   } else {
     list(
-      name = "replr_get_session_info", 
+      name = "replr_get_session_info",
       description = "Get detailed information about a REPL session including status and process info",
       parameters = list(
         session_id = list(type = "string", description = "Session ID", required = TRUE)
@@ -578,15 +579,15 @@ replr_get_session_info_tool <- function() {
 replr_list_sessions_tool <- function() {
   if (requireNamespace("ellmer", quietly = TRUE)) {
     ellmer::tool(
+      replr_list_sessions,
       name = "replr_list_sessions",
       description = "List all active REPL sessions with their status and information",
-      parameters = list(),
-      fn = replr_list_sessions
+      arguments = list()
     )
   } else {
     list(
       name = "replr_list_sessions",
-      description = "List all active REPL sessions with their status and information", 
+      description = "List all active REPL sessions with their status and information",
       parameters = list(),
       fn = replr_list_sessions
     )
@@ -597,21 +598,13 @@ replr_list_sessions_tool <- function() {
 replr_stop_session_tool <- function() {
   if (requireNamespace("ellmer", quietly = TRUE)) {
     ellmer::tool(
+      replr_stop_session,
       name = "replr_stop_session",
       description = "Stop a specific REPL session and remove it from the registry",
-      parameters = list(
-        session_id = list(
-          type = "string",
-          description = "ID of the session to stop",
-          required = TRUE
-        ),
-        timeout = list(
-          type = "number",
-          description = "Timeout in seconds for graceful shutdown",
-          default = 5
-        )
-      ),
-      fn = replr_stop_session
+      arguments = list(
+        session_id = ellmer::type_string("ID of the session to stop", required = TRUE),
+        timeout = ellmer::type_number("Timeout in seconds for graceful shutdown", required = FALSE)
+      )
     )
   } else {
     list(
@@ -630,10 +623,10 @@ replr_stop_session_tool <- function() {
 replr_cleanup_sessions_tool <- function() {
   if (requireNamespace("ellmer", quietly = TRUE)) {
     ellmer::tool(
+      replr_cleanup_sessions,
       name = "replr_cleanup_sessions",
       description = "Remove dead sessions from the registry to clean up resources",
-      parameters = list(),
-      fn = replr_cleanup_sessions
+      arguments = list()
     )
   } else {
     list(
@@ -649,16 +642,12 @@ replr_cleanup_sessions_tool <- function() {
 replr_stop_all_sessions_tool <- function() {
   if (requireNamespace("ellmer", quietly = TRUE)) {
     ellmer::tool(
-      name = "replr_stop_all_sessions", 
+      replr_stop_all_sessions,
+      name = "replr_stop_all_sessions",
       description = "Stop all active REPL sessions and clear the session registry",
-      parameters = list(
-        timeout = list(
-          type = "number",
-          description = "Timeout in seconds for each session shutdown", 
-          default = 5
-        )
-      ),
-      fn = replr_stop_all_sessions
+      arguments = list(
+        timeout = ellmer::type_number("Timeout in seconds for each session shutdown", required = FALSE)
+      )
     )
   } else {
     list(
