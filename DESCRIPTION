@@ -19,6 +19,7 @@ Imports:
     uuid,
     cli
 Suggests:
+    ellmer,
     pryr,
     testthat (>= 3.0.0),
     here,

@@ -366,8 +366,27 @@ cat("Active sessions:", sessions$data$count)
 replr_stop_session(session_id)
 ```
 
+### ellmer Tool Integration
+
+`replr` provides ellmer-compatible tool definitions that wrap the core functions for LLM agent integration:
+
+```r
+# Get ellmer tool definitions
+create_tool <- replr_create_repl_session_tool()
+execute_tool <- replr_execute_code_tool()
+list_tool <- replr_list_sessions_tool()
+
+# Tools provide structured metadata for LLM agents
+print(create_tool$name)        # "replr_create_repl_session"
+print(create_tool$description) # Tool description
+print(create_tool$parameters)  # Parameter schema
+```
+
+When ellmer is available, these functions return proper `ellmer::tool()` objects. When ellmer is not installed, they return compatible structures that can still be used programmatically.
+
 ### ellmer API Functions
 
+**Core Functions:**
 - **`replr_create_repl_session(session_id = NULL, timeout = 10)`** - Create a new isolated REPL session
 - **`replr_execute_code(session_id, code, timeout = 30)`** - Execute R code in a session
 - **`replr_get_session_info(session_id)`** - Get detailed session information
@@ -375,6 +394,15 @@ replr_stop_session(session_id)
 - **`replr_stop_session(session_id, timeout = 5)`** - Stop a specific session
 - **`replr_cleanup_sessions()`** - Remove dead sessions from registry
 - **`replr_stop_all_sessions(timeout = 5)`** - Stop all active sessions
+
+**ellmer Tool Definitions:**
+- **`replr_create_repl_session_tool()`** - ellmer tool wrapper for session creation
+- **`replr_execute_code_tool()`** - ellmer tool wrapper for code execution
+- **`replr_get_session_info_tool()`** - ellmer tool wrapper for session info
+- **`replr_list_sessions_tool()`** - ellmer tool wrapper for listing sessions
+- **`replr_stop_session_tool()`** - ellmer tool wrapper for stopping sessions
+- **`replr_cleanup_sessions_tool()`** - ellmer tool wrapper for cleanup
+- **`replr_stop_all_sessions_tool()`** - ellmer tool wrapper for stopping all sessions
 
 ### ellmer Response Format
 
