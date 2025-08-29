@@ -470,3 +470,204 @@ replr_stop_all_sessions <- function(timeout = 5) {
     )
   })
 }
+
+# ellmer Tool Definitions
+# These tools wrap the replr functions to provide a standardized interface for LLM agents
+
+#' @export
+replr_create_repl_session_tool <- function() {
+  # Try to use ellmer::tool if available, otherwise return a basic structure
+  if (requireNamespace("ellmer", quietly = TRUE)) {
+    ellmer::tool(
+      name = "replr_create_repl_session",
+      description = "Create a new isolated R REPL session for executing R code",
+      parameters = list(
+        session_id = list(
+          type = "string",
+          description = "Optional custom session ID. If not provided, a UUID will be generated."
+        ),
+        timeout = list(
+          type = "number", 
+          description = "Timeout in seconds for session startup",
+          default = 10
+        )
+      ),
+      fn = replr_create_repl_session
+    )
+  } else {
+    # Fallback structure if ellmer is not available
+    list(
+      name = "replr_create_repl_session",
+      description = "Create a new isolated R REPL session for executing R code",
+      parameters = list(
+        session_id = list(type = "string", description = "Optional custom session ID"),
+        timeout = list(type = "number", description = "Timeout in seconds", default = 10)
+      ),
+      fn = replr_create_repl_session
+    )
+  }
+}
+
+#' @export
+replr_execute_code_tool <- function() {
+  if (requireNamespace("ellmer", quietly = TRUE)) {
+    ellmer::tool(
+      name = "replr_execute_code",
+      description = "Execute R code in an isolated REPL session and return structured results",
+      parameters = list(
+        session_id = list(
+          type = "string",
+          description = "ID of the session to execute code in",
+          required = TRUE
+        ),
+        code = list(
+          type = "string", 
+          description = "R code to execute in the session",
+          required = TRUE
+        ),
+        timeout = list(
+          type = "number",
+          description = "Timeout in seconds for code execution",
+          default = 30
+        )
+      ),
+      fn = replr_execute_code
+    )
+  } else {
+    list(
+      name = "replr_execute_code",
+      description = "Execute R code in an isolated REPL session and return structured results",
+      parameters = list(
+        session_id = list(type = "string", description = "Session ID", required = TRUE),
+        code = list(type = "string", description = "R code to execute", required = TRUE),
+        timeout = list(type = "number", description = "Timeout in seconds", default = 30)
+      ),
+      fn = replr_execute_code
+    )
+  }
+}
+
+#' @export
+replr_get_session_info_tool <- function() {
+  if (requireNamespace("ellmer", quietly = TRUE)) {
+    ellmer::tool(
+      name = "replr_get_session_info",
+      description = "Get detailed information about a REPL session including status and process info",
+      parameters = list(
+        session_id = list(
+          type = "string",
+          description = "ID of the session to query",
+          required = TRUE
+        )
+      ),
+      fn = replr_get_session_info
+    )
+  } else {
+    list(
+      name = "replr_get_session_info", 
+      description = "Get detailed information about a REPL session including status and process info",
+      parameters = list(
+        session_id = list(type = "string", description = "Session ID", required = TRUE)
+      ),
+      fn = replr_get_session_info
+    )
+  }
+}
+
+#' @export
+replr_list_sessions_tool <- function() {
+  if (requireNamespace("ellmer", quietly = TRUE)) {
+    ellmer::tool(
+      name = "replr_list_sessions",
+      description = "List all active REPL sessions with their status and information",
+      parameters = list(),
+      fn = replr_list_sessions
+    )
+  } else {
+    list(
+      name = "replr_list_sessions",
+      description = "List all active REPL sessions with their status and information", 
+      parameters = list(),
+      fn = replr_list_sessions
+    )
+  }
+}
+
+#' @export
+replr_stop_session_tool <- function() {
+  if (requireNamespace("ellmer", quietly = TRUE)) {
+    ellmer::tool(
+      name = "replr_stop_session",
+      description = "Stop a specific REPL session and remove it from the registry",
+      parameters = list(
+        session_id = list(
+          type = "string",
+          description = "ID of the session to stop",
+          required = TRUE
+        ),
+        timeout = list(
+          type = "number",
+          description = "Timeout in seconds for graceful shutdown",
+          default = 5
+        )
+      ),
+      fn = replr_stop_session
+    )
+  } else {
+    list(
+      name = "replr_stop_session",
+      description = "Stop a specific REPL session and remove it from the registry",
+      parameters = list(
+        session_id = list(type = "string", description = "Session ID", required = TRUE),
+        timeout = list(type = "number", description = "Timeout in seconds", default = 5)
+      ),
+      fn = replr_stop_session
+    )
+  }
+}
+
+#' @export
+replr_cleanup_sessions_tool <- function() {
+  if (requireNamespace("ellmer", quietly = TRUE)) {
+    ellmer::tool(
+      name = "replr_cleanup_sessions",
+      description = "Remove dead sessions from the registry to clean up resources",
+      parameters = list(),
+      fn = replr_cleanup_sessions
+    )
+  } else {
+    list(
+      name = "replr_cleanup_sessions",
+      description = "Remove dead sessions from the registry to clean up resources",
+      parameters = list(),
+      fn = replr_cleanup_sessions
+    )
+  }
+}
+
+#' @export
+replr_stop_all_sessions_tool <- function() {
+  if (requireNamespace("ellmer", quietly = TRUE)) {
+    ellmer::tool(
+      name = "replr_stop_all_sessions", 
+      description = "Stop all active REPL sessions and clear the session registry",
+      parameters = list(
+        timeout = list(
+          type = "number",
+          description = "Timeout in seconds for each session shutdown", 
+          default = 5
+        )
+      ),
+      fn = replr_stop_all_sessions
+    )
+  } else {
+    list(
+      name = "replr_stop_all_sessions",
+      description = "Stop all active REPL sessions and clear the session registry",
+      parameters = list(
+        timeout = list(type = "number", description = "Timeout in seconds", default = 5)
+      ),
+      fn = replr_stop_all_sessions
+    )
+  }
+}

@@ -11,7 +11,7 @@ llm_execute_r <- function(session_id, code, description = "") {
   cat("LLM Agent executing:", description, "\n")
   cat("Code:", substr(code, 1, 50), "...\n")
   
-  result <- ellmer_execute_code(session_id, code)
+  result <- replr_execute_code(session_id, code)
   
   if (result$success) {
     cat("✓ Success - Output:", substr(paste(result$data$output, collapse = " "), 1, 100), "\n")
@@ -28,7 +28,7 @@ llm_execute_r <- function(session_id, code, description = "") {
 
 # LLM Agent starts analysis
 cat("\n1. Agent creates dedicated analysis session\n")
-session_result <- ellmer_create_repl_session("llm_analysis_session")
+session_result <- replr_create_repl_session("llm_analysis_session")
 if (!session_result$success) {
   stop("Could not create session: ", session_result$message)
 }
@@ -117,7 +117,7 @@ llm_execute_r(session_id, "
 
 # LLM Agent checks session status
 cat("\n8. Session management\n")
-session_info <- ellmer_get_session_info(session_id)
+session_info <- replr_get_session_info(session_id)
 if (session_info$success) {
   cat("Session", session_id, "status:\n")
   cat("  Alive:", session_info$data$is_alive, "\n")
@@ -126,12 +126,12 @@ if (session_info$success) {
 }
 
 # List all sessions (agent might have multiple analyses running)
-sessions <- ellmer_list_sessions()
+sessions <- replr_list_sessions()
 cat("Total active sessions:", sessions$data$count, "\n")
 
 # LLM Agent cleans up when done
 cat("\n9. Cleanup\n")
-cleanup_result <- ellmer_stop_session(session_id)
+cleanup_result <- replr_stop_session(session_id)
 if (cleanup_result$success) {
   cat("✓ Session", session_id, "stopped successfully\n")
 } else {
@@ -139,7 +139,7 @@ if (cleanup_result$success) {
 }
 
 # Verify cleanup
-final_sessions <- ellmer_list_sessions()
+final_sessions <- replr_list_sessions()
 cat("Remaining sessions after cleanup:", final_sessions$data$count, "\n")
 
 cat("\n=== LLM Agent Analysis Complete ===\n")
