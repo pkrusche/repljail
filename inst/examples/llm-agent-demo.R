@@ -1,152 +1,119 @@
-#' LLM Agent Example: Using ellmer Tools for Data Analysis
+#' LLM Agent Example: Using Tools for Data Analysis
 #'
-#' This example demonstrates how an LLM agent would use the ellmer tools
+#' This example demonstrates how an LLM agent would use ellmer with tools
 #' to perform a complete data analysis workflow using isolated REPL sessions.
+#' The script will:
+#'
+#' 1. Create an agent with access to the ellmer::tool() implementations from {replr}
+#' 2. Ask the agent to create a histogram of 100 random normal values.
+#' 3. Check if the computation ran successfully
 
-# Simulate LLM Agent Functions
-cat("=== LLM Agent Data Analysis Workflow ===\n")
+library(replr)
 
-# Agent function to safely execute R code and handle responses
-llm_execute_r <- function(session_id, code, description = "") {
-  cat("LLM Agent executing:", description, "\n")
-  cat("Code:", substr(code, 1, 50), "...\n")
-  
-  result <- replr_execute_code(session_id, code)
-  
-  if (result$success) {
-    cat("✓ Success - Output:", substr(paste(result$data$output, collapse = " "), 1, 100), "\n")
-    if (length(result$data$warnings) > 0) {
-      cat("⚠ Warnings:", paste(result$data$warnings, collapse = "; "), "\n")
+library(ellmer)
+
+# Initialize chat with OpenAI (requires API key)
+cat("Initializing chat with OpenAI...\n")
+tryCatch(
+  {
+    chat <- ellmer::chat_openai(
+      system_prompt = paste(
+        "You are a helpful data analysis assistant.",
+        "You have access to tools for creating and managing isolated R REPL sessions.",
+        "Use these tools to execute R code safely in separate processes.",
+        "Always create a session first, then execute code, and clean up when done."
+      )
+    )
+    cat("✓ Chat initialized successfully\n")
+  },
+  error = function(e) {
+    cat("✗ Failed to initialize chat. Make sure OPENAI_API_KEY is set.\n")
+    cat("Error:", e$message, "\n")
+    stop("Chat initialization failed")
+  }
+)
+# Register replr tools with the chat
+cat("Registering replr tools...\n")
+
+# Get all replr tool functions
+tools <- list(
+  replr_create_repl_session_tool(),
+  replr_execute_code_tool(),
+  replr_get_session_info_tool(),
+  replr_list_sessions_tool(),
+  replr_stop_session_tool(),
+  replr_cleanup_sessions_tool(),
+  replr_stop_all_sessions_tool()
+)
+
+# Register each tool with the chat
+for (tool in tools) {
+  chat$register_tool(tool)
+  cat("  ✓ Registered:", tool@name, "\n")
+}
+
+cat("All tools registered successfully!\n\n")
+
+# Define the analysis task
+task <- paste(
+  "Please help me analyze some data:",
+  "1. Create a new REPL session",
+  "2. Generate 100 random normal values with mean=0 and sd=1",
+  "3. Create a histogram of these values",
+  "4. Calculate basic summary statistics (mean, median, sd)",
+  "5. Show me the results",
+  "6. Clean up the session when done"
+)
+
+cat("=== Starting Data Analysis Demo ===\n")
+cat("Task:", task, "\n\n")
+
+# Send the task to the LLM
+cat("Sending task to Agent\n")
+response <- chat$chat(task)
+
+# Display the response
+cat("\n=== Agent's Response ===\n")
+cat(response$content, "\n")
+
+# Show any tool calls that were made
+if (length(response$tool_calls) > 0) {
+  cat("\n=== Tool Calls Made ===\n")
+  for (i in seq_along(response$tool_calls)) {
+    tool_call <- response$tool_calls[[i]]
+    cat("Tool", i, ":", tool_call@name, "\n")
+    if (length(tool_call@arguments) > 0) {
+      cat("  Arguments:\n")
+      for (arg_name in names(tool_call@arguments)) {
+        cat("   ", arg_name, ":", tool_call@arguments[[arg_name]], "\n")
+      }
     }
-  } else {
-    cat("✗ Failed:", result$message, "\n")
-    cat("Errors:", paste(result$data$errors, collapse = "; "), "\n")
+    cat("\n")
   }
-  
-  return(result)
 }
 
-# LLM Agent starts analysis
-cat("\n1. Agent creates dedicated analysis session\n")
-session_result <- replr_create_repl_session("llm_analysis_session")
-if (!session_result$success) {
-  stop("Could not create session: ", session_result$message)
-}
-session_id <- session_result$data$session_id
-cat("Session created:", session_id, "\n")
-
-# LLM Agent performs step-by-step analysis
-cat("\n2. Load and explore dataset\n")
-llm_execute_r(session_id, "
-  # Load the mtcars dataset
-  data(mtcars)
-  cat('Dataset loaded with', nrow(mtcars), 'rows and', ncol(mtcars), 'columns\n')
-  head(mtcars, 3)
-", "Loading mtcars dataset")
-
-cat("\n3. Basic data exploration\n")
-llm_execute_r(session_id, "
-  # Basic statistics
-  summary(mtcars[c('mpg', 'hp', 'wt')])
-", "Computing summary statistics")
-
-cat("\n4. Data visualization setup\n")
-llm_execute_r(session_id, "
-  # Create correlation matrix
-  cor_matrix <- cor(mtcars[c('mpg', 'hp', 'wt', 'qsec')])
-  cat('Correlation between mpg and hp:', cor_matrix['mpg', 'hp'], '\n')
-  cor_matrix
-", "Computing correlations")
-
-cat("\n5. Statistical modeling\n")
-model_result <- llm_execute_r(session_id, "
-  # Build regression model
-  model <- lm(mpg ~ hp + wt + qsec, data = mtcars)
-  model_summary <- summary(model)
-  
-  cat('Model R-squared:', model_summary$r.squared, '\n')
-  cat('Model p-value:', pf(model_summary$fstatistic[1], 
-                          model_summary$fstatistic[2], 
-                          model_summary$fstatistic[3], 
-                          lower.tail = FALSE), '\n')
-  
-  # Return key metrics
-  list(
-    r_squared = model_summary$r.squared,
-    adj_r_squared = model_summary$adj.r.squared,
-    coefficients = coef(model)
-  )
-", "Building regression model")
-
-cat("\n6. Model validation\n")
-llm_execute_r(session_id, "
-  # Generate predictions and residuals
-  predictions <- predict(model)
-  residuals <- residuals(model)
-  
-  # Calculate RMSE
-  rmse <- sqrt(mean(residuals^2))
-  cat('Root Mean Square Error:', rmse, '\n')
-  
-  # Check assumptions
-  shapiro_test <- shapiro.test(residuals)
-  cat('Residuals normality test p-value:', shapiro_test$p.value, '\n')
-  
-  rmse
-", "Validating model assumptions")
-
-cat("\n7. Generate insights\n")
-llm_execute_r(session_id, "
-  # Extract key insights
-  coef_summary <- summary(model)$coefficients
-  
-  cat('=== Model Insights ===\n')
-  cat('Most significant predictors (p < 0.05):\n')
-  
-  significant <- coef_summary[coef_summary[,4] < 0.05, ]
-  for(i in 1:nrow(significant)) {
-    var_name <- rownames(significant)[i]
-    coef_val <- significant[i, 1]
-    p_val <- significant[i, 4]
-    cat(sprintf('%s: coefficient = %.3f, p-value = %.4f\n', 
-                var_name, coef_val, p_val))
-  }
-  
-  'Analysis complete'
-", "Extracting insights")
-
-# LLM Agent checks session status
-cat("\n8. Session management\n")
-session_info <- replr_get_session_info(session_id)
-if (session_info$success) {
-  cat("Session", session_id, "status:\n")
-  cat("  Alive:", session_info$data$is_alive, "\n")
-  cat("  Port:", session_info$data$port, "\n")
-  cat("  Started:", session_info$data$started_at, "\n")
-}
-
-# List all sessions (agent might have multiple analyses running)
-sessions <- replr_list_sessions()
-cat("Total active sessions:", sessions$data$count, "\n")
-
-# LLM Agent cleans up when done
-cat("\n9. Cleanup\n")
-cleanup_result <- replr_stop_session(session_id)
-if (cleanup_result$success) {
-  cat("✓ Session", session_id, "stopped successfully\n")
-} else {
-  cat("✗ Failed to stop session:", cleanup_result$message, "\n")
-}
-
-# Verify cleanup
+# Show current sessions (should be empty if cleanup worked)
+cat("\n=== Final Session Check ===\n")
 final_sessions <- replr_list_sessions()
-cat("Remaining sessions after cleanup:", final_sessions$data$count, "\n")
+if (final_sessions$success && final_sessions$data$count == 0) {
+  cat("✓ All sessions cleaned up successfully\n")
+} else {
+  cat("⚠ Sessions remain active:\n")
+  print(final_sessions$data$sessions)
 
-cat("\n=== LLM Agent Analysis Complete ===\n")
-cat("The LLM agent successfully:\n")
-cat("- Created an isolated analysis environment\n") 
-cat("- Performed step-by-step data analysis\n")
-cat("- Built and validated a statistical model\n")
-cat("- Generated insights from the results\n")
-cat("- Cleaned up resources properly\n")
-cat("\nAll operations used structured responses suitable for LLM processing!\n")
+  # Clean up any remaining sessions
+  cat("Cleaning up remaining sessions...\n")
+  cleanup_result <- replr_stop_all_sessions()
+  if (cleanup_result$success) {
+    cat("✓ All sessions stopped\n")
+  } else {
+    cat("✗ Some sessions failed to stop:", cleanup_result$error, "\n")
+  }
+}
+
+cat("\n=== Demo Complete ===\n")
+cat("This example showed how an LLM agent can:\n")
+cat("- Use replr tools to manage isolated R sessions\n")
+cat("- Execute R code safely in separate processes\n")
+cat("- Perform data analysis tasks with proper cleanup\n")
+cat("- Handle errors and manage resources effectively\n")

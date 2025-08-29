@@ -7,7 +7,7 @@
 ## ✨ Key Features
 
 - **🔒 Process Isolation**: Complete memory separation using separate R worker processes
-- **⚡ Robust Communication**: Built on `nanonext` for reliable inter-process messaging  
+- **⚡ Robust Communication**: Built on `nanonext` for reliable inter-process messaging
 - **📊 Rich Output Capture**: Captures console output, warnings, errors, and plots via `evaluate`
 - **🔄 Error Recovery**: Workers survive errors and continue processing requests
 - **⏱️ Configurable Timeouts**: Per-execution and session-level timeout controls
@@ -106,10 +106,10 @@ worker <- start_worker()
 
 # Handle syntax errors
 result1 <- send_command(worker, "1 +")
-print(result1$status)         # "error"  
+print(result1$status)         # "error"
 print(result1$result$errors)  # Error message
 
-# Handle runtime errors  
+# Handle runtime errors
 result2 <- send_command(worker, "stop('Custom error')")
 print(result2$status)         # "error"
 print(result2$result$errors)  # "Custom error"
@@ -134,7 +134,7 @@ result <- send_command(worker, "
   42
 ")
 
-print(result$status)             # "success" 
+print(result$status)             # "success"
 print(result$result$warnings)    # "This is a warning"
 print(result$result$output)      # "42"
 
@@ -255,8 +255,8 @@ worker <- start_worker()
 
 # Set custom timeout for long-running operations
 result <- send_command(
-  worker, 
-  "Sys.sleep(2); 'Completed'", 
+  worker,
+  "Sys.sleep(2); 'Completed'",
   timeout = 5  # 5 second timeout
 )
 print(result$result$output)  # "Completed"
@@ -272,7 +272,7 @@ stop_worker(worker)
 ### Core Functions (Functional Interface)
 
 - **`start_worker(port = NULL, timeout = 10)`** - Start an isolated R worker process
-- **`send_command(worker_info, code, timeout = 30)`** - Execute R code in worker 
+- **`send_command(worker_info, code, timeout = 30)`** - Execute R code in worker
 - **`stop_worker(worker_info, timeout = 5)`** - Gracefully stop worker process
 
 ### RREPLSession R6 Class (Object-Oriented Interface)
@@ -283,7 +283,7 @@ stop_worker(worker)
 - **`session$stop(timeout = 5)`** - Stop the session
 - **`session$get_info()`** - Get session information
 - **`session$port`** - Active binding for port number
-- **`session$pid`** - Active binding for process ID  
+- **`session$pid`** - Active binding for process ID
 - **`session$started_at`** - Active binding for start timestamp
 
 ### Debug Functions
@@ -301,7 +301,7 @@ list(
   status = "success",  # "success", "error", or "timeout"
   result = list(
     output = character(),      # Console output lines
-    warnings = character(),    # Warning messages  
+    warnings = character(),    # Warning messages
     errors = character(),      # Error messages
     visible = logical(1),      # Whether result should be printed
     plots = list()             # Plot objects (if any)
@@ -315,16 +315,16 @@ list(
 ```
 ┌─────────────────┐    nanonext     ┌─────────────────┐
 │   Main R        │   REQ ──────>   │   Worker R      │
-│   Process       │                 │   Process       │ 
+│   Process       │                 │   Process       │
 │                 │   <────── REP   │                 │
 │ • start_worker  │                 │ • evaluate pkg  │
-│ • send_command  │     TCP         │ • plot capture  │ 
+│ • send_command  │     TCP         │ • plot capture  │
 │ • stop_worker   │   Socket        │ • error handling│
 └─────────────────┘                 └─────────────────┘
 ```
 
 1. **Isolation**: Each worker runs as a separate R process with its own memory space
-2. **Communication**: Uses `nanonext` REQ-REP pattern over TCP sockets for reliability  
+2. **Communication**: Uses `nanonext` REQ-REP pattern over TCP sockets for reliability
 3. **Evaluation**: Workers use the `evaluate` package for safe code execution with rich output capture
 4. **Error Recovery**: Workers survive errors and continue processing new requests
 5. **Resource Management**: Automatic cleanup with proper process lifecycle management
@@ -333,7 +333,7 @@ list(
 
 - **🤖 AI/LLM Integration**: Safe execution of AI-generated R code
 - **🔬 Interactive Analysis**: Isolated environments for experimental code
-- **🎓 Educational Tools**: Safe execution of student code submissions  
+- **🎓 Educational Tools**: Safe execution of student code submissions
 - **☁️ Cloud Services**: Secure R code execution in multi-tenant environments
 - **🧪 Testing Frameworks**: Isolated test environments that don't pollute the main session
 - **📊 Report Generation**: Isolated rendering without affecting the main analysis
@@ -366,7 +366,7 @@ cat("Active sessions:", sessions$data$count)
 replr_stop_session(session_id)
 ```
 
-### ellmer Tool Integration
+### Tool Integration
 
 `replr` provides ellmer-compatible tool definitions that wrap the core functions for LLM agent integration:
 
@@ -395,7 +395,7 @@ When ellmer is available, these functions return proper `ellmer::tool()` objects
 - **`replr_cleanup_sessions()`** - Remove dead sessions from registry
 - **`replr_stop_all_sessions(timeout = 5)`** - Stop all active sessions
 
-**ellmer Tool Definitions:**
+**Tool Definitions:**
 - **`replr_create_repl_session_tool()`** - ellmer tool wrapper for session creation
 - **`replr_execute_code_tool()`** - ellmer tool wrapper for code execution
 - **`replr_get_session_info_tool()`** - ellmer tool wrapper for session info
@@ -404,9 +404,9 @@ When ellmer is available, these functions return proper `ellmer::tool()` objects
 - **`replr_cleanup_sessions_tool()`** - ellmer tool wrapper for cleanup
 - **`replr_stop_all_sessions_tool()`** - ellmer tool wrapper for stopping all sessions
 
-### ellmer Response Format
+### Response Format
 
-All ellmer tools return standardized responses:
+All tools return standardized responses:
 
 ```r
 list(
@@ -419,7 +419,7 @@ list(
 
 ### Multiple Session Management
 
-ellmer tools support multiple concurrent sessions with automatic isolation:
+Tools support multiple concurrent sessions with automatic isolation:
 
 ```r
 # Create multiple sessions for different analyses
@@ -439,9 +439,9 @@ result2 <- replr_execute_code("model_building", "names(dataset)")
 replr_stop_all_sessions()
 ```
 
-### Error Handling in ellmer
+### Error Handling in tools
 
-ellmer tools provide robust error handling while maintaining session stability:
+Tools provide robust error handling while maintaining session stability:
 
 ```r
 # Execute code that generates an error
@@ -449,7 +449,7 @@ error_result <- replr_execute_code(session_id, "stop('Something went wrong')")
 # Returns: success = FALSE, data$status = "error", data$errors = ["Something went wrong"]
 
 # Session continues to work after errors
-recovery <- replr_execute_code(session_id, "2 + 2")  
+recovery <- replr_execute_code(session_id, "2 + 2")
 # Returns: success = TRUE, data$output = "4"
 ```
 
@@ -487,7 +487,7 @@ This package has comprehensive test coverage and follows R package development b
 # Development workflow
 devtools::load_all()      # Load package for testing
 devtools::test()          # Run all tests (122 tests)
-devtools::check()         # R CMD check (passes cleanly)  
+devtools::check()         # R CMD check (passes cleanly)
 devtools::document()      # Generate documentation
 
 # Current test status: ✅ 122 tests passing, 0 errors/warnings
@@ -495,7 +495,7 @@ devtools::document()      # Generate documentation
 
 ### Architecture Notes
 
-- **Dual Interface**: Both functional (`start_worker()` / `send_command()` / `stop_worker()`) AND R6 class (`RREPLSession`) 
+- **Dual Interface**: Both functional (`start_worker()` / `send_command()` / `stop_worker()`) AND R6 class (`RREPLSession`)
 - **Automatic Cleanup**: R6 class provides finalizers for automatic resource management
 - **Process-based isolation**: True isolation via separate R processes, not just environments
 - **Robust communication**: Built on `nanonext` for reliable messaging with automatic serialization
