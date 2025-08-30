@@ -498,7 +498,22 @@ replr_stop_all_sessions <- function(timeout = 5) {
 # ellmer Tool Definitions
 # These tools wrap the replr functions to provide a standardized interface for LLM agents
 
+#' Create REPL Session Tool Definition
+#'
+#' Returns an ellmer tool definition for creating new REPL sessions.
+#' This function provides the tool metadata that LLM agents need to
+#' understand how to create isolated R sessions.
+#'
+#' @return An ellmer tool object (when ellmer is available) or a compatible
+#'   structure containing the tool name, description, parameters, and function.
 #' @export
+#' @examples
+#' \dontrun{
+#' # Get the tool definition
+#' create_tool <- replr_create_repl_session_tool()
+#' print(create_tool$name)
+#' print(create_tool$description)
+#' }
 replr_create_repl_session_tool <- function() {
   # Try to use ellmer::tool if available, otherwise return a basic structure
   if (requireNamespace("ellmer", quietly = TRUE)) {
@@ -525,7 +540,21 @@ replr_create_repl_session_tool <- function() {
   }
 }
 
+#' Execute Code Tool Definition
+#'
+#' Returns an ellmer tool definition for executing R code in REPL sessions.
+#' This function provides the tool metadata that LLM agents need to
+#' understand how to execute code in isolated R environments.
+#'
+#' @return An ellmer tool object (when ellmer is available) or a compatible
+#'   structure containing the tool name, description, parameters, and function.
 #' @export
+#' @examples
+#' \dontrun{
+#' # Get the tool definition
+#' execute_tool <- replr_execute_code_tool()
+#' print(execute_tool$name)
+#' }
 replr_execute_code_tool <- function() {
   if (requireNamespace("ellmer", quietly = TRUE)) {
     ellmer::tool(
@@ -552,7 +581,21 @@ replr_execute_code_tool <- function() {
   }
 }
 
+#' Get Session Info Tool Definition
+#'
+#' Returns an ellmer tool definition for retrieving REPL session information.
+#' This function provides the tool metadata that LLM agents need to
+#' understand how to query session status and details.
+#'
+#' @return An ellmer tool object (when ellmer is available) or a compatible
+#'   structure containing the tool name, description, parameters, and function.
 #' @export
+#' @examples
+#' \dontrun{
+#' # Get the tool definition
+#' info_tool <- replr_get_session_info_tool()
+#' print(info_tool$description)
+#' }
 replr_get_session_info_tool <- function() {
   if (requireNamespace("ellmer", quietly = TRUE)) {
     ellmer::tool(
@@ -575,7 +618,21 @@ replr_get_session_info_tool <- function() {
   }
 }
 
+#' List Sessions Tool Definition
+#'
+#' Returns an ellmer tool definition for listing all active REPL sessions.
+#' This function provides the tool metadata that LLM agents need to
+#' understand how to enumerate active sessions.
+#'
+#' @return An ellmer tool object (when ellmer is available) or a compatible
+#'   structure containing the tool name, description, parameters, and function.
 #' @export
+#' @examples
+#' \dontrun{
+#' # Get the tool definition
+#' list_tool <- replr_list_sessions_tool()
+#' print(list_tool$name)
+#' }
 replr_list_sessions_tool <- function() {
   if (requireNamespace("ellmer", quietly = TRUE)) {
     ellmer::tool(
@@ -594,7 +651,21 @@ replr_list_sessions_tool <- function() {
   }
 }
 
+#' Stop Session Tool Definition
+#'
+#' Returns an ellmer tool definition for stopping specific REPL sessions.
+#' This function provides the tool metadata that LLM agents need to
+#' understand how to gracefully stop and clean up sessions.
+#'
+#' @return An ellmer tool object (when ellmer is available) or a compatible
+#'   structure containing the tool name, description, parameters, and function.
 #' @export
+#' @examples
+#' \dontrun{
+#' # Get the tool definition
+#' stop_tool <- replr_stop_session_tool()
+#' print(stop_tool$description)
+#' }
 replr_stop_session_tool <- function() {
   if (requireNamespace("ellmer", quietly = TRUE)) {
     ellmer::tool(
@@ -619,7 +690,21 @@ replr_stop_session_tool <- function() {
   }
 }
 
+#' Cleanup Sessions Tool Definition
+#'
+#' Returns an ellmer tool definition for cleaning up dead REPL sessions.
+#' This function provides the tool metadata that LLM agents need to
+#' understand how to remove dead sessions from the registry.
+#'
+#' @return An ellmer tool object (when ellmer is available) or a compatible
+#'   structure containing the tool name, description, parameters, and function.
 #' @export
+#' @examples
+#' \dontrun{
+#' # Get the tool definition
+#' cleanup_tool <- replr_cleanup_sessions_tool()
+#' print(cleanup_tool$name)
+#' }
 replr_cleanup_sessions_tool <- function() {
   if (requireNamespace("ellmer", quietly = TRUE)) {
     ellmer::tool(
@@ -638,7 +723,21 @@ replr_cleanup_sessions_tool <- function() {
   }
 }
 
+#' Stop All Sessions Tool Definition
+#'
+#' Returns an ellmer tool definition for stopping all active REPL sessions.
+#' This function provides the tool metadata that LLM agents need to
+#' understand how to perform complete session cleanup.
+#'
+#' @return An ellmer tool object (when ellmer is available) or a compatible
+#'   structure containing the tool name, description, parameters, and function.
 #' @export
+#' @examples
+#' \dontrun{
+#' # Get the tool definition
+#' stop_all_tool <- replr_stop_all_sessions_tool()
+#' print(stop_all_tool$description)
+#' }
 replr_stop_all_sessions_tool <- function() {
   if (requireNamespace("ellmer", quietly = TRUE)) {
     ellmer::tool(
