@@ -255,13 +255,13 @@ test_that("RREPLSession plot capture structure is correct", {
 
 test_that("RREPLSession deterministic plot generation and PNG comparison", {
   session <- RREPLSession$new(timeout = 10)
-  
+
   tryCatch({
     # Create a deterministic plot with set.seed for reproducibility
     deterministic_plot_code <- "
       set.seed(12345)
       data <- rnorm(100, mean = 0, sd = 1)
-      hist(data, 
+      hist(data,
            breaks = 10,
            main = 'Test Histogram (Deterministic)',
            xlab = 'Value',
@@ -269,47 +269,50 @@ test_that("RREPLSession deterministic plot generation and PNG comparison", {
            col = 'lightblue',
            border = 'black')
     "
-    
+
     result <- session$execute(deterministic_plot_code, timeout = 15)
     expect_equal(result$status, "success")
     expect_true("plots" %in% names(result$result))
     expect_equal(length(result$result$plots), 1)
-    
+
     # Extract the plot object
     plot_obj <- result$result$plots[[1]]
     expect_true(inherits(plot_obj, "recordedplot"))
-    
+
     # Save the plot as PNG (outside of executed code)
     test_output_file <- tempfile(fileext = ".png")
     png(test_output_file, width = 480, height = 480)
     replayPlot(plot_obj)
     dev.off()
-    
+
     # Verify the PNG file was created
     expect_true(file.exists(test_output_file))
     expect_true(file.size(test_output_file) > 0)
-    
+
     # Check for reference file and compare if it exists
     reference_file <- here::here("tests", "testthat", "reference_plots", "test_histogram.png")
-    
+
     if (file.exists(reference_file)) {
       # Read both files as binary for comparison
       test_data <- readBin(test_output_file, "raw", file.info(test_output_file)$size)
       ref_data <- readBin(reference_file, "raw", file.info(reference_file)$size)
-      
+
       # For deterministic plots with same seed, the files should be identical
       # Note: In practice, minor differences may occur due to R version differences
       # So we check file sizes are reasonably similar (within 10%)
       size_diff_ratio <- abs(length(test_data) - length(ref_data)) / max(length(test_data), length(ref_data))
-      expect_true(size_diff_ratio < 0.1, 
-                  info = paste("File size difference too large:", size_diff_ratio))
-      
+      expect_true(size_diff_ratio < 0.1,
+        info = paste("File size difference too large:", size_diff_ratio)
+      )
+
       # Also verify both files are valid PNG files (start with PNG signature)
       png_signature <- as.raw(c(0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A))
-      expect_equal(test_data[1:8], png_signature, 
-                   info = "Test file does not have valid PNG signature")
-      expect_equal(ref_data[1:8], png_signature, 
-                   info = "Reference file does not have valid PNG signature")
+      expect_equal(test_data[1:8], png_signature,
+        info = "Test file does not have valid PNG signature"
+      )
+      expect_equal(ref_data[1:8], png_signature,
+        info = "Reference file does not have valid PNG signature"
+      )
     } else {
       # If reference file doesn't exist, copy the test file as reference
       # This is useful for initial setup
@@ -317,10 +320,9 @@ test_that("RREPLSession deterministic plot generation and PNG comparison", {
       file.copy(test_output_file, reference_file)
       message("Created reference file: ", reference_file)
     }
-    
+
     # Clean up temporary file
     unlink(test_output_file)
-    
   }, finally = {
     session$stop()
   })
