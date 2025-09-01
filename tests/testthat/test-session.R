@@ -70,10 +70,6 @@ test_that("RREPLSession handles worker death gracefully", {
 })
 
 test_that("RREPLSession get_info method provides correct information", {
-  skip_if_not_installed("nanonext")
-  skip_if_not_installed("processx")
-  skip_if_not_installed("R6")
-
   session <- RREPLSession$new(timeout = 10)
 
   tryCatch({
@@ -97,10 +93,6 @@ test_that("RREPLSession get_info method provides correct information", {
 })
 
 test_that("RREPLSession active bindings work correctly", {
-  skip_if_not_installed("nanonext")
-  skip_if_not_installed("processx")
-  skip_if_not_installed("R6")
-
   session <- RREPLSession$new(timeout = 10)
 
   tryCatch({
@@ -126,10 +118,6 @@ test_that("RREPLSession active bindings work correctly", {
 })
 
 test_that("RREPLSession handles timeouts correctly", {
-  skip_if_not_installed("nanonext")
-  skip_if_not_installed("processx")
-  skip_if_not_installed("R6")
-
   session <- RREPLSession$new(timeout = 10)
 
   tryCatch({
@@ -144,10 +132,6 @@ test_that("RREPLSession handles timeouts correctly", {
 })
 
 test_that("RREPLSession finalizer works for automatic cleanup", {
-  skip_if_not_installed("nanonext")
-  skip_if_not_installed("processx")
-  skip_if_not_installed("R6")
-
   # Create session in a local scope
   pid <- NULL
   {
@@ -168,10 +152,6 @@ test_that("RREPLSession finalizer works for automatic cleanup", {
 })
 
 test_that("Multiple RREPLSession instances work independently", {
-  skip_if_not_installed("nanonext")
-  skip_if_not_installed("processx")
-  skip_if_not_installed("R6")
-
   session1 <- RREPLSession$new(timeout = 10)
   session2 <- RREPLSession$new(timeout = 10)
 
@@ -198,5 +178,77 @@ test_that("Multiple RREPLSession instances work independently", {
   }, finally = {
     session1$stop()
     session2$stop()
+  })
+})
+
+test_that("RREPLSession handles plot-generating code without errors", {
+  session <- RREPLSession$new(timeout = 10)
+
+  tryCatch({
+    # Test that complex plot code executes without error
+    multi_plot_code <- "
+      # Test various plotting functions
+      result_summary <- list()
+
+      tryCatch({
+        hist(rnorm(50), main='Test Histogram')
+        result_summary$hist <- 'success'
+      }, error = function(e) {
+        result_summary$hist <- paste('error:', e$message)
+      })
+
+      tryCatch({
+        plot(1:10, 1:10, main='Test Scatter')
+        result_summary$scatter <- 'success'
+      }, error = function(e) {
+        result_summary$scatter <- paste('error:', e$message)
+      })
+
+      tryCatch({
+        boxplot(rnorm(30), main='Test Boxplot')
+        result_summary$boxplot <- 'success'
+      }, error = function(e) {
+        result_summary$boxplot <- paste('error:', e$message)
+      })
+
+      result_summary
+    "
+
+    result <- session$execute(multi_plot_code, timeout = 15)
+    expect_equal(result$status, "success")
+    expect_true("plots" %in% names(result$result))
+    expect_equal(length(result$result$plots), 3)
+
+    # The output contains the result_summary list, so we need to check if the success values are present
+    expect_true(any(grepl("success", result$result$output)))
+    expect_true(any(grepl("hist.*success", result$result$output)))
+    expect_true(any(grepl("scatter.*success", result$result$output)))
+    expect_true(any(grepl("boxplot.*success", result$result$output)))
+  }, finally = {
+    session$stop()
+  })
+})
+
+test_that("RREPLSession plot capture structure is correct", {
+  session <- RREPLSession$new(timeout = 10)
+
+  tryCatch({
+    # Test that the response always includes proper plot structure
+    simple_code <- "2 + 2"
+
+    result <- session$execute(simple_code, timeout = 10)
+
+    expect_equal(result$status, "success")
+    expect_true(is.list(result$result))
+    expect_true("plots" %in% names(result$result))
+    expect_true(is.list(result$result$plots))
+
+    # Even non-plotting code should have the plots field
+    expect_true(length(result$result$plots) == 0)
+
+    # Test that the structure is consistent
+    expect_true(all(c("output", "warnings", "errors", "visible", "plots") %in% names(result$result)))
+  }, finally = {
+    session$stop()
   })
 })

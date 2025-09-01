@@ -134,8 +134,8 @@ tryCatch({
           # Execute code using evaluate package
           eval_result <- evaluate::evaluate(code_to_execute,
             stop_on_error = 2, # Continue after errors
-            new_device = FALSE
-          ) # Don't create new plot device
+            new_device = TRUE
+          ) # Create new plot device for each run
 
           # Calculate execution time
           execution_time <- as.numeric(difftime(Sys.time(), start_time, units = "secs"))
