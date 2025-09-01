@@ -168,7 +168,7 @@
 
 ### 13.1. LLM Agent API Functions
 - [x] `replr_create_repl_session()` - Create isolated sessions with UUID tracking
-- [x] `replr_execute_code()` - Execute R code with structured error handling  
+- [x] `replr_execute_code()` - Execute R code with structured error handling
 - [x] `replr_get_session_info()` - Query session status and process information
 - [x] `replr_list_sessions()` - Enumerate all active sessions
 - [x] `replr_stop_session()` - Graceful session termination
@@ -210,31 +210,15 @@
 - [x] Add advanced usage scenarios (in README.md)
 - [x] **Create LLM agent demo** (`inst/examples/llm-agent-demo.R`)
 - [x] **ellmer integration examples** with tool calling workflow
-- [ ] Create performance benchmarking scripts
-- [ ] Add debugging and troubleshooting guides
-
-### 15. Performance Optimization
-- [ ] Optimize socket creation and reuse
-- [ ] Minimize serialization overhead
-- [ ] Implement connection pooling if needed
-- [ ] Add performance monitoring and metrics
-- [ ] Create performance regression tests
 
 ## Phase 5: Advanced Features (Optional)
 
-### 16. Security Enhancements
-- [ ] Add filesystem sandboxing options
+### 15. Security Enhancements
+- [ ] Add sandboxing options for the worker process inside a secure container / VM
 - [ ] Implement network access restrictions
 - [ ] Add resource limit enforcement
-- [ ] Create security audit logging
 
-### 17. Monitoring and Observability
-- [ ] Add structured logging throughout
-- [ ] Implement metrics collection
-- [ ] Create health check endpoints
-- [ ] Add debugging mode with verbose output
-
-### 18. Platform Compatibility
+### 16. Platform Compatibility
 - [ ] Test on Windows, macOS, and Linux
 - [ ] Handle platform-specific process management differences
 - [ ] Add platform-specific installation instructions
