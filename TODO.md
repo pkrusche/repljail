@@ -150,7 +150,7 @@
 - [x] Test multiple R6 sessions independence
 - [x] Test R6 class graceful worker death handling
 - [ ] Test long-running operations with timeouts
-- [ ] Test plot generation and capture in detail
+- [x] Test plot generation and capture in detail
 
 ## Phase 4: LLM Agent Integration
 
