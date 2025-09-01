@@ -2,3 +2,7 @@ Rplots.pdf
 tests/testthat/_snaps
 ..Rcheck
 hist.png
+
+# Keep reference plots but ignore test output files
+tests/testthat/test_*.png
+!tests/testthat/reference_plots/
