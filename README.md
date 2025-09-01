@@ -171,30 +171,6 @@ print(info)
 session$stop()
 ```
 
-#### Benefits of the R6 Interface
-
-- **Automatic cleanup**: Sessions are automatically stopped when the object is garbage collected
-- **Cleaner syntax**: Object-oriented method calls instead of passing worker info around
-- **Better encapsulation**: All session state is contained within the object
-- **Active bindings**: Easy access to session properties like `port`, `pid`, `started_at`
-
-```r
-# Multiple independent sessions
-session1 <- RREPLSession$new()
-session2 <- RREPLSession$new()
-
-# Each has its own isolated environment
-session1$execute("x <- 100")
-session2$execute("x <- 200")
-
-session1$execute("x")  # Returns 100
-session2$execute("x")  # Returns 200
-
-# Clean up both
-session1$stop()
-session2$stop()
-```
-
 ### Debug Logging
 
 ```r
@@ -329,80 +305,33 @@ list(
 4. **Error Recovery**: Workers survive errors and continue processing new requests
 5. **Resource Management**: Automatic cleanup with proper process lifecycle management
 
-## Use Cases
-
-- **🤖 AI/LLM Integration**: Safe execution of AI-generated R code
-- **🔬 Interactive Analysis**: Isolated environments for experimental code
-- **🎓 Educational Tools**: Safe execution of student code submissions
-- **☁️ Cloud Services**: Secure R code execution in multi-tenant environments
-- **🧪 Testing Frameworks**: Isolated test environments that don't pollute the main session
-- **📊 Report Generation**: Isolated rendering without affecting the main analysis
-- **🤖 ellmer Integration**: Specialized tools for LLM agents to create and manage REPL sessions
-
-## ellmer Tools for LLM Agents
+## 🤖 ellmer Tools for LLM Agents
 
 `replr` includes specialized tools designed for the ellmer package, allowing LLM agents to easily create and manage isolated R REPL sessions. These tools provide a standardized interface with structured responses optimized for LLM consumption.
 
-### ellmer Tools Overview
+### Complete LLM Agent Demo
 
-The ellmer tools provide session management with automatic cleanup and structured responses:
+A comprehensive demo showing how an LLM agent can perform data analysis using replr tools is available at [`inst/examples/llm-agent-demo.R`](inst/examples/llm-agent-demo.R).
 
-```r
-# Create a new REPL session for an LLM agent
-result <- replr_create_repl_session()
-session_id <- result$data$session_id
-
-# Execute R code in the session
-exec_result <- replr_execute_code(session_id, "data <- mtcars; summary(data$mpg)")
-if (exec_result$success) {
-  cat("Output:", exec_result$data$output)
-}
-
-# List all active sessions
-sessions <- replr_list_sessions()
-cat("Active sessions:", sessions$data$count)
-
-# Clean up when done
-replr_stop_session(session_id)
-```
-
-### Tool Integration
-
-`replr` provides ellmer-compatible tool definitions that wrap the core functions for LLM agent integration:
+To run the full LLM agent demo:
 
 ```r
-# Get ellmer tool definitions
-create_tool <- replr_create_repl_session_tool()
-execute_tool <- replr_execute_code_tool()
-list_tool <- replr_list_sessions_tool()
+# Install requirements
+install.packages(c("replr", "ellmer"))
 
-# Tools provide structured metadata for LLM agents
-print(create_tool$name)        # "replr_create_repl_session"
-print(create_tool$description) # Tool description
-print(create_tool$parameters)  # Parameter schema
+# Set your API key (required)
+Sys.setenv(OPENAI_API_KEY = "your-api-key-here")
+
+# Run the demo
+source(system.file("examples", "llm-agent-demo.R", package = "replr"))
 ```
 
-When ellmer is available, these functions return proper `ellmer::tool()` objects. When ellmer is not installed, they return compatible structures that can still be used programmatically.
-
-### ellmer API Functions
-
-**Core Functions:**
-- **`replr_create_repl_session(session_id = NULL, timeout = 10)`** - Create a new isolated REPL session
-- **`replr_execute_code(session_id, code, timeout = 30)`** - Execute R code in a session
-- **`replr_get_session_info(session_id)`** - Get detailed session information
-- **`replr_list_sessions()`** - List all active sessions with their status
-- **`replr_stop_session(session_id, timeout = 5)`** - Stop a specific session
-- **`replr_cleanup_sessions()`** - Remove dead sessions from registry
-- **`replr_stop_all_sessions(timeout = 5)`** - Stop all active sessions
-
-**Tool Definitions:**
-- **`replr_create_repl_session_tool()`** - ellmer tool wrapper for session creation
-- **`replr_execute_code_tool()`** - ellmer tool wrapper for code execution
-- **`replr_get_session_info_tool()`** - ellmer tool wrapper for session info
-- **`replr_list_sessions_tool()`** - ellmer tool wrapper for listing sessions
-- **`replr_stop_session_tool()`** - ellmer tool wrapper for stopping sessions
-- **`replr_cleanup_sessions_tool()`** - ellmer tool wrapper for cleanup
-- **`replr_stop_all_sessions_tool()`** - ellmer tool wrapper for stopping all sessions
+The demo will:
+1. Initialize an OpenAI chat session with replr tools
+2. Register all replr tools with the LLM agent
+3. Send a data analysis task to the agent
+4. Watch the agent automatically create sessions, execute code, and clean up
+5. Display the complete analysis results and tool usage
 
 ### Response Format
 
@@ -415,42 +344,6 @@ list(
   data = list(...),              # Operation-specific data
   error = "error details"        # Error information (if applicable)
 )
-```
-
-### Multiple Session Management
-
-Tools support multiple concurrent sessions with automatic isolation:
-
-```r
-# Create multiple sessions for different analyses
-analysis1 <- replr_create_repl_session("data_exploration")
-analysis2 <- replr_create_repl_session("model_building")
-
-# Each session maintains its own isolated environment
-replr_execute_code("data_exploration", "dataset <- mtcars")
-replr_execute_code("model_building", "dataset <- iris")
-
-# Sessions are completely isolated
-result1 <- replr_execute_code("data_exploration", "names(dataset)")
-result2 <- replr_execute_code("model_building", "names(dataset)")
-# result1 shows mtcars columns, result2 shows iris columns
-
-# Clean up all sessions at once
-replr_stop_all_sessions()
-```
-
-### Error Handling in tools
-
-Tools provide robust error handling while maintaining session stability:
-
-```r
-# Execute code that generates an error
-error_result <- replr_execute_code(session_id, "stop('Something went wrong')")
-# Returns: success = FALSE, data$status = "error", data$errors = ["Something went wrong"]
-
-# Session continues to work after errors
-recovery <- replr_execute_code(session_id, "2 + 2")
-# Returns: success = TRUE, data$output = "4"
 ```
 
 ## Development Environment
@@ -467,18 +360,6 @@ This repository includes a custom GitHub Copilot environment with R and all requ
 2. Wait for the environment to build (first time takes ~5-10 minutes)
 3. Start developing with R and all dependencies ready!
 
-### Local Development with Dev Containers
-
-1. Install Docker and VS Code with Dev Containers extension
-2. Clone this repository
-3. Open in VS Code and select "Reopen in Container"
-4. Environment will build automatically with all dependencies
-
-The custom environment includes:
-- R 4.3.2 with all dependencies pre-installed
-- Development tools: `devtools`, `roxygen2`, `testthat`, `lintr`
-- GitHub Copilot extensions enabled
-
 ## Contributing
 
 This package has comprehensive test coverage and follows R package development best practices:
@@ -486,21 +367,12 @@ This package has comprehensive test coverage and follows R package development b
 ```r
 # Development workflow
 devtools::load_all()      # Load package for testing
-devtools::test()          # Run all tests (122 tests)
+devtools::test()          # Run all tests (36 test cases)
 devtools::check()         # R CMD check (passes cleanly)
 devtools::document()      # Generate documentation
 
-# Current test status: ✅ 122 tests passing, 0 errors/warnings
+# Current test status: ✅ 36 test cases passing (190 expectations), 0 errors/warnings
 ```
-
-### Architecture Notes
-
-- **Dual Interface**: Both functional (`start_worker()` / `send_command()` / `stop_worker()`) AND R6 class (`RREPLSession`)
-- **Automatic Cleanup**: R6 class provides finalizers for automatic resource management
-- **Process-based isolation**: True isolation via separate R processes, not just environments
-- **Robust communication**: Built on `nanonext` for reliable messaging with automatic serialization
-- **Error resilience**: Workers survive crashes and continue processing requests
-- **Cross-platform**: Works on Windows, macOS, and Linux
 
 ## License
 

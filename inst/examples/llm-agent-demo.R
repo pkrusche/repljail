@@ -9,7 +9,6 @@
 #' 3. Check if the computation ran successfully
 
 library(replr)
-
 library(ellmer)
 
 # Initialize chat with OpenAI (requires API key)
@@ -52,6 +51,18 @@ for (tool in tools) {
   cat("  ✓ Registered:", tool@name, "\n")
 }
 
+on_tool_call <- function(request) {
+  cat("Tool called:\n")
+  str(request)
+}
+on_tool_result <- function(result) {
+  cat("Tool result:\n")
+  str(result)
+}
+
+chat$on_tool_request(on_tool_call)
+chat$on_tool_result(on_tool_result)
+
 cat("All tools registered successfully!\n\n")
 
 # Define the analysis task
@@ -74,23 +85,7 @@ response <- chat$chat(task)
 
 # Display the response
 cat("\n=== Agent's Response ===\n")
-cat(response$content, "\n")
-
-# Show any tool calls that were made
-if (length(response$tool_calls) > 0) {
-  cat("\n=== Tool Calls Made ===\n")
-  for (i in seq_along(response$tool_calls)) {
-    tool_call <- response$tool_calls[[i]]
-    cat("Tool", i, ":", tool_call@name, "\n")
-    if (length(tool_call@arguments) > 0) {
-      cat("  Arguments:\n")
-      for (arg_name in names(tool_call@arguments)) {
-        cat("   ", arg_name, ":", tool_call@arguments[[arg_name]], "\n")
-      }
-    }
-    cat("\n")
-  }
-}
+cat(response, "\n")
 
 # Show current sessions (should be empty if cleanup worked)
 cat("\n=== Final Session Check ===\n")
@@ -112,8 +107,3 @@ if (final_sessions$success && final_sessions$data$count == 0) {
 }
 
 cat("\n=== Demo Complete ===\n")
-cat("This example showed how an LLM agent can:\n")
-cat("- Use replr tools to manage isolated R sessions\n")
-cat("- Execute R code safely in separate processes\n")
-cat("- Perform data analysis tasks with proper cleanup\n")
-cat("- Handle errors and manage resources effectively\n")

@@ -1,15 +1,16 @@
 # Implementation Tasks for replr
 
-## ✅ Current Status: Full Package Complete!
+## ✅ Current Status: Full Package Complete with ellmer Integration!
 
-**The replr package is now fully implemented with both functional and object-oriented interfaces!**
+**The replr package is now fully implemented with both functional and object-oriented interfaces, plus complete ellmer/LLM agent integration!**
 
 - ✅ **Phase 1 & 2**: Core functionality fully implemented
 - ✅ **Phase 3**: Advanced features and comprehensive testing complete
-- ✅ **122 tests passing**: Complete test coverage including R6 class tests
+- ✅ **36 test cases passing**: Complete test coverage including R6 class tests (190 expectations)
 - ✅ **Package passes R CMD check**: No errors or warnings
 - ✅ **Debug logging system**: Full cli-based logging with configurable output
 - ✅ **Two interfaces**: Functional API + R6 class with automatic cleanup
+- ✅ **ellmer Integration**: Complete LLM agent tools and demo implementation
 - ✅ **Production ready**: Robust error handling, finalizers, and resource management
 
 **Key Features Working:**
@@ -22,6 +23,8 @@
 - Automatic port management and conflict resolution
 - **RREPLSession R6 class** with automatic cleanup and finalizers
 - **Functional interface** for simple use cases
+- **ellmer/LLM agent tools** with standardized response format and session management
+- **LLM agent demo** at `inst/examples/llm-agent-demo.R` showing complete integration
 - Comprehensive test suite covering all functionality
 
 ## Phase 1: Basic Infrastructure
@@ -149,20 +152,64 @@
 - [ ] Test long-running operations with timeouts
 - [ ] Test plot generation and capture in detail
 
-## Phase 4: Documentation and Polish
+## Phase 4: LLM Agent Integration
 
-### 13. Package Documentation
+### 13. ellmer/LLM Agent Tools
+- [x] **Implement ellmer tool wrappers** for all core replr functions
+- [x] **Create tool definitions** with proper ellmer syntax and type specifications
+- [x] **Add session management functions** optimized for LLM agent workflows
+- [x] **Implement global session registry** for managing multiple agent sessions
+- [x] **Add standardized response format** for all tool functions
+- [x] **Create comprehensive error handling** for tool operations
+- [x] **Add tool fallbacks** when ellmer is not available
+- [x] **Implement proper cleanup functions** for session lifecycle management
+- [x] **Add session info queries** and listing capabilities
+- [x] **Create demo implementation** showing complete LLM agent workflow
+
+### 13.1. LLM Agent API Functions
+- [x] `replr_create_repl_session()` - Create isolated sessions with UUID tracking
+- [x] `replr_execute_code()` - Execute R code with structured error handling  
+- [x] `replr_get_session_info()` - Query session status and process information
+- [x] `replr_list_sessions()` - Enumerate all active sessions
+- [x] `replr_stop_session()` - Graceful session termination
+- [x] `replr_cleanup_sessions()` - Remove dead sessions from registry
+- [x] `replr_stop_all_sessions()` - Complete session cleanup
+
+### 13.2. ellmer Tool Integration
+- [x] `replr_create_repl_session_tool()` - ellmer-compatible tool wrapper
+- [x] `replr_execute_code_tool()` - Tool definition for code execution
+- [x] `replr_get_session_info_tool()` - Session info query tool
+- [x] `replr_list_sessions_tool()` - Session listing tool
+- [x] `replr_stop_session_tool()` - Session termination tool
+- [x] `replr_cleanup_sessions_tool()` - Cleanup tool
+- [x] `replr_stop_all_sessions_tool()` - Mass termination tool
+
+### 13.3. LLM Agent Demo
+- [x] **Complete demo script** (`inst/examples/llm-agent-demo.R`)
+- [x] **Tool registration example** showing ellmer integration
+- [x] **Data analysis workflow** with histogram generation and statistics
+- [x] **Error handling demonstration** with recovery patterns
+- [x] **Session lifecycle management** with automatic cleanup verification
+- [x] **OpenAI integration** with proper API key handling
+
+## Phase 5: Documentation and Polish
+
+### 14. Package Documentation
 - [x] Create roxygen2 documentation for all exported functions
 - [x] Generate man pages with devtools::document()
 - [x] Add package-level documentation
 - [x] Document debug logging system
-- [ ] Create comprehensive README.md with usage examples
+- [x] **Document ellmer tools** with comprehensive roxygen2 comments
+- [x] Create comprehensive README.md with usage examples
+- [x] **Add ellmer integration section** to README.md
 - [ ] Create vignettes for common use cases
 - [ ] Add function examples to documentation
 
 ### 14. Examples and Demos
-- [ ] Create basic usage examples
-- [ ] Add advanced usage scenarios
+- [x] Create basic usage examples (in README.md)
+- [x] Add advanced usage scenarios (in README.md)
+- [x] **Create LLM agent demo** (`inst/examples/llm-agent-demo.R`)
+- [x] **ellmer integration examples** with tool calling workflow
 - [ ] Create performance benchmarking scripts
 - [ ] Add debugging and troubleshooting guides
 
@@ -197,7 +244,7 @@
 
 ### 19. Pre-release Checklist
 - [x] Run R CMD check without warnings or errors
-- [x] Ensure all tests pass (122 tests passing)
+- [x] Ensure all tests pass (36 test cases, 190 expectations passing)
 - [x] Verify documentation completeness
 - [x] Check ASCII compliance for CRAN
 - [x] Fix finalizer garbage collection issues
@@ -235,7 +282,7 @@
 ```r
 # Development workflow
 devtools::load_all()
-devtools::test()      # 122 tests pass
+devtools::test()      # 36 test cases pass (190 expectations)
 devtools::check()     # No errors/warnings
 devtools::document()
 
