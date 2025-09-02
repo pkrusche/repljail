@@ -177,13 +177,17 @@ session$stop()
 ```r
 library(replr)
 
-# Enable beautiful debug logging
+# Enable debug logging
 enable_debug(TRUE)
 
-# Now see detailed colored output of what's happening
+# Now see output of what is happening
 worker <- start_worker()  # Shows startup debug messages
 
 result <- send_command(worker, "sqrt(16)")  # Shows communication debug
+
+# Get logs programmatically
+logs <- get_worker_debug_logs(worker)
+cat("Worker generated", length(logs), "debug messages\n")
 
 stop_worker(worker)  # Shows cleanup debug
 
@@ -192,6 +196,24 @@ enable_debug(FALSE)
 
 # Check current debug status
 debug_status()
+```
+
+### Debug Log Capture
+
+Worker processes capture their debug logs internally, which can be retrieved by the parent process:
+
+```r
+library(replr)
+enable_debug(TRUE)
+
+# Object-Oriented API
+session <- RREPLSession$new()
+session$execute("plot(1:10)")
+
+# Get logs as character vector for processing
+logs <- session$get_debug_logs()
+
+session$stop()
 ```
 
 ### Multiple Concurrent Workers
@@ -246,16 +268,18 @@ stop_worker(worker)
 
 ## 🐳 Docker Container Support
 
-`replr` supports running worker processes inside Docker containers for enhanced security and isolation. When Docker is available, it automatically builds a minimal hardened container image and runs workers with strict security constraints.
+`replr` supports running worker processes inside Docker containers for enhanced security and isolation. When Docker is available, it automatically builds a minimal container image and runs workers with stricter security constraints.
 
 ### Security Features
 
 - **Non-root execution**: Workers run as user `replr` (UID 1000)
-- **No network access**: Containers run with `--network none`
+- **Port forwarding**: Containers use port mapping for network communication
 - **Read-only filesystem**: Prevents modification of container files
+- **Restricted /tmp**: Temporary directory with `noexec,nosuid` restrictions
 - **Capability dropping**: All Linux capabilities removed with `--cap-drop ALL`
 - **Resource limits**: Configurable memory and CPU constraints (default: 512MB, 1.0 CPU)
 - **Privilege prevention**: `--security-opt no-new-privileges`
+- **Automatic cleanup**: Containers are automatically removed on shutdown or failure
 
 ### Using Docker
 
@@ -265,16 +289,21 @@ library(replr)
 # Check if Docker is available
 is_docker_available()  # TRUE if Docker is present
 
-# Auto-detection (ellmer tools automatically use Docker when available)
-result <- replr_create_repl_session()
-# Uses Docker if available, falls back to native otherwise
+# Enable Docker mode explicitly
+options(replr.use.docker = TRUE)
 
-# Explicit Docker control
-session <- RREPLSession$new()
+# Create session with Docker worker
+session <- RREPLSession$new(timeout = 15)  # Longer timeout for Docker startup
 result <- session$execute("2 + 2")
 session$stop()
 
-# Using ellmer tools with explicit Docker control
+# Or use functional API
+worker <- start_worker()
+result <- send_command(worker, "plot(1:10)")
+stop_worker(worker)
+
+# Clean up any orphaned containers
+cleanup_docker_containers()
 ```
 
 ### Docker Requirements
@@ -287,7 +316,6 @@ For Docker support, you need:
 The package automatically:
 1. Detects Docker availability
 2. Builds the minimal worker image on first use
-3. Falls back to native process isolation if Docker is unavailable
 
 ### Security Model
 
@@ -298,9 +326,10 @@ Docker containers provide an additional layer of security beyond process isolati
 | Process isolation | ✅ | ✅ |
 | Memory separation | ✅ | ✅ |
 | Filesystem isolation | ❌ | ✅ |
-| Network isolation | ❌ | ✅ |
+| Network communication | Direct | Port-mapped |
 | Capability restrictions | ❌ | ✅ |
 | Resource limits | ❌ | ✅ |
+| Automatic cleanup | ❌ | ✅ |
 
 ### Docker Configuration
 
@@ -337,6 +366,7 @@ worker <- start_worker()
 
 | Option | Default | Description |
 |--------|---------|-------------|
+| `replr.use.docker` | `FALSE` | Enable/disable Docker mode |
 | `replr.worker.docker.image` | `"replr-worker:latest"` | Docker image name for worker containers |
 | `replr.worker.docker.memory` | `"512m"` | Memory limit for Docker containers (e.g., "1g", "256m") |
 | `replr.worker.docker.cpus` | `"1.0"` | CPU limit for Docker containers (e.g., "2.0", "0.5") |
@@ -351,6 +381,8 @@ These options apply to all Docker workers started after they are set. Changes ta
 - **`send_command(worker_info, code, timeout = 30)`** - Execute R code in worker
 - **`stop_worker(worker_info, timeout = 5)`** - Gracefully stop worker process
 - **`is_docker_available()`** - Check if Docker is available on the system
+- **`cleanup_docker_containers()`** - Clean up any orphaned replr Docker containers
+- **`get_worker_debug_logs(worker_info)`** - Retrieve debug logs from worker process
 
 ### RREPLSession R6 Class (Object-Oriented Interface)
 
@@ -359,9 +391,11 @@ These options apply to all Docker workers started after they are set. Changes ta
 - **`session$is_alive()`** - Check if worker process is running
 - **`session$stop(timeout = 5)`** - Stop the session
 - **`session$get_info()`** - Get session information
+- **`session$get_debug_logs()`** - Retrieve debug logs from worker process
 - **`session$port`** - Active binding for port number
 - **`session$pid`** - Active binding for process ID
 - **`session$started_at`** - Active binding for start timestamp
+- **`session$is_docker`** - Active binding for Docker status
 
 ### Debug Functions
 
@@ -408,7 +442,7 @@ list(
 
 ## 🤖 ellmer Tools for LLM Agents
 
-`replr` includes specialized tools designed for the ellmer package, allowing LLM agents to easily create and manage isolated R REPL sessions. These tools provide a standardized interface with structured responses optimized for LLM consumption.
+`replr` includes specialized tools designed for the [ellmer](https://ellmer.tidyverse.org/) package, allowing LLM agents to easily create and manage isolated R REPL sessions. These tools provide a standardized interface with structured responses optimized for LLM consumption.
 
 ### Complete LLM Agent Demo
 
@@ -468,12 +502,13 @@ This package has comprehensive test coverage and follows R package development b
 ```r
 # Development workflow
 devtools::load_all()      # Load package for testing
-devtools::test()          # Run all tests (39 test cases)
+devtools::test()          # Run all tests (42 test cases)
 devtools::check()         # R CMD check (passes cleanly)
 devtools::document()      # Generate documentation
 
-# Current test status: ✅ 39 test cases passing, 0 errors/warnings
+# Current test status: ✅ 42 test cases passing, 0 errors/warnings
 # Note: Test suite includes comprehensive plot capture validation with PNG comparison
+# Note: Includes Docker container functionality tests and debug log capture tests
 ```
 
 ## License

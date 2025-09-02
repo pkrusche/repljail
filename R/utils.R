@@ -221,15 +221,38 @@ start_worker <- function(port = NULL, timeout = 10) {
     # Try to get debug logs from worker before failing
     stdout_lines <- proc$read_output_lines()
     stderr_lines <- proc$read_error_lines()
+
     # Clean up failed process
     if (proc$is_alive()) {
       proc$kill()
     }
+
+    # Special cleanup for Docker containers
+    container_name <- attr(proc, "container_name")
+    if (use_docker && !is.null(container_name)) {
+      debug_log("Cleaning up failed Docker container: ", container_name)
+      tryCatch(
+        {
+          # Force remove the container if it exists
+          system2(
+            "docker",
+            c("rm", "-f", container_name),
+            stdout = FALSE,
+            stderr = FALSE
+          )
+        },
+        error = function(e) {
+          debug_warn("Failed to clean up Docker container: ", e$message)
+        }
+      )
+    }
+
     # Wait for graceful shutdown
     start_time <- Sys.time()
+    # Shorter timeout for Docker
     while (
       proc$is_alive() &&
-        difftime(Sys.time(), start_time, units = "secs") < timeout
+        difftime(Sys.time(), start_time, units = "secs") < 2
     ) {
       Sys.sleep(0.1)
     }
@@ -242,7 +265,14 @@ start_worker <- function(port = NULL, timeout = 10) {
     }
 
     stop(
-      "Worker process did not become ready within ", timeout, " seconds\n",
+      "Worker process did not become ready within ",
+      timeout,
+      " seconds\n",
+      if (use_docker) {
+        "\nNote: This was a Docker container startup failure\n"
+      } else {
+        ""
+      },
       "\nSTDOUT: ",
       paste(stdout_lines, collapse = "\n"),
       "\nSTDERR: ",
@@ -250,12 +280,23 @@ start_worker <- function(port = NULL, timeout = 10) {
     )
   }
 
-  list(
+  # Create worker info with proper Docker tracking
+  worker_info <- list(
     process = proc,
     port = port,
     started_at = Sys.time(),
     is_docker = use_docker
   )
+
+  # If this is a Docker worker, store the container name in worker_info too
+  if (use_docker) {
+    container_name <- attr(proc, "container_name")
+    if (!is.null(container_name)) {
+      worker_info$container_name <- container_name
+    }
+  }
+
+  worker_info
 }
 
 #' Send Command to Worker
@@ -323,7 +364,10 @@ stop_worker <- function(worker_info, timeout = 5) {
   tryCatch(
     {
       if (!is.null(worker_info$port)) {
-        debug_log("Sending shutdown message to worker on port ", worker_info$port)
+        debug_log(
+          "Sending shutdown message to worker on port ",
+          worker_info$port
+        )
 
         # Create a temporary socket to send shutdown message
         sock <- create_req_socket(worker_info$port)
@@ -369,6 +413,31 @@ stop_worker <- function(worker_info, timeout = 5) {
     debug_log("Worker did not stop gracefully, killing process")
     proc$kill()
     Sys.sleep(0.1)
+  }
+
+  # Clean up Docker container if this was a Docker worker
+  container_name <- attr(proc, "container_name")
+  if (is.null(container_name) && !is.null(worker_info$container_name)) {
+    # Fallback to container name from worker_info
+    container_name <- worker_info$container_name
+  }
+
+  if (!is.null(container_name)) {
+    debug_log("Cleaning up Docker container: ", container_name)
+    tryCatch(
+      {
+        # Force remove the container
+        system2(
+          "docker",
+          c("rm", "-f", container_name),
+          stdout = FALSE,
+          stderr = FALSE
+        )
+      },
+      error = function(e) {
+        debug_warn("Failed to clean up Docker container: ", e$message)
+      }
+    )
   }
 
   !proc$is_alive()
@@ -469,49 +538,57 @@ start_docker_worker <- function(port, worker_script, worker_args, timeout) {
   memory_limit <- getOption("replr.worker.docker.memory", default = "512m")
   cpu_limit <- getOption("replr.worker.docker.cpus", default = "1.0")
 
-  # Build base Docker arguments
+  # Generate a unique container name for cleanup tracking
+  container_name <- paste0(
+    "replr-worker-",
+    port,
+    "-",
+    format(Sys.time(), "%Y%m%d-%H%M%S")
+  )
+
+  # Build base Docker arguments with improved networking
   docker_args <- c(
     "run",
+    "--name",
+    container_name, # Name for cleanup
     "--rm", # Remove container when done
-    "--user", "replr", # Run as non-root user
-    "--memory", memory_limit, # Memory limit (configurable)
-    "--cpus", cpu_limit, # CPU limit (configurable)
-    "-p", paste0("127.0.0.1:", port, ":", port), # Port mapping
-    "-v", paste0(worker_script, ":/app/worker.R:ro") # Mount worker script
-  )
-
-  # Test if advanced security options work
-  advanced_security_args <- c(
+    "--user",
+    "replr", # Run as non-root user
+    "--memory",
+    memory_limit, # Memory limit (configurable)
+    "--cpus",
+    cpu_limit, # CPU limit (configurable)
+    "-p",
+    sprintf("%i:%i", port, port), # Expose port (not strictly needed with host network)
     "--read-only", # Read-only filesystem
-    "--tmpfs", "/tmp", # Writable tmp directory
-    "--cap-drop", "ALL", # Drop all capabilities
-    "--security-opt", "no-new-privileges" # Prevent privilege escalation
+    "--tmpfs",
+    "/tmp:noexec,nosuid,size=100m", # Writable tmp directory with restrictions
+    "--security-opt",
+    "no-new-privileges", # Prevent privilege escalation
+    "--cap-drop",
+    "ALL",
+    "-v",
+    paste0(worker_script, ":/app/worker.R:ro") # Mount worker script
   )
 
-  # Test if advanced security options are supported
-  test_args <- c("run", "--rm", advanced_security_args, image_name, "echo", "test")
-  advanced_supported <- tryCatch(
-    {
-      test_result <- system2("docker", test_args, stdout = FALSE, stderr = FALSE)
-      test_result == 0
-    },
-    error = function(e) FALSE
-  )
-
-  if (advanced_supported) {
-    docker_args <- c(docker_args, advanced_security_args)
-    debug_log("Using advanced Docker security options")
-  } else {
-    debug_log("Using basic Docker security options (advanced options not supported)")
-  }
+  debug_log("Using Docker options: {docker_args}")
 
   # Add image and command
-  docker_args <- c(docker_args, image_name, "Rscript", "/app/worker.R", as.character(port))
+  docker_args <- c(
+    docker_args,
+    image_name,
+    "Rscript",
+    "/app/worker.R",
+    as.character(port),
+    "--listen-all" # Listen on all interfaces inside Docker so port forwarding works
+  )
 
   # Add debug flag if present in worker_args
   if ("--debug" %in% worker_args) {
     docker_args <- c(docker_args, "--debug")
   }
+
+  debug_log("Starting Docker container with args: {docker_args}")
 
   # Start Docker container
   proc <- processx::process$new(
@@ -522,6 +599,10 @@ start_docker_worker <- function(port, worker_script, worker_args, timeout) {
     cleanup = TRUE,
     cleanup_tree = TRUE
   )
+
+  # Return process with container name stored separately
+  # We can't add fields to the processx object directly due to locked environment
+  attr(proc, "container_name") <- container_name
 
   return(proc) # nolint
 }
@@ -611,7 +692,8 @@ build_worker_docker_image <- function(image_name) {
   if (!file.exists(dockerfile_path)) {
     if (is_remote_image) {
       stop(
-        "Failed to pull remote image '", image_name,
+        "Failed to pull remote image '",
+        image_name,
         "' and no local Dockerfile found. Cannot obtain Docker image."
       )
     } else {
@@ -640,4 +722,84 @@ build_worker_docker_image <- function(image_name) {
   }
 
   debug_success("Docker image built successfully:", image_name)
+}
+
+#' Clean up orphaned replr Docker containers
+#'
+#' Remove any leftover replr worker containers that may be running
+#'
+#' @return logical, TRUE if cleanup was successful
+#' @export
+cleanup_docker_containers <- function() {
+  if (!is_docker_available()) {
+    warning("Docker is not available")
+    return(FALSE)
+  }
+
+  tryCatch(
+    {
+      debug_log("Cleaning up orphaned replr Docker containers")
+
+      # Find all replr worker containers
+      containers <- system2(
+        "docker",
+        c(
+          "ps",
+          "-a",
+          "--filter",
+          "name=replr-worker-",
+          "--format",
+          "{{.Names}}"
+        ),
+        stdout = TRUE,
+        stderr = FALSE
+      )
+
+      if (
+        length(containers) > 0 &&
+          !is.null(attr(containers, "status")) &&
+          attr(containers, "status") == 0
+      ) {
+        # No containers found or command failed
+        debug_log("No orphaned replr containers found")
+        return(TRUE)
+      }
+
+      if (length(containers) > 0) {
+        debug_log(
+          "Found ",
+          length(containers),
+          " orphaned containers: ",
+          paste(containers, collapse = ", ")
+        )
+
+        # Remove all found containers
+        result <- system2(
+          "docker",
+          c("rm", "-f", containers),
+          stdout = FALSE,
+          stderr = FALSE
+        )
+
+        if (is.null(attr(result, "status")) || attr(result, "status") == 0) {
+          debug_success(
+            "Cleaned up ",
+            length(containers),
+            " orphaned containers"
+          )
+          return(TRUE)
+        } else {
+          debug_warn("Failed to remove some containers")
+          return(FALSE)
+        }
+      } else {
+        debug_log("No orphaned replr containers found")
+        return(TRUE)
+      }
+    },
+    error = function(e) {
+      debug_error("Error during Docker container cleanup: ", e$message)
+      return(FALSE)
+    }
+  )
 }

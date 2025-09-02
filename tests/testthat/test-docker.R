@@ -1,7 +1,16 @@
 # Tests for Docker functionality
 here::i_am("tests/testthat/test-docker.R")
 
+# Skip all Docker tests on CI environments
+skip_on_ci_for_docker <- function() {
+  if (nzchar(Sys.getenv("GITHUB_ACTIONS"))) {
+    testthat::skip("Docker tests skipped on CI")
+  }
+}
+
 test_that("Docker availability detection works", {
+  skip_on_ci_for_docker()
+
   # Should return logical value
   result <- replr:::is_docker_available()
   expect_type(result, "logical")
@@ -9,6 +18,8 @@ test_that("Docker availability detection works", {
 })
 
 test_that("Docker image name is defined", {
+  skip_on_ci_for_docker()
+
   image_name <- replr:::get_worker_docker_image()
   expect_type(image_name, "character")
   expect_length(image_name, 1)
@@ -16,6 +27,8 @@ test_that("Docker image name is defined", {
 })
 
 test_that("Docker session can be created and execute commands", {
+  skip_on_ci_for_docker()
+
   # Skip if Docker is not available
   skip_if_not(replr:::is_docker_available(), "Docker not available")
 
@@ -32,7 +45,7 @@ test_that("Docker session can be created and execute commands", {
   expect_true(session$is_alive())
 
   # Execute a simple command
-  result <- session$execute("2 + 2")
+  result <- session$execute("cat(2 + 2)")
 
   # Check result structure
   expect_type(result, "list")

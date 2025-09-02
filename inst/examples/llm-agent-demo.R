@@ -34,6 +34,9 @@ tryCatch(
 # Register replr tools with the chat
 cat("Registering replr tools...\n")
 
+# Run in Docker for isolation
+options(replr.use.docker = TRUE)
+
 # Get all replr tool functions
 tools <- list(
   replr_create_repl_session_tool(),
