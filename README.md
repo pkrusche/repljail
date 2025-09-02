@@ -7,6 +7,7 @@
 ## ✨ Key Features
 
 - **🔒 Process Isolation**: Complete memory separation using separate R worker processes
+- **🐳 Docker Support**: Optional Docker container execution with security hardening
 - **⚡ Robust Communication**: Built on `nanonext` for reliable inter-process messaging
 - **📊 Rich Output Capture**: Captures console output, warnings, errors, and plots via `evaluate`
 - **🔄 Error Recovery**: Workers survive errors and continue processing requests
@@ -243,17 +244,80 @@ print(result$result$output)  # "Completed"
 stop_worker(worker)
 ```
 
+## 🐳 Docker Container Support
+
+`replr` supports running worker processes inside Docker containers for enhanced security and isolation. When Docker is available, it automatically builds a minimal hardened container image and runs workers with strict security constraints.
+
+### Security Features
+
+- **Non-root execution**: Workers run as user `replr` (UID 1000)
+- **No network access**: Containers run with `--network none`
+- **Read-only filesystem**: Prevents modification of container files
+- **Capability dropping**: All Linux capabilities removed with `--cap-drop ALL`
+- **Resource limits**: Memory (512MB) and CPU (1.0) constraints
+- **Privilege prevention**: `--security-opt no-new-privileges`
+
+### Using Docker
+
+```r
+library(replr)
+
+# Check if Docker is available
+is_docker_available()  # TRUE if Docker is present
+
+# Auto-detection (ellmer tools automatically use Docker when available)
+result <- replr_create_repl_session()
+# Uses Docker if available, falls back to native otherwise
+
+# Explicit Docker control
+session <- RREPLSession$new(use_docker = TRUE)
+result <- session$execute("2 + 2")
+session$stop()
+
+# Using ellmer tools with explicit Docker control
+docker_session <- replr_create_repl_session_docker(
+  session_id = "secure_session",
+  use_docker = TRUE
+)
+```
+
+### Docker Requirements
+
+For Docker support, you need:
+- Docker installed and accessible
+- Permission to run `docker` commands
+- Internet access for initial image build (pulls `rocker/r-ver:4.4`)
+
+The package automatically:
+1. Detects Docker availability
+2. Builds the minimal worker image on first use
+3. Falls back to native process isolation if Docker is unavailable
+
+### Security Model
+
+Docker containers provide an additional layer of security beyond process isolation:
+
+| Security Layer | Native | Docker |
+|----------------|--------|--------|
+| Process isolation | ✅ | ✅ |
+| Memory separation | ✅ | ✅ |
+| Filesystem isolation | ❌ | ✅ |
+| Network isolation | ❌ | ✅ |
+| Capability restrictions | ❌ | ✅ |
+| Resource limits | ❌ | ✅ |
+
 ## API Reference
 
 ### Core Functions (Functional Interface)
 
-- **`start_worker(port = NULL, timeout = 10)`** - Start an isolated R worker process
+- **`start_worker(port = NULL, timeout = 10, use_docker = FALSE)`** - Start an isolated R worker process
 - **`send_command(worker_info, code, timeout = 30)`** - Execute R code in worker
 - **`stop_worker(worker_info, timeout = 5)`** - Gracefully stop worker process
+- **`is_docker_available()`** - Check if Docker is available on the system
 
 ### RREPLSession R6 Class (Object-Oriented Interface)
 
-- **`RREPLSession$new(port = NULL, timeout = 10)`** - Create new session
+- **`RREPLSession$new(port = NULL, timeout = 10, use_docker = FALSE)`** - Create new session
 - **`session$execute(code, timeout = 30)`** - Execute R code
 - **`session$is_alive()`** - Check if worker process is running
 - **`session$stop(timeout = 5)`** - Stop the session
