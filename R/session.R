@@ -47,8 +47,9 @@ RREPLSession <- R6::R6Class(
     #' Create a new RREPLSession
     #' @param port integer, port number for worker (auto-selected if NULL)
     #' @param timeout numeric, timeout in seconds for worker startup
-    initialize = function(port = NULL, timeout = 10) {
-      private$.worker_info <- start_worker(port = port, timeout = timeout)
+    #' @param use_docker logical, whether to run worker in Docker container (default: FALSE)
+    initialize = function(port = NULL, timeout = 10, use_docker = FALSE) {
+      private$.worker_info <- start_worker(port = port, timeout = timeout, use_docker = use_docker)
       private$.stopped <- FALSE
 
       # Register finalizer for automatic cleanup

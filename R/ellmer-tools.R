@@ -61,8 +61,11 @@ replr_create_repl_session <- function(session_id = NULL, timeout = 10) {
         ))
       }
 
-      # Create new REPL session
-      session <- RREPLSession$new(timeout = timeout)
+      # Auto-detect Docker availability for LLM tools
+      use_docker <- is_docker_available()
+      
+      # Create new REPL session with Docker if available
+      session <- RREPLSession$new(timeout = timeout, use_docker = use_docker)
 
       # Store in registry
       assign(session_id, session, envir = .replr_sessions)
@@ -72,13 +75,101 @@ replr_create_repl_session <- function(session_id = NULL, timeout = 10) {
 
       list(
         success = TRUE,
-        message = paste("Successfully created REPL session:", session_id),
+        message = paste("Successfully created REPL session:", session_id, 
+                       if (use_docker) "(using Docker)" else "(native)"),
         data = list(
           session_id = session_id,
           port = session_info$port,
           pid = session_info$pid,
           started_at = as.character(session_info$started_at),
-          is_alive = session$is_alive()
+          is_alive = session$is_alive(),
+          using_docker = use_docker
+        ),
+        error = NULL
+      )
+    },
+    error = function(e) {
+      list(
+        success = FALSE,
+        message = paste("Failed to create REPL session:", e$message),
+        data = NULL,
+        error = as.character(e$message)
+      )
+    }
+  )
+}
+
+#' Create a New REPL Session with Docker Control
+#'
+#' Creates a new isolated R REPL session with explicit Docker container control.
+#' This function allows users to explicitly choose whether to use Docker containers.
+#'
+#' @param session_id character, optional custom session ID. If NULL, a UUID will be generated.
+#' @param timeout numeric, timeout in seconds for session startup (default: 10)
+#' @param use_docker logical, whether to use Docker containers (default: auto-detect)
+#' @return list with success status, session information, and any errors
+#' @export
+#' @examples
+#' \dontrun{
+#' # Create a session with Docker explicitly enabled
+#' result <- replr_create_repl_session_docker("analysis", use_docker = TRUE)
+#' if (result$success) {
+#'   session_id <- result$data$session_id
+#'   cat("Created session with Docker:", session_id)
+#' }
+#' }
+replr_create_repl_session_docker <- function(session_id = NULL, timeout = 10, use_docker = NULL) {
+  tryCatch(
+    {
+      # Generate session ID if not provided
+      if (is.null(session_id)) {
+        session_id <- uuid::UUIDgenerate()
+      }
+
+      # Check if session ID already exists
+      if (exists(session_id, envir = .replr_sessions)) {
+        return(list(
+          success = FALSE,
+          message = paste("Session ID already exists:", session_id),
+          data = NULL,
+          error = "DUPLICATE_SESSION_ID"
+        ))
+      }
+
+      # Determine Docker usage
+      if (is.null(use_docker)) {
+        # Auto-detect if not specified
+        use_docker <- is_docker_available()
+      } else if (use_docker && !is_docker_available()) {
+        # Docker requested but not available
+        return(list(
+          success = FALSE,
+          message = "Docker requested but not available on this system",
+          data = NULL,
+          error = "DOCKER_NOT_AVAILABLE"
+        ))
+      }
+      
+      # Create new REPL session
+      session <- RREPLSession$new(timeout = timeout, use_docker = use_docker)
+
+      # Store in registry
+      assign(session_id, session, envir = .replr_sessions)
+
+      # Get session information
+      session_info <- session$get_info()
+
+      list(
+        success = TRUE,
+        message = paste("Successfully created REPL session:", session_id, 
+                       if (use_docker) "(using Docker)" else "(native)"),
+        data = list(
+          session_id = session_id,
+          port = session_info$port,
+          pid = session_info$pid,
+          started_at = as.character(session_info$started_at),
+          is_alive = session$is_alive(),
+          using_docker = use_docker
         ),
         error = NULL
       )
@@ -581,6 +672,51 @@ replr_execute_code_tool <- function() {
   }
 }
 
+#' Create REPL Session with Docker Tool Definition
+#'
+#' Returns an ellmer tool definition for creating new REPL sessions with
+#' explicit Docker container control. This function provides the tool metadata
+#' that LLM agents need to understand how to create isolated R sessions
+#' with or without Docker containers.
+#'
+#' @return An ellmer tool object (when ellmer is available) or a compatible
+#'   structure containing the tool name, description, parameters, and function.
+#' @export
+#' @examples
+#' \dontrun{
+#' # Get the tool definition
+#' docker_tool <- replr_create_repl_session_docker_tool()
+#' print(docker_tool$name)
+#' print(docker_tool$description)
+#' }
+replr_create_repl_session_docker_tool <- function() {
+  # Try to use ellmer::tool if available, otherwise return a basic structure
+  if (requireNamespace("ellmer", quietly = TRUE)) {
+    ellmer::tool(
+      replr_create_repl_session_docker,
+      name = "replr_create_repl_session_docker",
+      description = "Create a new isolated R REPL session with explicit Docker container control for enhanced security",
+      arguments = list(
+        session_id = ellmer::type_string("Optional custom session ID. If not provided, a UUID will be generated.", required = FALSE),
+        timeout = ellmer::type_number("Timeout in seconds for session startup", required = FALSE),
+        use_docker = ellmer::type_boolean("Whether to use Docker containers (true/false). If not specified, Docker will be auto-detected.", required = FALSE)
+      )
+    )
+  } else {
+    # Fallback structure if ellmer is not available
+    list(
+      name = "replr_create_repl_session_docker",
+      description = "Create a new isolated R REPL session with explicit Docker container control for enhanced security",
+      parameters = list(
+        session_id = list(type = "string", description = "Optional custom session ID"),
+        timeout = list(type = "number", description = "Timeout in seconds", default = 10),
+        use_docker = list(type = "boolean", description = "Use Docker containers", required = FALSE)
+      ),
+      fn = replr_create_repl_session_docker
+    )
+  }
+}
+
 #' Get Session Info Tool Definition
 #'
 #' Returns an ellmer tool definition for retrieving REPL session information.
@@ -756,6 +892,80 @@ replr_stop_all_sessions_tool <- function() {
         timeout = list(type = "number", description = "Timeout in seconds", default = 5)
       ),
       fn = replr_stop_all_sessions
+    )
+  }
+}
+
+#' Check Docker Availability Tool
+#'
+#' A utility function for LLM agents to check if Docker is available
+#' on the system. This helps agents decide whether to use Docker containers.
+#'
+#' @return list with Docker availability status
+#' @export
+#' @examples
+#' \dontrun{
+#' # Check if Docker is available
+#' result <- replr_check_docker_availability()
+#' if (result$data$available) {
+#'   cat("Docker is available for enhanced isolation")
+#' }
+#' }
+replr_check_docker_availability <- function() {
+  tryCatch(
+    {
+      docker_available <- is_docker_available()
+      
+      list(
+        success = TRUE,
+        message = if (docker_available) "Docker is available" else "Docker is not available",
+        data = list(
+          available = docker_available,
+          image_name = if (docker_available) get_worker_docker_image() else NULL
+        ),
+        error = NULL
+      )
+    },
+    error = function(e) {
+      list(
+        success = FALSE,
+        message = paste("Error checking Docker availability:", e$message),
+        data = list(available = FALSE),
+        error = as.character(e$message)
+      )
+    }
+  )
+}
+
+#' Check Docker Availability Tool Definition
+#'
+#' Returns an ellmer tool definition for checking Docker availability.
+#' This function provides the tool metadata that LLM agents need to
+#' understand how to check if Docker containers can be used.
+#'
+#' @return An ellmer tool object (when ellmer is available) or a compatible
+#'   structure containing the tool name, description, parameters, and function.
+#' @export
+#' @examples
+#' \dontrun{
+#' # Get the tool definition
+#' docker_check_tool <- replr_check_docker_availability_tool()
+#' print(docker_check_tool$name)
+#' }
+replr_check_docker_availability_tool <- function() {
+  if (requireNamespace("ellmer", quietly = TRUE)) {
+    ellmer::tool(
+      replr_check_docker_availability,
+      name = "replr_check_docker_availability",
+      description = "Check if Docker is available on the system for enhanced container isolation",
+      arguments = list()
+    )
+  } else {
+    list(
+      name = "replr_check_docker_availability",
+      description = "Check if Docker is available on the system for enhanced container isolation",
+      parameters = list(),
+      fn = replr_check_docker_availability
     )
   }
 }
