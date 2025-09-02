@@ -7,8 +7,7 @@ RUN apt-get update && apt-get install -y \
     wget \
     git \
     build-essential \
-    libcurl4-openssl-dev \
-    libssl-dev \
+    libcurl4-openssl-dev \ libssl-dev \
     libxml2-dev \
     libfontconfig1-dev \
     libharfbuzz-dev \
@@ -39,9 +38,7 @@ RUN Rscript -e "install.packages('mirai', repos='https://cran.rstudio.com/', dep
 RUN Rscript -e "install.packages(c('pryr', 'testthat'), repos='https://cran.rstudio.com/', dependencies=TRUE)"
 
 # Install R development tools
-RUN Rscript -e "install.packages(c('devtools', 'roxygen2', 'pkgdown', 'lintr', 'remotes', 'here'), repos='https://cran.rstudio.com/', dependencies=TRUE)"
-
-RUN Rscript -e "install.packages(c('mirai', 'languageserver', 'httpgd'), repos='https://cran.rstudio.com/', dependencies=TRUE)"
+RUN Rscript -e "install.packages(c('devtools', 'roxygen2', 'pkgdown', 'lintr', 'remotes', 'here', 'mirai', 'languageserver', 'httpgd', 'png'), repos='https://cran.rstudio.com/', dependencies=TRUE)"
 
 # Verify installation by checking package versions
 RUN Rscript -e "cat('Required packages installed:\\n'); \
