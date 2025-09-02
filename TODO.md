@@ -94,7 +94,6 @@
 - [x] Add comprehensive result structure
 - [x] Add execution time tracking
 - [x] Handle communication errors and timeouts
-- [ ] Add options parameter support for advanced execution modes
 
 ### 8. Error Handling and Recovery
 - [x] Implement worker process crash detection
@@ -165,6 +164,7 @@
 - [x] **Implement proper cleanup functions** for session lifecycle management
 - [x] **Add session info queries** and listing capabilities
 - [x] **Create demo implementation** showing complete LLM agent workflow
+- [ ] **Improve plot handling: add generated plots to input for text/vision models** allowing models to see plots
 
 ### 13.1. LLM Agent API Functions
 - [x] `replr_create_repl_session()` - Create isolated sessions with UUID tracking
@@ -203,7 +203,6 @@
 - [x] Create comprehensive README.md with usage examples
 - [x] **Add ellmer integration section** to README.md
 - [ ] Create vignettes for common use cases
-- [ ] Add function examples to documentation
 
 ### 14. Examples and Demos
 - [x] Create basic usage examples (in README.md)
@@ -214,9 +213,8 @@
 ## Phase 5: Advanced Features (Optional)
 
 ### 15. Security Enhancements
-- [ ] Add sandboxing options for the worker process inside a secure container / VM
-- [ ] Implement network access restrictions
-- [ ] Add resource limit enforcement
+- [x] Add sandboxing options for the worker process inside a secure container / VM
+- [x] Add resource limit enforcement
 
 ### 16. Platform Compatibility
 - [ ] Test on Windows, macOS, and Linux
@@ -266,8 +264,8 @@
 ```r
 # Development workflow
 devtools::load_all()
-devtools::test()      # 36 test cases pass (190 expectations)
-devtools::check()     # No errors/warnings
+devtools::test()
+devtools::check()
 devtools::document()
 
 # Manual testing (functional interface)
