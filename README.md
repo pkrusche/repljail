@@ -367,11 +367,12 @@ This package has comprehensive test coverage and follows R package development b
 ```r
 # Development workflow
 devtools::load_all()      # Load package for testing
-devtools::test()          # Run all tests (36 test cases)
+devtools::test()          # Run all tests (39 test cases)
 devtools::check()         # R CMD check (passes cleanly)
 devtools::document()      # Generate documentation
 
-# Current test status: ✅ 36 test cases passing (190 expectations), 0 errors/warnings
+# Current test status: ✅ 39 test cases passing, 0 errors/warnings
+# Note: Test suite includes comprehensive plot capture validation with PNG comparison
 ```
 
 ## License
