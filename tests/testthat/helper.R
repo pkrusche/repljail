@@ -10,7 +10,11 @@ tryCatch(
       },
       error = function(e2) {
         # Skip loading if we can't load source files
-        cat("Warning: Could not load replr package or source files:", e2$message, "\n")
+        cat(
+          "Warning: Could not load replr package or source files:",
+          e2$message,
+          "\n"
+        )
       }
     )
   }

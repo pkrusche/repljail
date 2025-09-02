@@ -254,7 +254,7 @@ stop_worker(worker)
 - **No network access**: Containers run with `--network none`
 - **Read-only filesystem**: Prevents modification of container files
 - **Capability dropping**: All Linux capabilities removed with `--cap-drop ALL`
-- **Resource limits**: Memory (512MB) and CPU (1.0) constraints
+- **Resource limits**: Configurable memory and CPU constraints (default: 512MB, 1.0 CPU)
 - **Privilege prevention**: `--security-opt no-new-privileges`
 
 ### Using Docker
@@ -270,15 +270,11 @@ result <- replr_create_repl_session()
 # Uses Docker if available, falls back to native otherwise
 
 # Explicit Docker control
-session <- RREPLSession$new(use_docker = TRUE)
+session <- RREPLSession$new()
 result <- session$execute("2 + 2")
 session$stop()
 
 # Using ellmer tools with explicit Docker control
-docker_session <- replr_create_repl_session_docker(
-  session_id = "secure_session",
-  use_docker = TRUE
-)
 ```
 
 ### Docker Requirements
@@ -306,18 +302,59 @@ Docker containers provide an additional layer of security beyond process isolati
 | Capability restrictions | ❌ | ✅ |
 | Resource limits | ❌ | ✅ |
 
+### Docker Configuration
+
+You can customize Docker worker behavior using global options:
+
+```r
+# Configure Docker image name (default: "replr-worker:latest")
+options(replr.worker.docker.image = "my-custom-r-image:v1.0")
+
+# Configure memory limit (default: "512m")
+options(replr.worker.docker.memory = "1g")      # 1GB memory
+options(replr.worker.docker.memory = "256m")    # 256MB memory
+
+# Configure CPU limit (default: "1.0")
+options(replr.worker.docker.cpus = "2.0")       # 2 CPU cores
+options(replr.worker.docker.cpus = "0.5")       # Half a CPU core
+
+# Reset to defaults
+options(replr.worker.docker.image = NULL)
+options(replr.worker.docker.memory = NULL)
+options(replr.worker.docker.cpus = NULL)
+
+# Example: Configure for high-performance workloads
+options(
+  replr.worker.docker.memory = "2g",
+  replr.worker.docker.cpus = "4.0"
+)
+
+# Start worker with custom settings
+worker <- start_worker()
+```
+
+### Available Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `replr.worker.docker.image` | `"replr-worker:latest"` | Docker image name for worker containers |
+| `replr.worker.docker.memory` | `"512m"` | Memory limit for Docker containers (e.g., "1g", "256m") |
+| `replr.worker.docker.cpus` | `"1.0"` | CPU limit for Docker containers (e.g., "2.0", "0.5") |
+
+These options apply to all Docker workers started after they are set. Changes take effect immediately for new worker processes.
+
 ## API Reference
 
 ### Core Functions (Functional Interface)
 
-- **`start_worker(port = NULL, timeout = 10, use_docker = FALSE)`** - Start an isolated R worker process
+- **`start_worker(port = NULL, timeout = 10)`** - Start an isolated R worker process
 - **`send_command(worker_info, code, timeout = 30)`** - Execute R code in worker
 - **`stop_worker(worker_info, timeout = 5)`** - Gracefully stop worker process
 - **`is_docker_available()`** - Check if Docker is available on the system
 
 ### RREPLSession R6 Class (Object-Oriented Interface)
 
-- **`RREPLSession$new(port = NULL, timeout = 10, use_docker = FALSE)`** - Create new session
+- **`RREPLSession$new(port = NULL, timeout = 10)`** - Create new session
 - **`session$execute(code, timeout = 30)`** - Execute R code
 - **`session$is_alive()`** - Check if worker process is running
 - **`session$stop(timeout = 5)`** - Stop the session

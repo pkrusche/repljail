@@ -120,13 +120,13 @@ get_worker_script_path <- function() {
 #'
 #' Spawn a worker R process using processx that runs the worker script.
 #' Optionally can run the worker inside a Docker container for enhanced isolation.
+#' Docker usage is controlled by the 'replr.use.docker' option.
 #'
 #' @param port integer, port number for the worker to listen on
 #' @param timeout numeric, timeout in seconds to wait for worker startup
-#' @param use_docker logical, whether to run worker in Docker container (default: FALSE)
 #' @return list with process object and connection info
 #' @export
-start_worker <- function(port = NULL, timeout = 10, use_docker = FALSE) {
+start_worker <- function(port = NULL, timeout = 10) {
   # Check prerequisites
   check_dependencies()
   check_process_requirements()
@@ -150,15 +150,21 @@ start_worker <- function(port = NULL, timeout = 10, use_docker = FALSE) {
   # Prepare environment for worker process
   worker_env <- Sys.getenv()
   # Pass current library paths to worker
-  worker_env[["R_LIBS_USER"]] <- paste(.libPaths(), collapse = .Platform$path.sep)
-  
+  worker_env[["R_LIBS_USER"]] <- paste(
+    .libPaths(),
+    collapse = .Platform$path.sep
+  )
+
+  # Check if Docker should be used (from option)
+  use_docker <- getOption("replr.use.docker", default = FALSE)
+
   # Start the worker process (either Docker or native)
   if (use_docker) {
     # Check Docker availability
     if (!is_docker_available()) {
       stop("Docker is not available. Cannot start worker in Docker container.")
     }
-    
+
     proc <- start_docker_worker(port, worker_script, worker_args, timeout)
   } else {
     # Start native worker process
@@ -212,17 +218,43 @@ start_worker <- function(port = NULL, timeout = 10, use_docker = FALSE) {
   }
 
   if (!worker_ready) {
+    # Try to get debug logs from worker before failing
+    stdout_lines <- proc$read_output_lines()
+    stderr_lines <- proc$read_error_lines()
     # Clean up failed process
     if (proc$is_alive()) {
       proc$kill()
     }
-    stop("Worker process did not become ready within ", timeout, " seconds")
+    # Wait for graceful shutdown
+    start_time <- Sys.time()
+    while (
+      proc$is_alive() &&
+        difftime(Sys.time(), start_time, units = "secs") < timeout
+    ) {
+      Sys.sleep(0.1)
+    }
+
+    # Force kill if still alive
+    if (proc$is_alive()) {
+      debug_log("Worker did not stop gracefully, killing process")
+      proc$kill()
+      Sys.sleep(0.1)
+    }
+
+    stop(
+      "Worker process did not become ready within ", timeout, " seconds\n",
+      "\nSTDOUT: ",
+      paste(stdout_lines, collapse = "\n"),
+      "\nSTDERR: ",
+      paste(stderr_lines, collapse = "\n")
+    )
   }
 
   list(
     process = proc,
     port = port,
-    started_at = Sys.time()
+    started_at = Sys.time(),
+    is_docker = use_docker
   )
 }
 
@@ -249,6 +281,14 @@ send_command <- function(worker_info, code, timeout = 30) {
       response <- send_request(sock, code)
 
       if (is.null(response)) {
+        # Try to get debug logs from worker before failing
+        worker_logs <- get_worker_debug_logs(worker_info)
+        if (length(worker_logs) > 0) {
+          debug_log("Worker debug logs:")
+          for (log_line in worker_logs) {
+            debug_log("  ", log_line)
+          }
+        }
         stop("No response from worker (timeout or communication error)")
       }
 
@@ -279,13 +319,39 @@ stop_worker <- function(worker_info, timeout = 5) {
     return(TRUE)
   }
 
-  # Try graceful shutdown first
+  # Try to send shutdown message first (if socket connection exists)
   tryCatch(
     {
-      proc$signal(2) # SIGINT
+      if (!is.null(worker_info$port)) {
+        debug_log("Sending shutdown message to worker on port ", worker_info$port)
+
+        # Create a temporary socket to send shutdown message
+        sock <- create_req_socket(worker_info$port)
+        if (!is.null(sock)) {
+          send_result <- nanonext::send(sock, "__SHUTDOWN__")
+          close(sock)
+          debug_log("Shutdown message sent, result: ", send_result)
+
+          # Give worker a moment to process shutdown message
+          Sys.sleep(0.2)
+        }
+      }
     },
     error = function(e) {
-      # Signal failed, proceed to kill
+      debug_log("Failed to send shutdown message: ", e$message)
+    }
+  )
+
+  # Try graceful shutdown with SIGINT as fallback
+  tryCatch(
+    {
+      if (proc$is_alive()) {
+        debug_log("Sending SIGINT to worker process")
+        proc$signal(2) # SIGINT
+      }
+    },
+    error = function(e) {
+      debug_log("Failed to send SIGINT: ", e$message)
     }
   )
 
@@ -300,11 +366,45 @@ stop_worker <- function(worker_info, timeout = 5) {
 
   # Force kill if still alive
   if (proc$is_alive()) {
+    debug_log("Worker did not stop gracefully, killing process")
     proc$kill()
     Sys.sleep(0.1)
   }
 
   !proc$is_alive()
+}
+
+#' Get Debug Logs from Worker
+#'
+#' Retrieve debug logs from a running worker process
+#'
+#' @param worker_info list, worker info returned by start_worker()
+#' @return character vector of debug log messages
+#' @export
+get_worker_debug_logs <- function(worker_info) {
+  if (is.null(worker_info) || is.null(worker_info$process)) {
+    return(character(0))
+  }
+
+  if (!worker_info$process$is_alive()) {
+    return(character(0))
+  }
+
+  tryCatch(
+    {
+      # Read stdout and stderr from worker process
+      stdout_lines <- worker_info$process$read_output_lines()
+      stderr_lines <- worker_info$process$read_error_lines()
+
+      # Combine and return all lines
+      all_lines <- c(stdout_lines, stderr_lines)
+      return(all_lines)
+    },
+    error = function(e) {
+      warning("Failed to retrieve debug logs: ", e$message)
+      return(character(0)) # nolint
+    }
+  )
 }
 
 #' Check Docker Availability
@@ -319,25 +419,33 @@ is_docker_available <- function() {
   if (docker_path == "") {
     return(FALSE)
   }
-  
+
   # Test if docker is accessible (try docker version)
-  tryCatch({
-    result <- system2("docker", c("version", "--format", "'{{.Client.Version}}'"), 
-                     stdout = TRUE, stderr = TRUE)
-    # If no error and got output, Docker is available
-    return(length(result) > 0 && !inherits(result, "try-error"))
-  }, error = function(e) {
-    return(FALSE)
-  })
+  tryCatch(
+    {
+      result <- system2(
+        "docker",
+        c("version", "--format", "'{{.Client.Version}}'"),
+        stdout = TRUE,
+        stderr = TRUE
+      )
+      # If no error and got output, Docker is available
+      return(length(result) > 0 && !inherits(result, "try-error"))
+    },
+    error = function(e) {
+      return(FALSE) # nolint
+    }
+  )
 }
 
 #' Get Docker Image Name for Worker
 #'
-#' Get the Docker image name to use for worker containers
+#' Get the Docker image name to use for worker containers.
+#' Reads from option 'replr.worker.docker.image' if set, otherwise uses default.
 #'
 #' @return character, Docker image name
 get_worker_docker_image <- function() {
-  "replr-worker:latest"
+  getOption("replr.worker.docker.image", default = "replr-worker:latest")
 }
 
 #' Start Docker Worker Process
@@ -351,65 +459,60 @@ get_worker_docker_image <- function() {
 #' @return processx process object
 start_docker_worker <- function(port, worker_script, worker_args, timeout) {
   image_name <- get_worker_docker_image()
-  
+
   # Build Docker image if it doesn't exist
   if (!docker_image_exists(image_name)) {
     build_worker_docker_image(image_name)
   }
-  
-  # Prepare Docker arguments with security hardening
+
+  # Get configurable resource limits
+  memory_limit <- getOption("replr.worker.docker.memory", default = "512m")
+  cpu_limit <- getOption("replr.worker.docker.cpus", default = "1.0")
+
+  # Build base Docker arguments
   docker_args <- c(
     "run",
-    "--rm",                    # Remove container when done
-    "--user", "replr",         # Run as non-root user
-    "--memory", "512m",        # Memory limit
-    "--cpus", "1.0",          # CPU limit
+    "--rm", # Remove container when done
+    "--user", "replr", # Run as non-root user
+    "--memory", memory_limit, # Memory limit (configurable)
+    "--cpus", cpu_limit, # CPU limit (configurable)
     "-p", paste0("127.0.0.1:", port, ":", port), # Port mapping
-    "-v", paste0(worker_script, ":/app/worker.R:ro"), # Mount worker script
-    image_name,
-    "Rscript", "/app/worker.R", as.character(port)
+    "-v", paste0(worker_script, ":/app/worker.R:ro") # Mount worker script
   )
-  
-  # Add additional security options if they work in this environment
-  tryCatch({
-    # Test if advanced security options work
-    test_result <- system2("docker", c("run", "--rm", "--network", "none", 
-                                      "--read-only", "--tmpfs", "/tmp",
-                                      "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
-                                      image_name, "echo", "test"), 
-                          stdout = FALSE, stderr = FALSE)
-    
-    if (test_result == 0) {
-      # Advanced security works, use it
-      docker_args <- c(
-        "run",
-        "--rm",                    # Remove container when done
-        "--network", "none",       # No network access for security
-        "--user", "replr",         # Run as non-root user
-        "--read-only",             # Read-only filesystem
-        "--tmpfs", "/tmp",         # Writable tmp directory
-        "--cap-drop", "ALL",       # Drop all capabilities
-        "--security-opt", "no-new-privileges",  # Prevent privilege escalation
-        "--memory", "512m",        # Memory limit
-        "--cpus", "1.0",          # CPU limit
-        "-p", paste0("127.0.0.1:", port, ":", port), # Port mapping
-        "-v", paste0(worker_script, ":/app/worker.R:ro"), # Mount worker script
-        image_name,
-        "Rscript", "/app/worker.R", as.character(port)
-      )
-      debug_log("Using advanced Docker security options")
-    } else {
-      debug_log("Using basic Docker security options (advanced options not supported)")
-    }
-  }, error = function(e) {
-    debug_log("Using basic Docker security options due to error:", e$message)
-  })
-  
+
+  # Test if advanced security options work
+  advanced_security_args <- c(
+    "--read-only", # Read-only filesystem
+    "--tmpfs", "/tmp", # Writable tmp directory
+    "--cap-drop", "ALL", # Drop all capabilities
+    "--security-opt", "no-new-privileges" # Prevent privilege escalation
+  )
+
+  # Test if advanced security options are supported
+  test_args <- c("run", "--rm", advanced_security_args, image_name, "echo", "test")
+  advanced_supported <- tryCatch(
+    {
+      test_result <- system2("docker", test_args, stdout = FALSE, stderr = FALSE)
+      test_result == 0
+    },
+    error = function(e) FALSE
+  )
+
+  if (advanced_supported) {
+    docker_args <- c(docker_args, advanced_security_args)
+    debug_log("Using advanced Docker security options")
+  } else {
+    debug_log("Using basic Docker security options (advanced options not supported)")
+  }
+
+  # Add image and command
+  docker_args <- c(docker_args, image_name, "Rscript", "/app/worker.R", as.character(port))
+
   # Add debug flag if present in worker_args
   if ("--debug" %in% worker_args) {
     docker_args <- c(docker_args, "--debug")
   }
-  
+
   # Start Docker container
   proc <- processx::process$new(
     command = "docker",
@@ -419,8 +522,8 @@ start_docker_worker <- function(port, worker_script, worker_args, timeout) {
     cleanup = TRUE,
     cleanup_tree = TRUE
   )
-  
-  return(proc)
+
+  return(proc) # nolint
 }
 
 #' Check if Docker Image Exists
@@ -428,29 +531,70 @@ start_docker_worker <- function(port, worker_script, worker_args, timeout) {
 #' @param image_name character, Docker image name
 #' @return logical, TRUE if image exists
 docker_image_exists <- function(image_name) {
-  tryCatch({
-    result <- system2("docker", c("image", "inspect", image_name), 
-                     stdout = FALSE, stderr = FALSE)
-    return(result == 0)
-  }, error = function(e) {
-    return(FALSE)
-  })
+  tryCatch(
+    {
+      result <- system2(
+        "docker",
+        c("image", "inspect", image_name),
+        stdout = FALSE,
+        stderr = FALSE
+      )
+      return(result == 0)
+    },
+    error = function(e) {
+      return(FALSE) # nolint
+    }
+  )
 }
 
-#' Build Worker Docker Image
+#' Build or Pull Worker Docker Image
 #'
-#' Build the Docker image for worker containers
+#' Build the Docker image for worker containers from local Dockerfile,
+#' or pull it from a registry if it appears to be a remote image
 #'
-#' @param image_name character, Docker image name to build
+#' @param image_name character, Docker image name to build or pull
 build_worker_docker_image <- function(image_name) {
-  dockerfile_path <- file.path(system.file(package = "replr"), "Dockerfile")
-  
-  # If running from source, use inst/Dockerfile
-  if (!file.exists(dockerfile_path)) {
-    dockerfile_path <- file.path(find.package("replr", lib.loc = .libPaths()), "..", "..", "inst", "Dockerfile")
+  # Check if this looks like a remote image (contains "/" indicating registry/username)
+  is_remote_image <- grepl("/", image_name)
+
+  if (is_remote_image) {
+    # Try to pull the remote image
+    debug_log("Pulling Docker image:", image_name)
+
+    pull_result <- tryCatch(
+      {
+        result <- system2(
+          "docker",
+          c("pull", image_name),
+          stdout = TRUE,
+          stderr = TRUE
+        )
+
+        # Check if pull was successful
+        if (!is.null(attr(result, "status")) && attr(result, "status") != 0) {
+          list(success = FALSE, output = result)
+        } else {
+          list(success = TRUE, output = result)
+        }
+      },
+      error = function(e) {
+        list(success = FALSE, output = e$message)
+      }
+    )
+
+    if (pull_result$success) {
+      debug_success("Docker image pulled successfully:", image_name)
+      return(invisible())
+    } else {
+      debug_log("Failed to pull image, will try to build locally")
+      debug_log("Pull error:", paste(pull_result$output, collapse = "\n"))
+    }
   }
-  
-  # As last resort, check current directory structure
+
+  # Fall back to building from local Dockerfile
+  dockerfile_path <- file.path(system.file(package = "replr"), "Dockerfile")
+
+  # during development, also check inst/Dockerfile and working dir
   if (!file.exists(dockerfile_path)) {
     possible_paths <- c(
       here::here("inst", "Dockerfile"),
@@ -463,25 +607,37 @@ build_worker_docker_image <- function(image_name) {
       }
     }
   }
-  
+
   if (!file.exists(dockerfile_path)) {
-    stop("Dockerfile not found. Cannot build Docker image.")
+    if (is_remote_image) {
+      stop(
+        "Failed to pull remote image '", image_name,
+        "' and no local Dockerfile found. Cannot obtain Docker image."
+      )
+    } else {
+      stop("Dockerfile not found. Cannot build Docker image.")
+    }
   }
-  
+
   # Build the image
   build_args <- c(
     "build",
-    "-t", image_name,
-    "-f", dockerfile_path,
+    "-t",
+    image_name,
+    "-f",
+    dockerfile_path,
     dirname(dockerfile_path)
   )
-  
+
   debug_log("Building Docker image:", image_name)
   result <- system2("docker", build_args, stdout = TRUE, stderr = TRUE)
-  
+
   if (!is.null(attr(result, "status")) && attr(result, "status") != 0) {
-    stop("Failed to build Docker image. Docker output:\n", paste(result, collapse = "\n"))
+    stop(
+      "Failed to build Docker image. Docker output:\n",
+      paste(result, collapse = "\n")
+    )
   }
-  
+
   debug_success("Docker image built successfully:", image_name)
 }

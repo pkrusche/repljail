@@ -108,6 +108,35 @@ Uses `nanonext` REQ-REP sockets with automatic R object serialization:
 
 ## Development Workflow
 
+**IMPORTANT: Version Control with Jujutsu**
+
+Before making any refactoring or substantial change requests, always run:
+```bash
+jj new
+```
+
+This creates a new commit/revision in Jujutsu, isolating your changes and making it easy to:
+- Track what was changed during each refactoring session
+- Revert changes if something goes wrong
+- Compare before/after states
+- Maintain a clean history of development iterations
+
+### Example Workflow:
+```bash
+# Before starting any refactoring task
+jj new
+
+# Make your changes (implement features, refactor, etc.)
+# ... development work ...
+
+# When ready to commit
+jj describe -m "Implement debug log capture system"
+
+# For the next change request
+jj new
+# ... next development work ...
+```
+
 ### Phase 1: Basic Infrastructure
 1. Implement basic process spawning with `processx`
 2. Set up nanonext REQ-REP communication
