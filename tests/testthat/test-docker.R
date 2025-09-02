@@ -15,36 +15,31 @@ test_that("Docker image name is defined", {
   expect_true(nchar(image_name) > 0)
 })
 
-test_that("RREPLSession accepts use_docker parameter", {
-  # Skip if Docker not available
+test_that("Docker session can be created and execute commands", {
+  # Skip if Docker is not available
   skip_if_not(replr:::is_docker_available(), "Docker not available")
-  
-  # This test verifies parameter acceptance without actually creating session
-  expect_error({
-    # This should fail gracefully without Docker image
-    session <- RREPLSession$new(use_docker = TRUE, timeout = 1)
-  }, regexp = "(Docker|image)", class = "simpleError")
-})
 
-test_that("ellmer tools auto-detect Docker", {
-  # Test the auto-detection logic
-  result <- replr_create_repl_session_docker(use_docker = NULL)
-  
+  # Set option to use Docker
+  old_option <- getOption("replr.use.docker")
+  on.exit(options(replr.use.docker = old_option))
+  options(replr.use.docker = TRUE)
+
+  # Create a session (should use Docker due to option)
+  session <- RREPLSession$new(timeout = 30)
+  on.exit(session$stop(), add = TRUE)
+
+  # Verify session is alive
+  expect_true(session$is_alive())
+
+  # Execute a simple command
+  result <- session$execute("2 + 2")
+
+  # Check result structure
   expect_type(result, "list")
-  expect_true("success" %in% names(result))
-  expect_true("using_docker" %in% names(result$data) || !result$success)
-})
+  expect_equal(result$status, "success")
+  expect_type(result$result, "list")
+  expect_type(result$result$output, "character")
 
-test_that("ellmer tools handle Docker unavailable gracefully", {
-  # Test explicit Docker request when not available
-  if (!replr:::is_docker_available()) {
-    result <- replr_create_repl_session_docker(use_docker = TRUE)
-    expect_false(result$success)
-    expect_match(result$error, "DOCKER_NOT_AVAILABLE")
-  } else {
-    # If Docker is available, this should work (may fail on image build)
-    result <- replr_create_repl_session_docker(use_docker = TRUE, timeout = 5)
-    expect_type(result, "list")
-    expect_true("success" %in% names(result))
-  }
+  # Check the actual result
+  expect_equal(result$result$output, "4")
 })

@@ -73,6 +73,9 @@ worker_debug_error <- function(...) {
 # Helper function for null coalescing
 `%||%` <- function(x, y) if (is.null(x)) y else x
 
+# Global flag for graceful shutdown
+shutdown_requested <- FALSE
+
 # Set up nanonext REP socket
 socket_url <- paste0("tcp://127.0.0.1:", port)
 worker_debug_log("Worker starting on ", socket_url)
@@ -87,15 +90,28 @@ tryCatch({
   # Always show ready message
   cat("Worker ready and listening\n", file = stderr())
 
-  # Main message loop
-  while (TRUE) {
-    # Receive request from parent process
-    msg <- nanonext::recv(sock, block = TRUE)
+  # Main message loop with graceful shutdown support
+  while (!shutdown_requested) {
+    # Use non-blocking receive with timeout to allow signal checking
+    msg <- nanonext::recv(sock, block = FALSE)
+
+    if (is.null(msg) || inherits(msg, "errorValue")) {
+      # No message received, check for shutdown and continue
+      if (shutdown_requested) {
+        worker_debug_log("Shutdown requested, breaking message loop")
+        break
+      }
+
+      # Brief sleep to prevent busy waiting
+      Sys.sleep(0.1)
+      next
+    }
+
     worker_debug_log("Received request: ", paste0(deparse(msg), collapse = ";"))
 
-    if (is.null(msg)) {
-      # Connection closed or error
-      worker_debug_warn("Received null message, connection closed or error")
+    # Check if this is a shutdown message
+    if (is.character(msg) && msg == "__SHUTDOWN__") {
+      worker_debug_log("Received shutdown command from parent")
       break
     }
 
@@ -221,11 +237,25 @@ tryCatch({
 }, finally = {
   # Clean up socket
   if (exists("sock")) {
-    close(sock)
+    worker_debug_log("Closing socket connection")
+    tryCatch(
+      {
+        close(sock)
+      },
+      error = function(e) {
+        worker_debug_warn("Error closing socket: ", e$message)
+      }
+    )
   }
-  worker_debug_log("Worker shutting down")
-  # Always show shutdown message
-  cat("Worker shutting down\n", file = stderr())
+
+  # Final shutdown message
+  if (shutdown_requested) {
+    worker_debug_success("Worker shutdown completed gracefully")
+    cat("Worker shutdown completed gracefully\n", file = stderr())
+  } else {
+    worker_debug_log("Worker shutting down")
+    cat("Worker shutting down\n", file = stderr())
+  }
 })
 
 quit(status = 0)

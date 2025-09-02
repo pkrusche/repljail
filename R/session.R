@@ -3,7 +3,7 @@
 #' An R6 class that provides object-oriented interface for managing isolated
 #' R worker processes. This class wraps the functional interface (start_worker,
 #' send_command, stop_worker) and provides automatic resource management
-#' through finalizers.
+#' through finalizers. Docker usage is controlled by the 'replr.use.docker' option.
 #'
 #' @section Constructor:
 #' \code{RREPLSession$new(port = NULL, timeout = 10)}
@@ -40,31 +40,37 @@
 #' }
 #'
 #' @export
-RREPLSession <- R6::R6Class(
+RREPLSession <- R6::R6Class( # nolint
   "RREPLSession",
   public = list(
     #' @description
     #' Create a new RREPLSession
     #' @param port integer, port number for worker (auto-selected if NULL)
     #' @param timeout numeric, timeout in seconds for worker startup
-    #' @param use_docker logical, whether to run worker in Docker container (default: FALSE)
-    initialize = function(port = NULL, timeout = 10, use_docker = FALSE) {
-      private$.worker_info <- start_worker(port = port, timeout = timeout, use_docker = use_docker)
+    initialize = function(port = NULL, timeout = 10) {
+      private$.worker_info <- start_worker(
+        port = port,
+        timeout = timeout
+      )
       private$.stopped <- FALSE
 
       # Register finalizer for automatic cleanup
-      reg.finalizer(self, function(obj) {
-        if (!private$.stopped && !is.null(private$.worker_info)) {
-          tryCatch(
-            {
-              stop_worker(private$.worker_info, timeout = 2)
-            },
-            error = function(e) {
-              # Silent cleanup - worker may already be dead
-            }
-          )
-        }
-      }, onexit = TRUE)
+      reg.finalizer(
+        self,
+        function(obj) {
+          if (!private$.stopped && !is.null(private$.worker_info)) {
+            tryCatch(
+              {
+                stop_worker(private$.worker_info, timeout = 2)
+              },
+              error = function(e) {
+                # Silent cleanup - worker may already be dead
+              }
+            )
+          }
+        },
+        onexit = TRUE
+      )
     },
 
     #' @description
@@ -121,11 +127,31 @@ RREPLSession <- R6::R6Class(
 
       list(
         port = private$.worker_info$port,
-        pid = if (self$is_alive()) private$.worker_info$process$get_pid() else NA,
+        pid = if (self$is_alive()) {
+          private$.worker_info$process$get_pid()
+        } else {
+          NA
+        },
         started_at = private$.worker_info$started_at,
         is_alive = self$is_alive(),
-        stopped = private$.stopped
+        stopped = private$.stopped,
+        is_docker = private$.worker_info$is_docker
       )
+    },
+
+    #' @description
+    #' Retrieve debug logs from the worker process
+    #' @return character vector of debug log messages
+    get_debug_logs = function() {
+      if (private$.stopped || is.null(private$.worker_info)) {
+        return(character(0))
+      }
+
+      if (!self$is_alive()) {
+        return(character(0))
+      }
+
+      return(replr:::get_worker_debug_logs(private$.worker_info)) # nolint
     }
   ),
   active = list(
@@ -151,6 +177,14 @@ RREPLSession <- R6::R6Class(
         return(as.POSIXct(NA))
       }
       private$.worker_info$started_at
+    },
+
+    #' @field started_at Timestamp when worker was started
+    is_docker = function() {
+      if (is.null(private$.worker_info)) {
+        return(NA)
+      }
+      private$.worker_info$is_docker
     }
   ),
   private = list(

@@ -15,5 +15,7 @@ start_worker(port = NULL, timeout = 10)
 list with process object and connection info
 }
 \description{
-Spawn a worker R process using processx that runs the worker script
+Spawn a worker R process using processx that runs the worker script.
+Optionally can run the worker inside a Docker container for enhanced isolation.
+Docker usage is controlled by the 'replr.use.docker' option.
 }
