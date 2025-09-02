@@ -7,3 +7,5 @@
 ^LICENSE\.md$
 ^\.devcontainer$
 ^\.github$
+^\.claude$
+^replr/tests/testthat/_snaps.*$

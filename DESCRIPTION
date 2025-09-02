@@ -7,7 +7,6 @@ Maintainer: Peter Krusche <pkrusche@gmail.com>
 Description: Provides isolated REPL functionality for R, allowing users to execute R code in a separate environment.
 License: MIT + file LICENSE
 Encoding: UTF-8
-LazyData: true
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
 Imports:

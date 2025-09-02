@@ -2,8 +2,10 @@
 
 export(RREPLSession)
 export(check_dependencies)
+export(cleanup_docker_containers)
 export(debug_status)
 export(enable_debug)
+export(get_worker_debug_logs)
 export(is_docker_available)
 export(replr_cleanup_sessions)
 export(replr_cleanup_sessions_tool)

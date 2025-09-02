@@ -40,7 +40,8 @@
 #' }
 #'
 #' @export
-RREPLSession <- R6::R6Class( # nolint
+RREPLSession <- R6::R6Class(
+  # nolint
   "RREPLSession",
   public = list(
     #' @description
@@ -179,7 +180,7 @@ RREPLSession <- R6::R6Class( # nolint
       private$.worker_info$started_at
     },
 
-    #' @field started_at Timestamp when worker was started
+    #' @field is_docker Logical, TRUE if worker is running inside Docker
     is_docker = function() {
       if (is.null(private$.worker_info)) {
         return(NA)

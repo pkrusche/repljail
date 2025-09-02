@@ -64,7 +64,7 @@ session$stop()
 
 \item{\code{started_at}}{Timestamp when worker was started}
 
-\item{\code{started_at}}{Timestamp when worker was started}
+\item{\code{is_docker}}{Logical, TRUE if worker is running inside Docker}
 }
 \if{html}{\out{</div>}}
 }
@@ -76,6 +76,7 @@ session$stop()
 \item \href{#method-RREPLSession-is_alive}{\code{RREPLSession$is_alive()}}
 \item \href{#method-RREPLSession-stop}{\code{RREPLSession$stop()}}
 \item \href{#method-RREPLSession-get_info}{\code{RREPLSession$get_info()}}
+\item \href{#method-RREPLSession-get_debug_logs}{\code{RREPLSession$get_debug_logs()}}
 \item \href{#method-RREPLSession-clone}{\code{RREPLSession$clone()}}
 }
 }
@@ -164,6 +165,19 @@ Get worker process information
 
 \subsection{Returns}{
 list with process details
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-RREPLSession-get_debug_logs"></a>}}
+\if{latex}{\out{\hypertarget{method-RREPLSession-get_debug_logs}{}}}
+\subsection{Method \code{get_debug_logs()}}{
+Retrieve debug logs from the worker process
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{RREPLSession$get_debug_logs()}\if{html}{\out{</div>}}
+}
+
+\subsection{Returns}{
+character vector of debug log messages
 }
 }
 \if{html}{\out{<hr>}}
