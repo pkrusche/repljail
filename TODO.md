@@ -37,7 +37,7 @@
 
 ### 2. Core Dependencies Setup
 - [x] Add imports to DESCRIPTION: processx, evaluate, R6, uuid (pryr remains in Suggests as optional)
-- [x] Verify nanonext and mirai compatibility (both are listed in DESCRIPTION)
+- [x] Verify nanonext compatibility (both are listed in DESCRIPTION)
 - [x] Create utility functions for package loading and dependency checks
 
 ### 3. Basic Process Management

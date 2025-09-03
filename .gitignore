@@ -6,3 +6,4 @@ hist.png
 # Keep reference plots but ignore test output files
 tests/testthat/test_*.png
 !tests/testthat/reference_plots/
+.DS_Store

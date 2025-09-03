@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(jj new:*)"
+      "Bash(jj new:*)",
+      "WebFetch(domain:ellmer.tidyverse.org)"
     ],
     "deny": [],
     "ask": []
