@@ -2,12 +2,13 @@
 FROM rocker/r-ver:4.4
 
 # Install system dependencies required for R packages
-RUN apt-get update && apt-get install -y \
+RUN apt-get update -y && apt-get install -y \
     curl \
     wget \
     git \
     build-essential \
-    libcurl4-openssl-dev \ libssl-dev \
+    libcurl4-openssl-dev \
+    libssl-dev \
     libxml2-dev \
     libfontconfig1-dev \
     libharfbuzz-dev \
