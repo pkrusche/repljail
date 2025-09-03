@@ -10,13 +10,13 @@ Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
 Imports:
-    mirai,
     nanonext,
     processx,
     evaluate,
     R6,
     uuid,
-    cli
+    cli,
+    base64enc
 Suggests:
     ellmer,
     pryr,

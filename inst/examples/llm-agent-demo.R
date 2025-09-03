@@ -17,11 +17,16 @@ tryCatch(
   {
     chat <- ellmer::chat_openai(
       system_prompt = paste(
-        "You are a helpful data analysis assistant.",
-        "You have access to tools for creating and managing isolated R REPL sessions.",
-        "Use these tools to execute R code safely in separate processes.",
-        "Always create a session first, then execute code, and clean up when done."
-      )
+        "You are a helpful data analysis assistant. ",
+        "You have access to tools for creating and managing isolated R REPL sessions. ",
+        "Use these tools to execute R code safely in separate processes. ",
+        "Always create a session first, then execute code, and clean up when done. ",
+        "When creating plots, do not save them to a temporary file. ",
+        "Instead, just use plot() or ggplot() commands, will then return a temporary file path. ",
+        "When a plot image is returned in this manner, return the <path> to the image by adding ",
+        "__IMAGE_RETURNED__:<path> to your response."
+      ),
+      model = "gpt-4o"
     )
     cat("✓ Chat initialized successfully\n")
   },
@@ -31,6 +36,9 @@ tryCatch(
     stop("Chat initialization failed")
   }
 )
+
+plain_chat <- chat$clone()
+
 # Register replr tools with the chat
 cat("Registering replr tools...\n")
 
@@ -54,18 +62,6 @@ for (tool in tools) {
   cat("  ✓ Registered:", tool@name, "\n")
 }
 
-on_tool_call <- function(request) {
-  cat("Tool called:\n")
-  str(request)
-}
-on_tool_result <- function(result) {
-  cat("Tool result:\n")
-  str(result)
-}
-
-chat$on_tool_request(on_tool_call)
-chat$on_tool_result(on_tool_result)
-
 cat("All tools registered successfully!\n\n")
 
 # Define the analysis task
@@ -75,7 +71,7 @@ task <- paste(
   "2. Generate 100 random normal values with mean=0 and sd=1",
   "3. Create a histogram of these values",
   "4. Calculate basic summary statistics (mean, median, sd)",
-  "5. Show me the results",
+  "5. Show me the results (including the plots)",
   "6. Clean up the session when done"
 )
 
@@ -89,6 +85,20 @@ response <- chat$chat(task)
 # Display the response
 cat("\n=== Agent's Response ===\n")
 cat(response, "\n")
+
+cat("\n=== Analyze the Plot ===\n")
+if (grepl("__IMAGE_RETURNED__:", response)) {
+  image_path <- sub(".*__IMAGE_RETURNED__: *", "", response)
+  cat("Image path extracted:", image_path, "\n")
+  response <- plain_chat$chat(
+    c(
+      "Analyze the following image carefully and describe what you see in detail:"
+    ),
+    content_image_file(image_path),
+  )
+} else {
+  cat("No image path found in the response.\n")
+}
 
 # Show current sessions (should be empty if cleanup worked)
 cat("\n=== Final Session Check ===\n")

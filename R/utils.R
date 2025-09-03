@@ -7,7 +7,6 @@
 check_dependencies <- function() {
   required_packages <- c(
     "nanonext",
-    "mirai",
     "processx",
     "evaluate",
     "R6",
@@ -319,7 +318,7 @@ send_command <- function(worker_info, code, timeout = 30) {
   tryCatch(
     {
       # Send request
-      response <- send_request(sock, code)
+      response <- send_request(sock, code, timeout = timeout)
 
       if (is.null(response)) {
         # Try to get debug logs from worker before failing

@@ -19,12 +19,11 @@ Main configuration file that defines:
 - Post-creation commands to verify setup
 - User configuration
 
-### `Dockerfile` 
+### `Dockerfile`
 Builds a custom container with:
 - R 4.3.2 base image (rocker/r-ver)
 - System dependencies for R package compilation
 - Pre-installed required packages:
-  - `mirai` - Async/parallel computing framework
   - `nanonext` - NNG (nanomsg) messaging library
   - `processx` - Process spawning and management
   - `evaluate` - Safe evaluation of R expressions
@@ -68,7 +67,7 @@ Rscript .devcontainer/test-environment.R
 R --version
 
 # Verify required packages
-Rscript -e "required <- c('mirai', 'nanonext', 'processx', 'evaluate', 'R6', 'uuid'); sapply(required, function(x) cat(x, ':', as.character(packageVersion(x)), '\n'))"
+Rscript -e "required <- c('nanonext', 'processx', 'evaluate', 'R6', 'uuid'); sapply(required, function(x) cat(x, ':', as.character(packageVersion(x)), '\n'))"
 
 # Load the replr package in development mode
 Rscript -e "devtools::load_all(); replr::check_dependencies()"

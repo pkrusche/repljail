@@ -136,10 +136,10 @@ test_that("RREPLSession handles timeouts correctly", {
   tryCatch(
     {
       # Test execution timeout with a long-running operation
-      result <- session$execute("Sys.sleep(2); 42", timeout = 1)
+      result <- session$execute("Sys.sleep(3); 42", timeout = 1)
 
       # Should either timeout or succeed (depending on timing)
-      expect_true(result$status %in% c("success", "timeout", "error"))
+      expect_true(inherits(result, "errorValue"))
     },
     finally = {
       session$stop()
@@ -305,14 +305,15 @@ test_that("RREPLSession deterministic plot generation and PNG comparison", {
       expect_equal(length(result$result$plots), 1)
 
       # Extract the plot object
-      plot_obj <- result$result$plots[[1]]
-      expect_true(inherits(plot_obj, "recordedplot"))
-
-      # Save the plot as PNG (outside of executed code)
+      plot_base64 <- result$result$plots[[1]]
+      expect_true(grepl("^data:image/png;base64,", plot_base64))
+      # Decode base64 to raw vector
+      plot_data <- sub("^data:image/png;base64,", "", plot_base64)
+      plot_raw <- base64enc::base64decode(plot_data)
+      # Read the plot into a temporary file
+      # Use a temporary file to read the PNG
       test_output_file <- tempfile(fileext = ".png")
-      png(test_output_file, width = 480, height = 480)
-      replayPlot(plot_obj)
-      dev.off()
+      writeBin(plot_raw, test_output_file)
 
       # Verify the PNG file was created
       expect_true(file.exists(test_output_file))

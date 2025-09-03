@@ -230,7 +230,15 @@ tryCatch(
                 error_msgs <- c(error_msgs, item$message)
               } else if (inherits(item, "recordedplot")) {
                 # Plot object
-                plots <- append(plots, list(item))
+                # to append plot directly: - but this seems to not
+                # transfer nicely through the socket. plots <- append(plots, list(item))
+                img_file <- tempfile(fileext = ".png")
+                png(img_file)
+                print(item)
+                dev.off()
+                img_data <- base64enc::base64encode(img_file)
+                unlink(img_file)
+                plots <- append(plots, list(paste0("data:image/png;base64,", img_data)))
               } else if (!is.null(item)) {
                 # Other objects (usually the result of the last expression)
                 if (

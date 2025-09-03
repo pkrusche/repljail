@@ -48,7 +48,26 @@ replr_create_repl_session <- function(session_id = NULL, timeout = 10) {
     {
       # Generate session ID if not provided
       if (is.null(session_id)) {
-        session_id <- uuid::UUIDgenerate()
+        counter <- 1
+        while (is.null(session_id) || (exists(session_id, envir = .replr_sessions) && counter < 10)) {
+          session_id <- paste0(
+            sample(c("red", "blue", "green", "purple", "orange", "yellow", "pink", "cyan"), 1),
+            "-",
+            sample(c("eagle", "tiger", "dolphin", "falcon", "wolf", "bear", "fox", "owl"), 1),
+            "-",
+            sample(100:999, 1)
+          )
+          counter <- counter + 1
+        }
+      }
+      # Validate custom session_id format
+      if (!is.character(session_id) || length(session_id) != 1 || nchar(session_id) == 0) {
+        return(list(
+          success = FALSE,
+          message = "Session ID must be a non-empty character string",
+          data = NULL,
+          error = "INVALID_SESSION_ID"
+        ))
       }
 
       # Check if session ID already exists
@@ -62,7 +81,7 @@ replr_create_repl_session <- function(session_id = NULL, timeout = 10) {
       }
 
       # Create new REPL session with Docker if available
-      session <- RREPLSession$new(timeout = timeout)
+      session <- replr::RREPLSession$new(timeout = timeout)
 
       # Store in registry
       assign(session_id, session, envir = .replr_sessions)
@@ -156,6 +175,24 @@ replr_execute_code <- function(session_id, code, timeout = 30) {
       # Execute code
       result <- session$execute(code, timeout = timeout)
 
+      # write plots to temp file locations
+      plot_files <- list()
+      for (plot_base64 in result$result$plots) {
+        plot_data <- sub("^data:image/png;base64,", "", plot_base64)
+        plot_raw <- base64enc::base64decode(plot_data)
+
+        temp_filename <- tempfile(fileext = ".png")
+        temp_file <- file(temp_filename, "wb")
+        writeBin(plot_raw, temp_file)
+        close(temp_file)
+        # This doesn't work because ellmer does not serialize these to JSON
+        # plot_files <- append(plot_files, list(ellmer::content_image_file(temp_filename)))  # nolint
+        plot_files <- append(plot_files, list(temp_filename))
+        # rm on session exit
+        # TODO: better way would be to keep a list of temp files per session and clean up when session is stopped
+        on.exit(unlink(temp_filename), add = TRUE)
+      }
+
       # Extract and structure the results
       execution_data <- list(
         session_id = session_id,
@@ -164,10 +201,15 @@ replr_execute_code <- function(session_id, code, timeout = 30) {
         warnings = result$result$warnings,
         errors = result$result$errors,
         visible = result$result$visible,
-        plots = length(result$result$plots), # Just count, not full plot objects
+        plots = list(
+          count = length(result$result$plots),
+          data_urls = result$result$plots,
+          file_paths = plot_files
+        ),
         execution_time = result$execution_time,
         request_id = result$id
       )
+      debug_log("{execution_data}")
 
       # Determine overall success
       is_success <- result$status == "success"
@@ -594,7 +636,11 @@ replr_execute_code_tool <- function() {
     ellmer::tool(
       replr_execute_code,
       name = "replr_execute_code",
-      description = "Execute R code in an isolated REPL session and return structured results",
+      description = paste0(
+        "Execute R code in an isolated REPL session and return structured results.",
+        " When creating plots in the code, they will be converted to data URLs in ",
+        "the structured output for compatibility with vision models."
+      ),
       arguments = list(
         session_id = ellmer::type_string(
           "ID of the session to execute code in",
@@ -613,7 +659,11 @@ replr_execute_code_tool <- function() {
   } else {
     list(
       name = "replr_execute_code",
-      description = "Execute R code in an isolated REPL session and return structured results",
+      description = paste0(
+        "Execute R code in an isolated REPL session and return structured results.",
+        " When creating plots in the code, they will be converted to data URLs in ",
+        "the structured output for compatibility with vision models."
+      ),
       parameters = list(
         session_id = list(
           type = "string",
