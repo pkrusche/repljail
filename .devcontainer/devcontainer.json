@@ -16,11 +16,17 @@
   },
   "postCreateCommand": "Rscript .devcontainer/test-environment.R",
   "remoteUser": "rstudio",
+  "remoteEnv": {
+    // bring codespaces secrets
+    "OPENAI_API_KEY": "${localEnv:OPENAI_API_KEY}",
+    "ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY}"
+  },
   "features": {
     "ghcr.io/devcontainers/features/common-utils:2": {
       "installZsh": true,
       "configureZshAsDefaultShell": true,
       "installOhMyZsh": true
-    }
+    },
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
   }
 }
