@@ -11,7 +11,7 @@ cat(paste("   R version:", R.version.string), "\n\n")
 
 # Test 2: Check required packages
 cat("2. Required Packages:\n")
-required_packages <- c("nanonext", "processx", "evaluate", "R6", "uuid")
+required_packages <- c("nanonext", "processx", "evaluate", "R6", "uuid", "ellmer")
 for (pkg in required_packages) {
   if (requireNamespace(pkg, quietly = TRUE)) {
     cat(sprintf("   ✓ %s: %s\n", pkg, packageVersion(pkg)))
