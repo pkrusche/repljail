@@ -7,3 +7,4 @@ hist.png
 tests/testthat/test_*.png
 !tests/testthat/reference_plots/
 .DS_Store
+logs
