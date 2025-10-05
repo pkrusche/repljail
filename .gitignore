@@ -9,3 +9,6 @@ tests/testthat/test_*.png
 .DS_Store
 logs
 logs
+
+# Temporary test scripts
+test_network_isolation.R
