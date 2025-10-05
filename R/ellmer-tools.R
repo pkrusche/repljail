@@ -46,11 +46,38 @@ replr_create_repl_session <- function(timeout = 10) {
       # Auto-generate session ID
       session_id <- NULL
       counter <- 1
-      while (is.null(session_id) || (exists(session_id, envir = .replr_sessions) && counter < 10)) {
+      while (
+        is.null(session_id) ||
+          (exists(session_id, envir = .replr_sessions) && counter < 10)
+      ) {
         session_id <- paste0(
-          sample(c("red", "blue", "green", "purple", "orange", "yellow", "pink", "cyan"), 1),
+          sample(
+            c(
+              "red",
+              "blue",
+              "green",
+              "purple",
+              "orange",
+              "yellow",
+              "pink",
+              "cyan"
+            ),
+            1
+          ),
           "-",
-          sample(c("eagle", "tiger", "dolphin", "falcon", "wolf", "bear", "fox", "owl"), 1),
+          sample(
+            c(
+              "eagle",
+              "tiger",
+              "dolphin",
+              "falcon",
+              "wolf",
+              "bear",
+              "fox",
+              "owl"
+            ),
+            1
+          ),
           "-",
           sample(100:999, 1)
         )

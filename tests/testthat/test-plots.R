@@ -11,12 +11,16 @@ test_that("replr_execute_code handles multiple plots correctly", {
   tryCatch(
     {
       # Execute code that generates multiple plots
-      result <- replr_execute_code(session_id, "
+      result <- replr_execute_code(
+        session_id,
+        "
         set.seed(456)
         hist(rnorm(30), main = 'Plot 1')
         plot(1:10, rnorm(10), main = 'Plot 2')
         'Multiple plots created'
-      ", timeout = 15)
+      ",
+        timeout = 15
+      )
       debug_log("Execution result:", result)
 
       expect_true(result$success)
