@@ -12,3 +12,6 @@ logs
 
 # Temporary test scripts
 test_network_isolation.R
+
+# Verification files
+VERIFICATION_CHECKLIST.md
