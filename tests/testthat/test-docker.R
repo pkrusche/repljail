@@ -178,3 +178,51 @@ test_that("Docker network is cleaned up when session stops", {
   expect_false(network_name %in% networks)
 })
 
+test_that("Network isolation actually blocks external access", {
+  skip_on_ci_for_docker()
+
+  # Skip if Docker is not available
+  skip_if_not(replr:::is_docker_available(), "Docker not available")
+
+  # Set options to use Docker with network isolation
+  old_docker_option <- getOption("replr.use.docker")
+  old_network_option <- getOption("replr.worker.docker.network.isolation")
+  on.exit({
+    options(replr.use.docker = old_docker_option)
+    options(replr.worker.docker.network.isolation = old_network_option)
+  })
+
+  options(replr.use.docker = TRUE)
+  options(replr.worker.docker.network.isolation = TRUE)
+
+  # Create a session with network isolation
+  session <- RREPLSession$new(timeout = 30)
+  on.exit(session$stop(timeout = 10), add = TRUE)
+
+  # Verify session is alive
+  expect_true(session$is_alive())
+
+  # Try to access an external URL - this should fail due to network isolation
+  # We use a timeout to ensure the test doesn't hang indefinitely
+  result <- session$execute("
+    tryCatch({
+      # Attempt to access external network (e.g., DNS lookup and HTTP request)
+      con <- url('http://example.com', open = 'r', timeout = 2)
+      content <- readLines(con, warn = FALSE)
+      close(con)
+      cat('SUCCESS: External access worked')
+      'external_access_success'
+    }, error = function(e) {
+      cat('ERROR: External access blocked -', e$message)
+      'external_access_blocked'
+    })
+  ", timeout = 10)
+
+  # Check that the result indicates an error (network isolation working)
+  expect_equal(result$status, "success")
+  expect_true(any(grepl("external_access_blocked", result$result$output)) ||
+              any(grepl("ERROR", result$result$output)))
+  expect_false(any(grepl("external_access_success", result$result$output)))
+  expect_false(any(grepl("SUCCESS: External access worked", result$result$output)))
+})
+
