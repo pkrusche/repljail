@@ -340,6 +340,38 @@ options(
 session <- RREPLSession$new()
 ```
 
+### Network Isolation
+
+For enhanced security, you can enable network isolation which creates an isolated Docker network for each worker container with no external network access:
+
+```r
+# Enable Docker with network isolation
+options(
+  replr.use.docker = TRUE,
+  replr.worker.docker.network.isolation = TRUE
+)
+
+# Create session - worker will run in isolated network
+session <- RREPLSession$new(timeout = 15)
+
+# The worker can still communicate via the exposed port
+result <- session$execute("2 + 2")
+
+# Network is automatically cleaned up when session stops
+session$stop()
+
+# You can also manually clean up orphaned networks
+cleanup_docker_networks()
+```
+
+Network isolation provides:
+- **No external network access** - Worker cannot connect to internet or external services
+- **Isolated bridge network** - Each worker gets its own private network
+- **Port-only communication** - Only the worker port is exposed to the host
+- **Automatic cleanup** - Networks are removed when workers stop
+
+This matches the security model of Docker Compose's `internal: true` network configuration.
+
 ### Available Options
 
 | Option | Default | Description |
@@ -348,6 +380,7 @@ session <- RREPLSession$new()
 | `replr.worker.docker.image` | `"replr-worker:latest"` | Docker image name for worker containers |
 | `replr.worker.docker.memory` | `"512m"` | Memory limit for Docker containers (e.g., "1g", "256m") |
 | `replr.worker.docker.cpus` | `"1.0"` | CPU limit for Docker containers (e.g., "2.0", "0.5") |
+| `replr.worker.docker.network.isolation` | `FALSE` | Enable isolated Docker networks with no external access |
 
 These options apply to all Docker workers started after they are set. Changes take effect immediately for new worker processes.
 

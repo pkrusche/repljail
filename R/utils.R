@@ -228,6 +228,7 @@ start_worker <- function(port = NULL, timeout = 10) {
 
     # Special cleanup for Docker containers
     container_name <- attr(proc, "container_name")
+    network_name <- attr(proc, "network_name")
     if (use_docker && !is.null(container_name)) {
       debug_log("Cleaning up failed Docker container: ", container_name)
       tryCatch(
@@ -244,6 +245,12 @@ start_worker <- function(port = NULL, timeout = 10) {
           debug_warn("Failed to clean up Docker container: ", e$message)
         }
       )
+
+      # Clean up network if it was created
+      if (!is.null(network_name)) {
+        debug_log("Cleaning up failed Docker network: ", network_name)
+        remove_docker_network(network_name)
+      }
     }
 
     # Wait for graceful shutdown
@@ -292,6 +299,11 @@ start_worker <- function(port = NULL, timeout = 10) {
     container_name <- attr(proc, "container_name")
     if (!is.null(container_name)) {
       worker_info$container_name <- container_name
+    }
+    # Also store network name if present
+    network_name <- attr(proc, "network_name")
+    if (!is.null(network_name)) {
+      worker_info$network_name <- network_name
     }
   }
 
@@ -421,6 +433,13 @@ stop_worker <- function(worker_info, timeout = 5) {
     container_name <- worker_info$container_name
   }
 
+  # Get network name for cleanup
+  network_name <- attr(proc, "network_name")
+  if (is.null(network_name) && !is.null(worker_info$network_name)) {
+    # Fallback to network name from worker_info
+    network_name <- worker_info$network_name
+  }
+
   if (!is.null(container_name)) {
     debug_log("Cleaning up Docker container: ", container_name)
     tryCatch(
@@ -437,6 +456,12 @@ stop_worker <- function(worker_info, timeout = 5) {
         debug_warn("Failed to clean up Docker container: ", e$message)
       }
     )
+
+    # Clean up network if it exists
+    if (!is.null(network_name)) {
+      debug_log("Cleaning up Docker network: ", network_name)
+      remove_docker_network(network_name)
+    }
   }
 
   !proc$is_alive()
@@ -545,6 +570,20 @@ start_docker_worker <- function(port, worker_script, worker_args, timeout) {
     format(Sys.time(), "%Y%m%d-%H%M%S")
   )
 
+  # Check if network isolation is enabled
+  use_network_isolation <- getOption("replr.worker.docker.network.isolation", default = FALSE)
+  network_name <- NULL
+
+  # Create isolated network if enabled
+  if (use_network_isolation) {
+    network_name <- paste0("replr-network-", port, "-", format(Sys.time(), "%Y%m%d-%H%M%S"))
+    if (!create_docker_network(network_name)) {
+      warning("Failed to create isolated network, proceeding without network isolation")
+      use_network_isolation <- FALSE
+      network_name <- NULL
+    }
+  }
+
   # Build base Docker arguments with improved networking
   docker_args <- c(
     "run",
@@ -558,7 +597,7 @@ start_docker_worker <- function(port, worker_script, worker_args, timeout) {
     "--cpus",
     cpu_limit, # CPU limit (configurable)
     "-p",
-    sprintf("%i:%i", port, port), # Expose port (not strictly needed with host network)
+    sprintf("%i:%i", port, port), # Expose port for communication
     "--read-only", # Read-only filesystem
     "--tmpfs",
     "/tmp:noexec,nosuid,size=100m", # Writable tmp directory with restrictions
@@ -569,6 +608,11 @@ start_docker_worker <- function(port, worker_script, worker_args, timeout) {
     "-v",
     paste0(worker_script, ":/app/worker.R:ro") # Mount worker script
   )
+
+  # Add network configuration if isolation is enabled
+  if (use_network_isolation && !is.null(network_name)) {
+    docker_args <- c(docker_args, "--network", network_name)
+  }
 
   debug_log("Using Docker options: {docker_args}")
 
@@ -602,6 +646,9 @@ start_docker_worker <- function(port, worker_script, worker_args, timeout) {
   # Return process with container name stored separately
   # We can't add fields to the processx object directly due to locked environment
   attr(proc, "container_name") <- container_name
+  if (use_network_isolation && !is.null(network_name)) {
+    attr(proc, "network_name") <- network_name
+  }
 
   return(proc) # nolint
 }
@@ -798,6 +845,163 @@ cleanup_docker_containers <- function() {
     },
     error = function(e) {
       debug_error("Error during Docker container cleanup: ", e$message)
+      return(FALSE)
+    }
+  )
+}
+
+#' Create an Isolated Docker Network
+#'
+#' Creates an isolated Docker network with no external access for a worker container.
+#' The network uses the bridge driver and is marked as internal.
+#'
+#' @param network_name character, name for the Docker network
+#' @return logical, TRUE if network creation was successful
+#' @keywords internal
+create_docker_network <- function(network_name) {
+  if (!is_docker_available()) {
+    warning("Docker is not available")
+    return(FALSE)
+  }
+
+  tryCatch(
+    {
+      debug_log("Creating isolated Docker network: ", network_name)
+
+      # Create internal bridge network (no external access)
+      result <- system2(
+        "docker",
+        c(
+          "network",
+          "create",
+          "--driver", "bridge",
+          "--internal",  # No external network access
+          network_name
+        ),
+        stdout = TRUE,
+        stderr = TRUE
+      )
+
+      if (is.null(attr(result, "status")) || attr(result, "status") == 0) {
+        debug_success("Created isolated network: ", network_name)
+        return(TRUE)
+      } else {
+        debug_warn("Failed to create Docker network: ", paste(result, collapse = "\n"))
+        return(FALSE)
+      }
+    },
+    error = function(e) {
+      debug_error("Error creating Docker network: ", e$message)
+      return(FALSE) # nolint
+    }
+  )
+}
+
+#' Remove a Docker Network
+#'
+#' Removes a Docker network if it exists
+#'
+#' @param network_name character, name of the Docker network to remove
+#' @return logical, TRUE if network removal was successful
+#' @keywords internal
+remove_docker_network <- function(network_name) {
+  if (!is_docker_available()) {
+    return(FALSE)
+  }
+
+  tryCatch(
+    {
+      debug_log("Removing Docker network: ", network_name)
+
+      result <- system2(
+        "docker",
+        c("network", "rm", network_name),
+        stdout = FALSE,
+        stderr = FALSE
+      )
+
+      if (is.null(attr(result, "status")) || attr(result, "status") == 0) {
+        debug_log("Removed Docker network: ", network_name)
+        return(TRUE)
+      } else {
+        debug_warn("Failed to remove Docker network: ", network_name)
+        return(FALSE)
+      }
+    },
+    error = function(e) {
+      debug_log("Error removing Docker network: ", e$message)
+      return(FALSE) # nolint
+    }
+  )
+}
+
+#' Cleanup Orphaned Docker Networks
+#'
+#' Remove orphaned replr Docker networks that may have been left behind
+#'
+#' @return logical, TRUE if cleanup was successful
+#' @export
+cleanup_docker_networks <- function() {
+  if (!is_docker_available()) {
+    warning("Docker is not available")
+    return(FALSE)
+  }
+
+  tryCatch(
+    {
+      debug_log("Cleaning up orphaned replr Docker networks")
+
+      # Find all replr worker networks
+      networks <- system2(
+        "docker",
+        c(
+          "network",
+          "ls",
+          "--filter",
+          "name=replr-network-",
+          "--format",
+          "{{.Name}}"
+        ),
+        stdout = TRUE,
+        stderr = FALSE
+      )
+
+      if (
+        length(networks) > 0 &&
+          !is.null(attr(networks, "status")) &&
+          attr(networks, "status") == 0
+      ) {
+        # No networks found or command failed
+        debug_log("No orphaned replr networks found")
+        return(TRUE)
+      }
+
+      if (length(networks) > 0) {
+        debug_log(
+          "Found ",
+          length(networks),
+          " orphaned networks: ",
+          paste(networks, collapse = ", ")
+        )
+
+        # Remove all found networks
+        for (network in networks) {
+          remove_docker_network(network)
+        }
+
+        debug_success(
+          "Cleaned up ",
+          length(networks),
+          " orphaned networks"
+        )
+        return(TRUE)
+      } else {
+        debug_log("No orphaned replr networks found")
+        return(TRUE)
+      }
+    },
+    error = function(e) {
+      debug_error("Error during Docker network cleanup: ", e$message)
       return(FALSE)
     }
   )

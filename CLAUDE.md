@@ -34,8 +34,14 @@ is_docker_available()
 # Clean up orphaned Docker containers
 cleanup_docker_containers()
 
+# Clean up orphaned Docker networks
+cleanup_docker_networks()
+
 # Enable Docker mode for workers
 options(replr.use.docker = TRUE)
+
+# Enable network isolation (requires Docker mode)
+options(replr.worker.docker.network.isolation = TRUE)
 ```
 
 ### Debug Logging
@@ -97,6 +103,10 @@ Main R Process (Controller) ←──nanonext REQ/REP──→ Worker R Process 
 - Container naming: `replr-worker-<port>-<timestamp>` for cleanup tracking
 - Port forwarding between host and container
 - Configurable via options: `replr.worker.docker.image`, `replr.worker.docker.memory`, `replr.worker.docker.cpus`
+- Network isolation: Optional isolated Docker networks with `replr.worker.docker.network.isolation`
+  - Creates internal bridge network per worker (no external access)
+  - Network naming: `replr-network-<port>-<timestamp>`
+  - Automatic cleanup when worker stops
 
 ### ellmer Integration
 - Functions in `R/ellmer-tools.R` provide LLM agent tools for the ellmer package
@@ -183,3 +193,4 @@ Global options control package behavior:
 - `replr.worker.docker.image` (string): Docker image name (default: "replr-worker:latest")
 - `replr.worker.docker.memory` (string): Memory limit (default: "512m")
 - `replr.worker.docker.cpus` (string): CPU limit (default: "1.0")
+- `replr.worker.docker.network.isolation` (logical): Enable isolated Docker networks (default: FALSE)
