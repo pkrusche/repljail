@@ -211,8 +211,14 @@ test_that("Multiple sessions maintain isolation", {
   tryCatch(
     {
       # Set different variables in each session
-      result1 <- replr_execute_code(session1_result$data$session_id, "my_var <- 'Session 1'")
-      result2 <- replr_execute_code(session2_result$data$session_id, "my_var <- 'Session 2'")
+      result1 <- replr_execute_code(
+        session1_result$data$session_id,
+        "my_var <- 'Session 1'"
+      )
+      result2 <- replr_execute_code(
+        session2_result$data$session_id,
+        "my_var <- 'Session 2'"
+      )
       expect_true(result1$success)
       expect_true(result2$success)
 

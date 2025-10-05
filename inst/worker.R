@@ -238,7 +238,10 @@ tryCatch(
                 dev.off()
                 img_data <- base64enc::base64encode(img_file)
                 unlink(img_file)
-                plots <- append(plots, list(paste0("data:image/png;base64,", img_data)))
+                plots <- append(
+                  plots,
+                  list(paste0("data:image/png;base64,", img_data))
+                )
               } else if (!is.null(item)) {
                 # Other objects (usually the result of the last expression)
                 if (
