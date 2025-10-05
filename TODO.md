@@ -1,15 +1,15 @@
 # Implementation Tasks for replr
 
-## ✅ Current Status: Full Package Complete with ellmer Integration!
+## ✅ Current Status: Full Package Complete with R6 and ellmer Integration!
 
-**The replr package is now fully implemented with both functional and object-oriented interfaces, plus complete ellmer/LLM agent integration!**
+**The replr package is now fully implemented with an R6 object-oriented interface plus complete ellmer/LLM agent integration!**
 
 - ✅ **Phase 1 & 2**: Core functionality fully implemented
 - ✅ **Phase 3**: Advanced features and comprehensive testing complete
-- ✅ **36 test cases passing**: Complete test coverage including R6 class tests (190 expectations)
+- ✅ **Test cases passing**: Complete test coverage including R6 class tests
 - ✅ **Package passes R CMD check**: No errors or warnings
 - ✅ **Debug logging system**: Full cli-based logging with configurable output
-- ✅ **Two interfaces**: Functional API + R6 class with automatic cleanup
+- ✅ **R6 Interface**: RREPLSession class with automatic cleanup
 - ✅ **ellmer Integration**: Complete LLM agent tools and demo implementation
 - ✅ **Production ready**: Robust error handling, finalizers, and resource management
 
@@ -18,11 +18,10 @@
 - nanonext-based communication with REQ-REP pattern
 - Complete error handling (syntax errors, runtime errors, warnings)
 - Plot capture and output processing
-- Multiple concurrent workers with isolation
+- Multiple concurrent sessions with isolation
 - Configurable debug logging with cli styling
 - Automatic port management and conflict resolution
 - **RREPLSession R6 class** with automatic cleanup and finalizers
-- **Functional interface** for simple use cases
 - **ellmer/LLM agent tools** with standardized response format and session management
 - **LLM agent demo** at `inst/examples/llm-agent-demo.R` showing complete integration
 - Comprehensive test suite covering all functionality
@@ -251,9 +250,9 @@
 - Document any deviations from the original CLAUDE.md design
 
 **Current Architecture:**
-- **Dual interface**: Both functional (start_worker, send_command, stop_worker) AND R6 class (RREPLSession)
-- **R6 class benefits**: Automatic cleanup via finalizers, cleaner OOP syntax, active bindings
-- **Functional interface**: Simple API for basic use cases and integration
+- **R6 class interface**: RREPLSession with automatic cleanup via finalizers, cleaner OOP syntax, active bindings
+- **Internal functional API**: start_worker, send_command, stop_worker are used internally by R6 class but not exported
+- **ellmer tools**: Provide LLM agent interface using the R6 class
 - Implemented robust debug logging system with cli package
 - Full error handling and recovery without automatic restart (by design)
 - All communication working reliably with nanonext
@@ -268,27 +267,12 @@ devtools::test()
 devtools::check()
 devtools::document()
 
-# Manual testing (functional interface)
+# Manual testing (R6 class interface)
 library(replr)
 
 # Enable debug logging to see detailed output
 enable_debug(TRUE)
 
-# Start worker process
-worker <- start_worker()
-
-# Execute R code
-result <- send_command(worker, "1 + 1")
-print(result$result$output)  # [1] "2"
-
-# Execute more complex code
-result2 <- send_command(worker, "data.frame(x=1:3, y=4:6)")
-print(result2$status)  # "success"
-
-# Stop worker
-stop_worker(worker)
-
-# Manual testing (R6 class interface)
 # Create session with automatic cleanup
 session <- RREPLSession$new()
 

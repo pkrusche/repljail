@@ -124,7 +124,7 @@ get_worker_script_path <- function() {
 #' @param port integer, port number for the worker to listen on
 #' @param timeout numeric, timeout in seconds to wait for worker startup
 #' @return list with process object and connection info
-#' @export
+#' @keywords internal
 start_worker <- function(port = NULL, timeout = 10) {
   # Check prerequisites
   check_dependencies()
@@ -306,7 +306,7 @@ start_worker <- function(port = NULL, timeout = 10) {
 #' @param code character, R code to execute
 #' @param timeout numeric, timeout in seconds for command execution
 #' @return response list from worker
-#' @export
+#' @keywords internal
 send_command <- function(worker_info, code, timeout = 30) {
   if (is.null(worker_info$process) || !worker_info$process$is_alive()) {
     stop("Worker process is not running")
@@ -347,7 +347,7 @@ send_command <- function(worker_info, code, timeout = 30) {
 #' @param worker_info list, worker info returned by start_worker()
 #' @param timeout numeric, timeout in seconds to wait for graceful shutdown
 #' @return logical, TRUE if stopped successfully
-#' @export
+#' @keywords internal
 stop_worker <- function(worker_info, timeout = 5) {
   if (is.null(worker_info$process)) {
     return(TRUE)
@@ -448,7 +448,7 @@ stop_worker <- function(worker_info, timeout = 5) {
 #'
 #' @param worker_info list, worker info returned by start_worker()
 #' @return character vector of debug log messages
-#' @export
+#' @keywords internal
 get_worker_debug_logs <- function(worker_info) {
   if (is.null(worker_info) || is.null(worker_info$process)) {
     return(character(0))
