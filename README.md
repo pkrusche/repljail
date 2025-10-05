@@ -15,7 +15,7 @@
 - **🐛 Debug Logging**: Beautiful CLI-styled debug output with configurable verbosity
 - **🌐 Cross-Platform**: Works on Windows, macOS, and Linux
 - **🎯 Multiple Workers**: Run concurrent isolated sessions simultaneously
-- **🔗 Dual Interface**: Both functional API and R6 class with automatic cleanup
+- **🔗 R6 Class Interface**: Object-oriented interface with automatic cleanup
 
 ## Installation
 
@@ -31,23 +31,7 @@ devtools::install_github("pkrusche/replr")
 
 ## Quick Start
 
-### Functional Interface
-
-```r
-library(replr)
-
-# Start an isolated R worker process
-worker <- start_worker()
-
-# Execute R code in the isolated process
-result <- send_command(worker, "2 + 2")
-print(result$result$output)  # [1] "4"
-
-# Stop the worker when done
-stop_worker(worker)
-```
-
-### Object-Oriented Interface (R6 Class)
+### R6 Class Interface
 
 ```r
 library(replr)
@@ -75,17 +59,17 @@ session$stop()
 ```r
 library(replr)
 
-# Start a worker process
-worker <- start_worker()
+# Create a session
+session <- RREPLSession$new()
 
 # Execute simple expressions
-result1 <- send_command(worker, "1 + 1")
+result1 <- session$execute("1 + 1")
 print(result1$status)           # "success"
 print(result1$result$output)    # "2"
 print(result1$execution_time)   # execution time in seconds
 
 # Execute more complex code
-result2 <- send_command(worker, "
+result2 <- session$execute("
   data <- data.frame(
     x = 1:5,
     y = letters[1:5]
@@ -95,7 +79,7 @@ result2 <- send_command(worker, "
 print(result2$result$output)
 
 # Clean up
-stop_worker(worker)
+session$stop()
 ```
 
 ### Error Handling
@@ -103,23 +87,23 @@ stop_worker(worker)
 ```r
 library(replr)
 
-worker <- start_worker()
+session <- RREPLSession$new()
 
 # Handle syntax errors
-result1 <- send_command(worker, "1 +")
+result1 <- session$execute("1 +")
 print(result1$status)         # "error"
 print(result1$result$errors)  # Error message
 
 # Handle runtime errors
-result2 <- send_command(worker, "stop('Custom error')")
+result2 <- session$execute("stop('Custom error')")
 print(result2$status)         # "error"
 print(result2$result$errors)  # "Custom error"
 
 # Worker continues after errors
-result3 <- send_command(worker, "3 * 4")
+result3 <- session$execute("3 * 4")
 print(result3$status)         # "success" - worker survived!
 
-stop_worker(worker)
+session$stop()
 ```
 
 ### Working with Warnings
@@ -127,10 +111,10 @@ stop_worker(worker)
 ```r
 library(replr)
 
-worker <- start_worker()
+session <- RREPLSession$new()
 
 # Code that generates warnings
-result <- send_command(worker, "
+result <- session$execute("
   warning('This is a warning')
   42
 ")
@@ -139,12 +123,12 @@ print(result$status)             # "success"
 print(result$result$warnings)    # "This is a warning"
 print(result$result$output)      # "42"
 
-stop_worker(worker)
+session$stop()
 ```
 
-### Object-Oriented Interface with RREPLSession
+### R6 Session Management
 
-The `RREPLSession` R6 class provides a more convenient object-oriented interface with automatic resource management:
+The `RREPLSession` R6 class provides a convenient object-oriented interface with automatic resource management:
 
 ```r
 library(replr)
@@ -181,15 +165,15 @@ library(replr)
 enable_debug(TRUE)
 
 # Now see output of what is happening
-worker <- start_worker()  # Shows startup debug messages
+session <- RREPLSession$new()  # Shows startup debug messages
 
-result <- send_command(worker, "sqrt(16)")  # Shows communication debug
+result <- session$execute("sqrt(16)")  # Shows communication debug
 
 # Get logs programmatically
-logs <- get_worker_debug_logs(worker)
+logs <- session$get_debug_logs()
 cat("Worker generated", length(logs), "debug messages\n")
 
-stop_worker(worker)  # Shows cleanup debug
+session$stop()  # Shows cleanup debug
 
 # Disable debug logging
 enable_debug(FALSE)
@@ -206,7 +190,7 @@ Worker processes capture their debug logs internally, which can be retrieved by 
 library(replr)
 enable_debug(TRUE)
 
-# Object-Oriented API
+# R6 API
 session <- RREPLSession$new()
 session$execute("plot(1:10)")
 
@@ -216,33 +200,33 @@ logs <- session$get_debug_logs()
 session$stop()
 ```
 
-### Multiple Concurrent Workers
+### Multiple Concurrent Sessions
 
 ```r
 library(replr)
 
-# Start multiple isolated workers
-worker1 <- start_worker()
-worker2 <- start_worker()
+# Start multiple isolated sessions
+session1 <- RREPLSession$new()
+session2 <- RREPLSession$new()
 
 # They run on different ports and are completely isolated
-print(worker1$port)  # e.g., 5555
-print(worker2$port)  # e.g., 5556
+print(session1$port)  # e.g., 5555
+print(session2$port)  # e.g., 5556
 
-# Set different variables in each worker
-send_command(worker1, "my_var <- 'Worker 1'")
-send_command(worker2, "my_var <- 'Worker 2'")
+# Set different variables in each session
+session1$execute("my_var <- 'Session 1'")
+session2$execute("my_var <- 'Session 2'")
 
-# Verify isolation - each worker only sees its own variables
-result1 <- send_command(worker1, "my_var")
-result2 <- send_command(worker2, "my_var")
+# Verify isolation - each session only sees its own variables
+result1 <- session1$execute("my_var")
+result2 <- session2$execute("my_var")
 
-print(result1$result$output)  # "Worker 1"
-print(result2$result$output)  # "Worker 2"
+print(result1$result$output)  # "Session 1"
+print(result2$result$output)  # "Session 2"
 
-# Clean up both workers
-stop_worker(worker1)
-stop_worker(worker2)
+# Clean up both sessions
+session1$stop()
+session2$stop()
 ```
 
 ### Advanced Usage with Timeouts
@@ -250,20 +234,19 @@ stop_worker(worker2)
 ```r
 library(replr)
 
-worker <- start_worker()
+session <- RREPLSession$new()
 
 # Set custom timeout for long-running operations
-result <- send_command(
-  worker,
+result <- session$execute(
   "Sys.sleep(2); 'Completed'",
   timeout = 5  # 5 second timeout
 )
 print(result$result$output)  # "Completed"
 
 # This would timeout:
-# result <- send_command(worker, "Sys.sleep(10)", timeout = 2)
+# result <- session$execute("Sys.sleep(10)", timeout = 2)
 
-stop_worker(worker)
+session$stop()
 ```
 
 ## 🐳 Docker Container Support
@@ -296,11 +279,6 @@ options(replr.use.docker = TRUE)
 session <- RREPLSession$new(timeout = 15)  # Longer timeout for Docker startup
 result <- session$execute("2 + 2")
 session$stop()
-
-# Or use functional API
-worker <- start_worker()
-result <- send_command(worker, "plot(1:10)")
-stop_worker(worker)
 
 # Clean up any orphaned containers
 cleanup_docker_containers()
@@ -358,8 +336,8 @@ options(
   replr.worker.docker.cpus = "4.0"
 )
 
-# Start worker with custom settings
-worker <- start_worker()
+# Start session with custom settings
+session <- RREPLSession$new()
 ```
 
 ### Available Options
@@ -375,16 +353,7 @@ These options apply to all Docker workers started after they are set. Changes ta
 
 ## API Reference
 
-### Core Functions (Functional Interface)
-
-- **`start_worker(port = NULL, timeout = 10)`** - Start an isolated R worker process
-- **`send_command(worker_info, code, timeout = 30)`** - Execute R code in worker
-- **`stop_worker(worker_info, timeout = 5)`** - Gracefully stop worker process
-- **`is_docker_available()`** - Check if Docker is available on the system
-- **`cleanup_docker_containers()`** - Clean up any orphaned replr Docker containers
-- **`get_worker_debug_logs(worker_info)`** - Retrieve debug logs from worker process
-
-### RREPLSession R6 Class (Object-Oriented Interface)
+### RREPLSession R6 Class
 
 - **`RREPLSession$new(port = NULL, timeout = 10)`** - Create new session
 - **`session$execute(code, timeout = 30)`** - Execute R code
@@ -397,6 +366,12 @@ These options apply to all Docker workers started after they are set. Changes ta
 - **`session$started_at`** - Active binding for start timestamp
 - **`session$is_docker`** - Active binding for Docker status
 
+### Utility Functions
+
+- **`is_docker_available()`** - Check if Docker is available on the system
+- **`cleanup_docker_containers()`** - Clean up any orphaned replr Docker containers
+- **`check_dependencies()`** - Verify that all required packages are available
+
 ### Debug Functions
 
 - **`enable_debug(enable = TRUE)`** - Enable/disable debug logging
@@ -404,7 +379,7 @@ These options apply to all Docker workers started after they are set. Changes ta
 
 ### Response Structure
 
-All `send_command()` calls return a structured response:
+All `session$execute()` calls return a structured response:
 
 ```r
 list(
@@ -428,9 +403,9 @@ list(
 │   Main R        │   REQ ──────>   │   Worker R      │
 │   Process       │                 │   Process       │
 │                 │   <────── REP   │                 │
-│ • start_worker  │                 │ • evaluate pkg  │
-│ • send_command  │     TCP         │ • plot capture  │
-│ • stop_worker   │   Socket        │ • error handling│
+│ • RREPLSession  │                 │ • evaluate pkg  │
+│ • execute()     │     TCP         │ • plot capture  │
+│ • stop()        │   Socket        │ • error handling│
 └─────────────────┘                 └─────────────────┘
 ```
 

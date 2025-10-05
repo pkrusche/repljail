@@ -7,19 +7,19 @@ test_that("Debug logging works end-to-end", {
 
   # Test without debug logging first
   options(replr.debug = FALSE)
-  worker_info <- start_worker(timeout = 10)
+  session <- RREPLSession$new(timeout = 10)
 
   tryCatch(
     {
       # Worker should start successfully even without debug
-      expect_true(worker_info$process$is_alive())
+      expect_true(session$is_alive())
 
       # Basic execution should work
-      result <- send_command(worker_info, "1 + 1", timeout = 5)
+      result <- session$execute("1 + 1", timeout = 5)
       expect_equal(result$status, "success")
     },
     finally = {
-      stop_worker(worker_info, timeout = 5)
+      session$stop(timeout = 5)
     }
   )
 })
@@ -50,21 +50,21 @@ test_that("Worker inherits debug setting from parent", {
   # Enable debug logging
   options(replr.debug = TRUE)
 
-  worker_info <- start_worker(timeout = 10)
+  session <- RREPLSession$new(timeout = 10)
 
   tryCatch(
     {
-      expect_true(worker_info$process$is_alive())
+      expect_true(session$is_alive())
 
       # Read stderr to check for debug messages
       Sys.sleep(1) # Give time for debug messages to appear
-      stderr_lines <- worker_info$process$read_error_lines()
+      debug_logs <- session$get_debug_logs()
 
       # Should see debug mode enabled message
-      expect_true(any(grepl("Debug mode enabled", stderr_lines)))
+      expect_true(any(grepl("Debug mode enabled", debug_logs)))
     },
     finally = {
-      stop_worker(worker_info, timeout = 5)
+      session$stop(timeout = 5)
       options(replr.debug = FALSE) # Clean up
     }
   )
