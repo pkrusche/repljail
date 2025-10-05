@@ -10,8 +10,7 @@ RREPLSession: R6 Class for Isolated R Session Management
 }
 \details{
 An R6 class that provides object-oriented interface for managing isolated
-R worker processes. This class wraps the functional interface (start_worker,
-send_command, stop_worker) and provides automatic resource management
+R worker processes. This class provides automatic resource management
 through finalizers. Docker usage is controlled by the 'replr.use.docker' option.
 }
 \section{Constructor}{
