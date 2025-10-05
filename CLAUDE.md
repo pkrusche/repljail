@@ -1,150 +1,185 @@
-# Isolated R REPL
+# CLAUDE.md
 
-A process-based isolated R REPL implementation that provides secure, sandboxed R code execution using separate worker processes.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Overview
+# replr - Isolated R REPL
 
-This project implements a robust system for executing R code in isolated processes, providing complete separation between the main R session and code execution environments. It's designed for applications that need to run untrusted or potentially problematic R code without affecting the parent process.
+Process-based isolated R REPL implementation that provides secure, sandboxed R code execution using separate worker processes. Designed for running untrusted or potentially problematic R code without affecting the parent process.
 
-## Architecture
+## Development Commands
 
-The system consists of two main components:
-
-- **Controller Process**: Main R session that manages worker processes and handles communication
-- **Worker Process**: Isolated R session that executes code using the `evaluate` package
-
-Communication between processes uses the `nanonext` package with a REQ-REP (request-reply) pattern over TCP sockets.
-
-```
-Main R Process → nanonext REQ → Worker R Process (nanonext REP + evaluate)
-```
-
-## Key Features
-
-- **True Process Isolation**: Each execution environment runs in a separate R process
-- **Robust Communication**: Built on `nanonext` for reliable inter-process messaging
-- **Rich Output Capture**: Captures console output, warnings, errors, and plots via `evaluate`
-- **Resource Management**: Process lifecycle management with automatic cleanup
-- **Error Recovery**: Automatic worker restart on crashes with exponential backoff
-- **Configurable Timeouts**: Per-execution and session-level timeout controls
-- **Cross-Platform**: Works on Windows, macOS, and Linux
-
-## Dependencies
-
-### Required Packages
-- `nanonext` - Inter-process communication
-- `processx` - Process spawning and management
-- `evaluate` - Safe R code evaluation with output capture
-- `R6` - Object-oriented programming framework
-- `uuid` - Unique request ID generation
-
-### Optional Packages
-- `pryr` - Memory usage monitoring
-- `jsonlite` - Alternative serialization (if needed)
-
-## Installation
-
+### Testing
 ```r
-# Install required packages
-install.packages(c("nanonext", "processx", "evaluate", "R6", "uuid", "here"))
+# Load package for development
+devtools::load_all()
 
-# Optional packages
-install.packages(c("pryr", "jsonlite"))
+# Run all tests
+devtools::test()
+
+# Run specific test file
+devtools::test_active_file("tests/testthat/test-session.R")
+
+# Run R CMD check (comprehensive package validation)
+devtools::check()
+
+# Generate documentation from roxygen comments
+devtools::document()
 ```
 
-## API Reference
+### Docker Support
+```r
+# Check Docker availability
+is_docker_available()
 
-### Response Format
+# Clean up orphaned Docker containers
+cleanup_docker_containers()
 
-Execution results are returned as a list with the following structure:
+# Enable Docker mode for workers
+options(replr.use.docker = TRUE)
+```
 
+### Debug Logging
+```r
+# Enable debug logging
+enable_debug(TRUE)
+
+# Check debug status
+debug_status()
+
+# Disable debug logging
+enable_debug(FALSE)
+```
+
+## Architecture Overview
+
+The system consists of two main components communicating via `nanonext` sockets:
+
+1. **Controller Process** (`R/session.R`, `R/utils.R`, `R/communication.R`)
+   - Main R session managing worker lifecycle
+   - Two interfaces: Functional API (start_worker/send_command/stop_worker) and R6 class (RREPLSession)
+   - Handles socket communication and process monitoring
+   - Supports both native processes and Docker containers
+
+2. **Worker Process** (`inst/worker.R`)
+   - Isolated R session executing code using `evaluate` package
+   - Runs as separate process (native or Docker container)
+   - REP socket listener that processes requests in a loop
+   - Captures output, warnings, errors, and plots (as base64-encoded PNGs)
+
+```
+Main R Process (Controller) ←──nanonext REQ/REP──→ Worker R Process (inst/worker.R)
+  ├─ RREPLSession (R6)                                 ├─ evaluate package
+  ├─ start_worker()                                    ├─ Output capture
+  ├─ send_command()                                    └─ Plot rendering
+  └─ stop_worker()
+```
+
+## Key Components
+
+### Core Files
+- **R/session.R**: `RREPLSession` R6 class with automatic cleanup via finalizers
+- **R/utils.R**: Worker lifecycle management (start_worker, send_command, stop_worker), Docker integration, port allocation
+- **R/communication.R**: Socket management (create_req_socket, send_request, close_socket)
+- **R/debug.R**: Debug logging system using `cli` package
+- **R/ellmer-tools.R**: LLM agent tools for ellmer integration (session management, structured responses)
+- **inst/worker.R**: Worker script that runs in isolated process, handles code evaluation
+
+### Worker Process Details
+- Located at `inst/worker.R` (or system.file("worker.R", package = "replr") when installed)
+- Started with: `Rscript worker.R <port> [--debug] [--listen-all]`
+- Uses `evaluate::evaluate()` with `stop_on_error = 2` (continues after errors)
+- Plots captured via `recordedplot` objects, converted to base64 PNG data URLs
+- Non-blocking message loop allows graceful shutdown via "__SHUTDOWN__" message
+
+### Docker Integration
+- Dockerfile in `inst/Dockerfile` based on `rocker/r-ver:4.4`
+- Security features: non-root user, read-only filesystem, capability dropping, memory/CPU limits
+- Container naming: `replr-worker-<port>-<timestamp>` for cleanup tracking
+- Port forwarding between host and container
+- Configurable via options: `replr.worker.docker.image`, `replr.worker.docker.memory`, `replr.worker.docker.cpus`
+
+### ellmer Integration
+- Functions in `R/ellmer-tools.R` provide LLM agent tools for the ellmer package
+- Global session registry (`.replr_sessions`) tracks active sessions across tool calls
+- Auto-generated session IDs: `<color>-<animal>-<number>` (e.g., "red-eagle-742")
+- All tools return standardized responses: `list(success, message, data, error)`
+- Plot handling: Converts base64 plots to temporary PNG files for LLM consumption
+- Demo: `inst/examples/llm-agent-demo.R` shows complete LLM agent workflow
+
+## Response Format
+
+All code execution returns structured results:
 ```r
 list(
   id = "unique_request_id",
-  status = "success",  # "success", "error", or "timeout"
+  status = "success" | "error" | "timeout",
   result = list(
-    output = character(),      # Console output lines
+    output = character(),      # Console output
     warnings = character(),    # Warning messages
     errors = character(),      # Error messages
-    visible = logical(1),      # Whether result should be printed
-    plots = list()             # Plot objects (if any)
+    visible = logical(1),      # Whether result should print
+    plots = list()             # Base64-encoded PNG data URLs
   ),
-  execution_time = numeric(1)  # Execution time in seconds
+  execution_time = numeric(1)  # Seconds
 )
 ```
 
-## Implementation Details
+## Important Implementation Details
 
-### Process Management
+### Process Lifecycle
+1. **Start**: `start_worker()` spawns Rscript or Docker container, waits for readiness via ping test
+2. **Execute**: `send_command()` creates REQ socket, sends code, receives response, closes socket
+3. **Stop**: `stop_worker()` sends "__SHUTDOWN__" message, then SIGINT, then force kill if needed
+4. **Docker cleanup**: Container removed via `docker rm -f` in stop_worker()
 
-Worker processes are spawned using `processx::process$new()` with the following configuration:
+### Socket Communication
+- Each execution creates a new REQ socket connection (not persistent)
+- Socket URLs: `tcp://127.0.0.1:<port>` (native) or `tcp://*:<port>` (Docker with --listen-all)
+- Built-in serialization via nanonext handles R objects automatically
+- Timeout handling at socket level with `timeout` parameter
 
-```r
-process$new(
-  command = "Rscript",
-  args = c("worker.R", port),
-  cleanup = TRUE,
-  cleanup_tree = TRUE
-)
-```
+### Error Recovery
+- Workers survive errors during code execution and continue processing
+- Worker crashes detected via `process$is_alive()` check
+- Debug logs available via `get_worker_debug_logs()` for troubleshooting
+- R6 finalizers ensure cleanup even if session object is garbage collected
 
-### Communication Protocol
+### Plot Handling
+- Plots captured as `recordedplot` objects from `evaluate`
+- Rendered to temporary PNG files with `png()` device
+- Encoded to base64 with `base64enc::base64encode()`
+- Returned as data URLs: `"data:image/png;base64,<data>"`
+- In ellmer tools, converted to temporary file paths for LLM vision models
 
-Uses `nanonext` REQ-REP sockets with automatic R object serialization:
+## Testing
 
-- **Request**: List containing code, options, and metadata
-- **Response**: Structured result with output, errors, and execution info
-- **Timeout Handling**: Built-in nanonext timeout mechanisms
-- **Error Recovery**: Automatic socket reconnection on failures
+Test suite (42 test cases) in `tests/testthat/`:
+- **test-session.R**: RREPLSession R6 class functionality
+- **test-worker.R**: Worker process communication
+- **test-end-to-end.R**: Full execution workflows
+- **test-plots.R**: Plot capture with PNG comparison against reference images
+- **test-docker.R**: Docker container functionality (skipped if Docker unavailable)
+- **test-ellmer-tools.R**: LLM agent tool interfaces
+- **test-debug-integration.R**: Debug logging system
+- **helper.R**: Test utilities and shared fixtures
 
-### Security Considerations
+## Version Control Workflow
 
-- **Process Isolation**: Complete memory separation between processes
-- **Resource Limits**: Configurable execution timeouts
-- **Clean Shutdown**: Proper process cleanup on exit
-- **Error Containment**: Worker crashes don't affect controller
-
-**Note**: This provides process-level isolation but does not implement filesystem sandboxing or network restrictions. For high-security environments, consider running in containers.
-
-## Development Workflow
-
-**IMPORTANT: Version Control with Jujutsu**
-
-Before making any refactoring or substantial change requests, always run:
+**IMPORTANT**: Before substantial changes, always run:
 ```bash
 jj new
 ```
 
-This creates a new commit/revision in Jujutsu, isolating your changes and making it easy to:
-- Track what was changed during each refactoring session
-- Revert changes if something goes wrong
-- Compare before/after states
-- Maintain a clean history of development iterations
-
-### Example Workflow:
+This creates a new Jujutsu revision, allowing easy tracking and reverting of changes. After completing work:
 ```bash
-# Before starting any refactoring task
-jj new
-
-# Make your changes (implement features, refactor, etc.)
-# ... development work ...
-
-# When ready to commit
-jj describe -m "Implement debug log capture system"
-
-# For the next change request
-jj new
-# ... next development work ...
+jj describe -m "Descriptive commit message"
 ```
 
-### Phase 1: Basic Infrastructure
-1. Implement basic process spawning with `processx`
-2. Set up nanonext REQ-REP communication
-3. Create minimal worker script with `evaluate` integration
-4. Basic session management and cleanup
+## Configuration Options
 
-### Phase 2: Robust Communication
-1. Enhanced error handling and recovery
-2. Process health monitoring and restart logic
-3. Resource management and memory monitoring
-4. Comprehensive timeout handling
+Global options control package behavior:
+- `replr.debug` (logical): Enable debug logging
+- `replr.use.docker` (logical): Use Docker containers for workers
+- `replr.worker.docker.image` (string): Docker image name (default: "replr-worker:latest")
+- `replr.worker.docker.memory` (string): Memory limit (default: "512m")
+- `replr.worker.docker.cpus` (string): CPU limit (default: "1.0")

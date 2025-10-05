@@ -21,14 +21,16 @@ cat("Docker image name:", get_worker_docker_image(), "\n")
 
 # Test 1: Create a session with Docker auto-detection (ellmer style)
 cat("\n2. Creating session...\n")
-result1 <- replr_create_repl_session("docker_auto_session")
+result1 <- replr_create_repl_session()
 cat("Success:", result1$success, "\n")
 cat("Message:", result1$message, "\n")
+cat("Session ID:", result1$data$session_id, "\n")
 stopifnot(result1$success)
+session_id <- result1$data$session_id
 
 # Execute some test code
-cat("\n3. Executing test code in ...\n")
-code_result <- replr_execute_code("docker_auto_session", "2 + 2")
+cat("\n3. Executing test code in", session_id, "...\n")
+code_result <- replr_execute_code(session_id, "2 + 2")
 cat("  Code execution success:", code_result$success, "\n")
 if (code_result$success) {
   cat("  Output:", code_result$data$output, "\n")
@@ -36,6 +38,6 @@ if (code_result$success) {
 stopifnot(code_result$success)
 
 # Clean up
-replr_stop_session("docker_auto_session")
+replr_stop_session(session_id)
 
 cat("\nDocker integration example completed!\n")

@@ -26,8 +26,8 @@
 #'
 #' Creates a new isolated R REPL session that can be used by an LLM agent.
 #' Each session runs in a separate R process and maintains its own environment.
+#' Session names are automatically generated with a friendly format.
 #'
-#' @param session_id character, optional custom session ID. If NULL, a UUID will be generated.
 #' @param timeout numeric, timeout in seconds for session startup (default: 10)
 #' @return list with success status, session information, and any errors
 #' @export
@@ -39,45 +39,22 @@
 #'   session_id <- result$data$session_id
 #'   cat("Created session:", session_id)
 #' }
-#'
-#' # Create a session with custom ID
-#' result <- replr_create_repl_session("my_analysis_session")
 #' }
-replr_create_repl_session <- function(session_id = NULL, timeout = 10) {
+replr_create_repl_session <- function(timeout = 10) {
   tryCatch(
     {
-      # Generate session ID if not provided
-      if (is.null(session_id)) {
-        counter <- 1
-        while (is.null(session_id) || (exists(session_id, envir = .replr_sessions) && counter < 10)) {
-          session_id <- paste0(
-            sample(c("red", "blue", "green", "purple", "orange", "yellow", "pink", "cyan"), 1),
-            "-",
-            sample(c("eagle", "tiger", "dolphin", "falcon", "wolf", "bear", "fox", "owl"), 1),
-            "-",
-            sample(100:999, 1)
-          )
-          counter <- counter + 1
-        }
-      }
-      # Validate custom session_id format
-      if (!is.character(session_id) || length(session_id) != 1 || nchar(session_id) == 0) {
-        return(list(
-          success = FALSE,
-          message = "Session ID must be a non-empty character string",
-          data = NULL,
-          error = "INVALID_SESSION_ID"
-        ))
-      }
-
-      # Check if session ID already exists
-      if (exists(session_id, envir = .replr_sessions)) {
-        return(list(
-          success = FALSE,
-          message = paste("Session ID already exists:", session_id),
-          data = NULL,
-          error = "DUPLICATE_SESSION_ID"
-        ))
+      # Auto-generate session ID
+      session_id <- NULL
+      counter <- 1
+      while (is.null(session_id) || (exists(session_id, envir = .replr_sessions) && counter < 10)) {
+        session_id <- paste0(
+          sample(c("red", "blue", "green", "purple", "orange", "yellow", "pink", "cyan"), 1),
+          "-",
+          sample(c("eagle", "tiger", "dolphin", "falcon", "wolf", "bear", "fox", "owl"), 1),
+          "-",
+          sample(100:999, 1)
+        )
+        counter <- counter + 1
       }
 
       # Create new REPL session with Docker if available
@@ -585,10 +562,6 @@ replr_create_repl_session_tool <- function() {
       name = "replr_create_repl_session",
       description = "Create a new isolated R REPL session for executing R code",
       arguments = list(
-        session_id = ellmer::type_string(
-          "Optional custom session ID. If not provided, a UUID will be generated.",
-          required = FALSE
-        ),
         timeout = ellmer::type_number(
           "Timeout in seconds for session startup",
           required = FALSE
@@ -601,10 +574,6 @@ replr_create_repl_session_tool <- function() {
       name = "replr_create_repl_session",
       description = "Create a new isolated R REPL session for executing R code",
       parameters = list(
-        session_id = list(
-          type = "string",
-          description = "Optional custom session ID"
-        ),
         timeout = list(
           type = "number",
           description = "Timeout in seconds",
