@@ -41,7 +41,7 @@ session <- RREPLSession$new()
 
 # Execute R code in the isolated process
 result <- session$execute("2 + 2")
-print(result$result$output)  # [1] "4"
+print(result$result$output)  # [1] "[1] 4"
 
 # Check session status
 session$is_alive()  # TRUE
@@ -64,8 +64,8 @@ session <- RREPLSession$new()
 
 # Execute simple expressions
 result1 <- session$execute("1 + 1")
-print(result1$status)           # "success"
-print(result1$result$output)    # "2"
+print(result1$status)           # [1] "success"
+print(result1$result$output)    # [1] "[1] 2"
 print(result1$execution_time)   # execution time in seconds
 
 # Execute more complex code
@@ -91,17 +91,17 @@ session <- RREPLSession$new()
 
 # Handle syntax errors
 result1 <- session$execute("1 +")
-print(result1$status)         # "error"
-print(result1$result$errors)  # Error message
+print(result1$status)         # [1] "error"
+print(result1$result$errors)  # [1] "Worker error: <text>:2:0: unexpected end of input\n1: 1 +\n   ^"
 
 # Handle runtime errors
 result2 <- session$execute("stop('Custom error')")
-print(result2$status)         # "error"
-print(result2$result$errors)  # "Custom error"
+print(result2$status)         # [1] "error"
+print(result2$result$errors)  # [1] "Worker error: Custom error"
 
 # Worker continues after errors
 result3 <- session$execute("3 * 4")
-print(result3$status)         # "success" - worker survived!
+print(result3$status)         # [1] "success" - worker survived!
 
 session$stop()
 ```
@@ -119,9 +119,9 @@ result <- session$execute("
   42
 ")
 
-print(result$status)             # "success"
-print(result$result$warnings)    # "This is a warning"
-print(result$result$output)      # "42"
+print(result$status)             # [1] "success"
+print(result$result$warnings)    # [1] "This is a warning"
+print(result$result$output)      # [1] "[1] 42"
 
 session$stop()
 ```
@@ -139,7 +139,7 @@ session <- RREPLSession$new()
 # Execute code using the object
 result1 <- session$execute("x <- 10")
 result2 <- session$execute("x * 2")
-print(result2$result$output)  # "20"
+print(result2$result$output)  # [1] "[1] 20"
 
 # Access session information
 session$is_alive()    # TRUE
@@ -221,8 +221,8 @@ session2$execute("my_var <- 'Session 2'")
 result1 <- session1$execute("my_var")
 result2 <- session2$execute("my_var")
 
-print(result1$result$output)  # "Session 1"
-print(result2$result$output)  # "Session 2"
+print(result1$result$output)  # [1] "[1] \"Session 1\""
+print(result2$result$output)  # [1] "[1] \"Session 2\""
 
 # Clean up both sessions
 session1$stop()
@@ -241,7 +241,7 @@ result <- session$execute(
   "Sys.sleep(2); 'Completed'",
   timeout = 5  # 5 second timeout
 )
-print(result$result$output)  # "Completed"
+print(result$result$output)  # [1] "[1] \"Completed\""
 
 # This would timeout:
 # result <- session$execute("Sys.sleep(10)", timeout = 2)
