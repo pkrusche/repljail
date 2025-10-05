@@ -17,24 +17,24 @@ test_that("replr_create_repl_session works", {
   expect_true(cleanup_result$success)
 })
 
-test_that("replr_create_repl_session with custom ID works", {
-  custom_id <- "test_session_123"
+test_that("replr_create_repl_session generates unique IDs", {
+  # Test creating multiple sessions and verify they get unique IDs
+  result1 <- replr_create_repl_session(timeout = 15)
+  result2 <- replr_create_repl_session(timeout = 15)
 
-  # Test creating a session with custom ID
-  result <- replr_create_repl_session(custom_id, timeout = 15)
-
-  expect_true(result$success)
-  expect_equal(result$data$session_id, custom_id)
-  expect_true(result$data$is_alive)
-
-  # Test that duplicate ID is rejected
-  duplicate_result <- replr_create_repl_session(custom_id)
-  expect_false(duplicate_result$success)
-  expect_equal(duplicate_result$error, "DUPLICATE_SESSION_ID")
+  expect_true(result1$success)
+  expect_true(result2$success)
+  expect_true(is.character(result1$data$session_id))
+  expect_true(is.character(result2$data$session_id))
+  expect_true(result1$data$session_id != result2$data$session_id)
+  expect_true(result1$data$is_alive)
+  expect_true(result2$data$is_alive)
 
   # Clean up
-  cleanup_result <- replr_stop_session(custom_id)
-  expect_true(cleanup_result$success)
+  cleanup_result1 <- replr_stop_session(result1$data$session_id)
+  cleanup_result2 <- replr_stop_session(result2$data$session_id)
+  expect_true(cleanup_result1$success)
+  expect_true(cleanup_result2$success)
 })
 
 test_that("replr_execute_code works", {
@@ -122,8 +122,8 @@ test_that("replr_list_sessions works", {
   expect_equal(initial_result$data$count, 0)
 
   # Create a couple of sessions
-  session1_result <- replr_create_repl_session("session_1", timeout = 15)
-  session2_result <- replr_create_repl_session("session_2", timeout = 15)
+  session1_result <- replr_create_repl_session(timeout = 15)
+  session2_result <- replr_create_repl_session(timeout = 15)
   expect_true(session1_result$success)
   expect_true(session2_result$success)
 
@@ -137,13 +137,13 @@ test_that("replr_list_sessions works", {
 
       # Check that both sessions are listed
       session_ids <- sapply(list_result$data$sessions, function(s) s$session_id)
-      expect_true("session_1" %in% session_ids)
-      expect_true("session_2" %in% session_ids)
+      expect_true(session1_result$data$session_id %in% session_ids)
+      expect_true(session2_result$data$session_id %in% session_ids)
     },
     finally = {
       # Clean up
-      replr_stop_session("session_1")
-      replr_stop_session("session_2")
+      replr_stop_session(session1_result$data$session_id)
+      replr_stop_session(session2_result$data$session_id)
     }
   )
 })
@@ -173,8 +173,8 @@ test_that("replr_stop_session handles non-existent session", {
 
 test_that("replr_stop_all_sessions works", {
   # Create multiple sessions
-  session1_result <- replr_create_repl_session("session_a", timeout = 15)
-  session2_result <- replr_create_repl_session("session_b", timeout = 15)
+  session1_result <- replr_create_repl_session(timeout = 15)
+  session2_result <- replr_create_repl_session(timeout = 15)
   expect_true(session1_result$success)
   expect_true(session2_result$success)
 
@@ -203,22 +203,22 @@ test_that("replr_cleanup_sessions works", {
 
 test_that("Multiple sessions maintain isolation", {
   # Create two sessions
-  session1_result <- replr_create_repl_session("isolation_test_1", timeout = 15)
-  session2_result <- replr_create_repl_session("isolation_test_2", timeout = 15)
+  session1_result <- replr_create_repl_session(timeout = 15)
+  session2_result <- replr_create_repl_session(timeout = 15)
   expect_true(session1_result$success)
   expect_true(session2_result$success)
 
   tryCatch(
     {
       # Set different variables in each session
-      result1 <- replr_execute_code("isolation_test_1", "my_var <- 'Session 1'")
-      result2 <- replr_execute_code("isolation_test_2", "my_var <- 'Session 2'")
+      result1 <- replr_execute_code(session1_result$data$session_id, "my_var <- 'Session 1'")
+      result2 <- replr_execute_code(session2_result$data$session_id, "my_var <- 'Session 2'")
       expect_true(result1$success)
       expect_true(result2$success)
 
       # Verify isolation - each session should only see its own variable
-      check1 <- replr_execute_code("isolation_test_1", "my_var")
-      check2 <- replr_execute_code("isolation_test_2", "my_var")
+      check1 <- replr_execute_code(session1_result$data$session_id, "my_var")
+      check2 <- replr_execute_code(session2_result$data$session_id, "my_var")
 
       expect_true(check1$success)
       expect_true(check2$success)
@@ -227,8 +227,8 @@ test_that("Multiple sessions maintain isolation", {
     },
     finally = {
       # Clean up
-      replr_stop_session("isolation_test_1")
-      replr_stop_session("isolation_test_2")
+      replr_stop_session(session1_result$data$session_id)
+      replr_stop_session(session2_result$data$session_id)
     }
   )
 })

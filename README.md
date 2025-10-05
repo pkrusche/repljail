@@ -444,11 +444,13 @@ list(
 
 `replr` includes specialized tools designed for the [ellmer](https://ellmer.tidyverse.org/) package, allowing LLM agents to easily create and manage isolated R REPL sessions. These tools provide a standardized interface with structured responses optimized for LLM consumption.
 
-### Complete LLM Agent Demo
+### Examples
 
-A comprehensive demo showing how an LLM agent can perform data analysis using replr tools is available at [`inst/examples/llm-agent-demo.R`](inst/examples/llm-agent-demo.R).
+The package includes several demonstration scripts in `inst/examples/`:
 
-To run the full LLM agent demo:
+#### LLM Agent Demo (`llm-agent-demo.R`)
+
+Complete demonstration of an LLM agent performing data analysis using replr tools.
 
 ```r
 # Install requirements
@@ -461,12 +463,39 @@ Sys.setenv(OPENAI_API_KEY = "your-api-key-here")
 source(system.file("examples", "llm-agent-demo.R", package = "replr"))
 ```
 
-The demo will:
-1. Initialize an OpenAI chat session with replr tools
-2. Register all replr tools with the LLM agent
-3. Send a data analysis task to the agent
-4. Watch the agent automatically create sessions, execute code, and clean up
-5. Display the complete analysis results and tool usage
+The demo shows:
+1. Initializing an OpenAI chat session with replr tools
+2. Registering all replr tools with the LLM agent
+3. Sending a data analysis task to the agent
+4. Watching the agent automatically create sessions, execute code, and clean up
+5. Displaying the complete analysis results and tool usage
+
+#### Docker Integration Demo (`docker-integration-demo.R`)
+
+Shows how to use replr with Docker containers for enhanced isolation:
+
+```r
+source(system.file("examples", "docker-integration-demo.R", package = "replr"))
+```
+
+Demonstrates:
+- Checking Docker availability
+- Creating sessions with automatic Docker detection
+- Executing code in Docker containers
+- Session cleanup
+
+#### Agentic Coding Evaluation (`agentic-coding.R`)
+
+Compares LLM performance with and without replr tool access:
+
+```r
+source(system.file("examples", "agentic-coding.R", package = "replr"))
+```
+
+Features:
+- Side-by-side comparison of vanilla vs. tool-augmented chat
+- Automated evaluation using a judge LLM
+- Demonstrates benefit of code execution tools for complex computational tasks
 
 ### Response Format
 

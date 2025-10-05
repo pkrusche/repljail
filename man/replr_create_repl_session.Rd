@@ -4,11 +4,9 @@
 \alias{replr_create_repl_session}
 \title{Create a New REPL Session for replr}
 \usage{
-replr_create_repl_session(session_id = NULL, timeout = 10)
+replr_create_repl_session(timeout = 10)
 }
 \arguments{
-\item{session_id}{character, optional custom session ID. If NULL, a UUID will be generated.}
-
 \item{timeout}{numeric, timeout in seconds for session startup (default: 10)}
 }
 \value{
@@ -17,6 +15,7 @@ list with success status, session information, and any errors
 \description{
 Creates a new isolated R REPL session that can be used by an LLM agent.
 Each session runs in a separate R process and maintains its own environment.
+Session names are automatically generated with a friendly format.
 }
 \examples{
 \dontrun{
@@ -26,8 +25,5 @@ if (result$success) {
   session_id <- result$data$session_id
   cat("Created session:", session_id)
 }
-
-# Create a session with custom ID
-result <- replr_create_repl_session("my_analysis_session")
 }
 }
