@@ -230,13 +230,21 @@ test_that("Network isolation provides inter-container isolation", {
   # Verify session is alive
   expect_true(session$is_alive())
 
-  # Verify the session can still execute code (host communication works)
+  # Verify the session can still execute code (host communication works via gateway)
   result <- session$execute("cat(2 + 2)", timeout = 5)
   expect_equal(result$status, "success")
   expect_equal(result$result$output, "4")
 
-  # Note: The current network isolation implementation disables inter-container
-  # communication but does NOT block internet access from within the container.
-  # This is a Docker networking limitation - true internet blocking would require
-  # --internal flag which also blocks host-to-container published port communication.
+  # Verify that internet access is blocked (--internal network with gateway sidecar)
+  result_internet <- session$execute(
+    '
+    tryCatch({
+      readLines(url("http://example.com"), n=1, warn=FALSE)
+      "ACCESSIBLE"
+    }, error = function(e) "BLOCKED")
+  ',
+    timeout = 15
+  )
+  expect_equal(result_internet$status, "success")
+  expect_equal(result_internet$result$output, "[1] \"BLOCKED\"\n")
 })

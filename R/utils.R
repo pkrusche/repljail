@@ -198,9 +198,10 @@ start_worker <- function(port = NULL, timeout = 10) {
     # Try to connect to worker
     tryCatch(
       {
-        sock <- create_req_socket(port, timeout = 1)
+        # Use longer timeout for Docker gateway scenarios
+        sock <- create_req_socket(port, timeout = 3)
         # Simple ping test
-        result <- send_request(sock, "1", id = "ping")
+        result <- send_request(sock, "1", id = "ping", timeout = 3)
         if (!is.null(result)) {
           close_socket(sock)
           worker_ready <- TRUE
@@ -210,10 +211,11 @@ start_worker <- function(port = NULL, timeout = 10) {
       },
       error = function(e) {
         # Worker not ready yet, continue waiting
+        debug_log(paste0("Ping attempt failed: ", e$message))
       }
     )
 
-    Sys.sleep(0.5) # Longer delay between attempts
+    Sys.sleep(1) # Wait between attempts
   }
 
   if (!worker_ready) {
@@ -228,15 +230,22 @@ start_worker <- function(port = NULL, timeout = 10) {
 
     # Special cleanup for Docker containers
     container_name <- attr(proc, "container_name")
+    gateway_name <- attr(proc, "gateway_name")
     network_name <- attr(proc, "network_name")
     if (use_docker && !is.null(container_name)) {
       debug_log("Cleaning up failed Docker container: ", container_name)
       tryCatch(
         {
-          # Force remove the container if it exists
+          # Build list of containers to remove
+          containers_to_remove <- container_name
+          if (!is.null(gateway_name)) {
+            containers_to_remove <- c(containers_to_remove, gateway_name)
+          }
+
+          # Force remove the container(s) if they exist
           system2(
             "docker",
-            c("rm", "-f", container_name),
+            c("rm", "-f", containers_to_remove),
             stdout = FALSE,
             stderr = FALSE
           )
@@ -304,6 +313,11 @@ start_worker <- function(port = NULL, timeout = 10) {
     network_name <- attr(proc, "network_name")
     if (!is.null(network_name)) {
       worker_info$network_name <- network_name
+    }
+    # Also store gateway name if present
+    gateway_name <- attr(proc, "gateway_name")
+    if (!is.null(gateway_name)) {
+      worker_info$gateway_name <- gateway_name
     }
   }
 
@@ -426,11 +440,18 @@ stop_worker <- function(worker_info, timeout = 5) {
     Sys.sleep(0.1)
   }
 
-  # Clean up Docker container if this was a Docker worker
+  # Clean up Docker containers if this was a Docker worker
   container_name <- attr(proc, "container_name")
   if (is.null(container_name) && !is.null(worker_info$container_name)) {
     # Fallback to container name from worker_info
     container_name <- worker_info$container_name
+  }
+
+  # Get gateway name for cleanup
+  gateway_name <- attr(proc, "gateway_name")
+  if (is.null(gateway_name) && !is.null(worker_info$gateway_name)) {
+    # Fallback to gateway name from worker_info
+    gateway_name <- worker_info$gateway_name
   }
 
   # Get network name for cleanup
@@ -441,19 +462,26 @@ stop_worker <- function(worker_info, timeout = 5) {
   }
 
   if (!is.null(container_name)) {
-    debug_log("Cleaning up Docker container: ", container_name)
+    debug_log("Cleaning up Docker containers: ", container_name)
     tryCatch(
       {
-        # Force remove the container
+        # Build list of containers to remove
+        containers_to_remove <- container_name
+        if (!is.null(gateway_name)) {
+          containers_to_remove <- c(containers_to_remove, gateway_name)
+          debug_log("Also cleaning up gateway: ", gateway_name)
+        }
+
+        # Force remove the container(s)
         system2(
           "docker",
-          c("rm", "-f", container_name),
+          c("rm", "-f", containers_to_remove),
           stdout = FALSE,
           stderr = FALSE
         )
       },
       error = function(e) {
-        debug_warn("Failed to clean up Docker container: ", e$message)
+        debug_warn("Failed to clean up Docker containers: ", e$message)
       }
     )
 
@@ -617,16 +645,18 @@ start_docker_worker <- function(port, worker_script, worker_args, timeout) {
     paste0(worker_script, ":/app/worker.R:ro") # Mount worker script
   )
 
-  # Add network configuration and port forwarding
-  docker_args <- c(
-    docker_args,
-    "-p",
-    sprintf("%i:%i", port, port) # Expose port for communication
-  )
-
+  # Add network configuration
   if (use_network_isolation && !is.null(network_name)) {
-    # Use isolated network (no default gateway = no internet)
+    # Use isolated internal network (no internet access)
+    # Worker will not expose ports directly; gateway sidecar handles host communication
     docker_args <- c(docker_args, "--network", network_name)
+  } else {
+    # No network isolation: expose port directly for communication
+    docker_args <- c(
+      docker_args,
+      "-p",
+      sprintf("%i:%i", port, port)
+    )
   }
 
   debug_log("Using Docker options: {docker_args}")
@@ -637,9 +667,11 @@ start_docker_worker <- function(port, worker_script, worker_args, timeout) {
     image_name,
     "Rscript",
     "/app/worker.R",
-    as.character(port),
-    "--listen-all" # Listen on all interfaces inside Docker so port forwarding works
+    as.character(port)
   )
+
+  # Add --listen-all for Docker mode (needed for gateway to reach worker)
+  docker_args <- c(docker_args, "--listen-all")
 
   # Add debug flag if present in worker_args
   if ("--debug" %in% worker_args) {
@@ -658,11 +690,192 @@ start_docker_worker <- function(port, worker_script, worker_args, timeout) {
     cleanup_tree = TRUE
   )
 
-  # Return process with container name stored separately
-  # We can't add fields to the processx object directly due to locked environment
+  # Store container metadata
   attr(proc, "container_name") <- container_name
+  gateway_name <- NULL
+
+  # If network isolation is enabled, start gateway sidecar for host communication
   if (use_network_isolation && !is.null(network_name)) {
     attr(proc, "network_name") <- network_name
+
+    # Start gateway container with socat for port forwarding
+    gateway_name <- paste0(
+      "replr-gateway-",
+      port,
+      "-",
+      format(Sys.time(), "%Y%m%d-%H%M%S")
+    )
+
+    debug_log(paste0("Starting gateway container: ", gateway_name))
+    debug_log(paste0("Worker container name: ", container_name))
+    debug_log(paste0("Port: ", port))
+
+    # Build gateway command
+    socat_command <- sprintf(
+      "TCP-LISTEN:8080,fork,reuseaddr TCP:%s:%i",
+      container_name,
+      port
+    )
+    debug_log(paste0("Socat command: ", socat_command))
+
+    gateway_args <- c(
+      "run",
+      "-d", # Detached mode
+      "--name",
+      gateway_name,
+      "--rm", # Auto-remove when stopped
+      "-p",
+      sprintf("127.0.0.1:%i:8080", port), # Map host port to gateway
+      "alpine/socat",
+      socat_command
+    )
+
+    debug_log(paste0("Gateway args length: ", length(gateway_args)))
+
+    # Gateway forwards host:<port> -> worker:<port>
+    gateway_result <- system2(
+      "docker",
+      gateway_args,
+      stdout = TRUE,
+      stderr = TRUE
+    )
+
+    # Debug gateway result details
+    debug_log(paste0("Gateway result length: ", length(gateway_result)))
+    if (length(gateway_result) > 0) {
+      debug_log(paste0("Gateway result[1]: '", gateway_result[1], "'"))
+      debug_log(paste0("Gateway result[1] nchar: ", nchar(gateway_result[1])))
+    }
+
+    # Check for errors
+    gateway_status <- attr(gateway_result, "status")
+    debug_log(paste0(
+      "Gateway status: ",
+      ifelse(is.null(gateway_status), "NULL", gateway_status)
+    ))
+
+    if (!is.null(gateway_status) && gateway_status != 0) {
+      # Gateway failed to start, cleanup worker
+      debug_error(paste0(
+        "Gateway container failed to start. Status: ",
+        gateway_status
+      ))
+      debug_error(paste0(
+        "Gateway stdout: ",
+        paste(gateway_result, collapse = "\n")
+      ))
+      system2(
+        "docker",
+        c("rm", "-f", container_name),
+        stdout = FALSE,
+        stderr = FALSE
+      )
+      stop("Failed to start gateway container for network isolation")
+    }
+
+    if (
+      is.null(gateway_result) ||
+        length(gateway_result) == 0 ||
+        nchar(gateway_result[1]) < 10
+    ) {
+      debug_error("Gateway container did not return valid container ID")
+      debug_error(paste0(
+        "Detailed: length=",
+        length(gateway_result),
+        " content=",
+        if (length(gateway_result) > 0) gateway_result[1] else "EMPTY"
+      ))
+      system2(
+        "docker",
+        c("rm", "-f", container_name),
+        stdout = FALSE,
+        stderr = FALSE
+      )
+      stop("Failed to get gateway container ID")
+    }
+
+    debug_log(paste0(
+      "Gateway container ID: ",
+      substr(gateway_result[1], 1, 12)
+    ))
+
+    # Connect gateway to internal network so it can reach worker
+    debug_log(paste0("Connecting gateway to internal network: ", network_name))
+    connect_result <- system2(
+      "docker",
+      c("network", "connect", network_name, gateway_name),
+      stdout = FALSE,
+      stderr = FALSE
+    )
+
+    if (
+      !is.null(attr(connect_result, "status")) &&
+        attr(connect_result, "status") != 0
+    ) {
+      # Failed to connect gateway, cleanup both containers
+      debug_error("Failed to connect gateway to internal network")
+      system2(
+        "docker",
+        c("rm", "-f", container_name, gateway_name),
+        stdout = FALSE,
+        stderr = FALSE
+      )
+      stop("Failed to connect gateway to internal network")
+    }
+
+    debug_success(paste0(
+      "Gateway container started and connected: ",
+      gateway_name
+    ))
+    attr(proc, "gateway_name") <- gateway_name
+
+    # Verify gateway is still running after network connect
+    gateway_check <- system2(
+      "docker",
+      c("ps", "-q", "--filter", paste0("name=", gateway_name)),
+      stdout = TRUE,
+      stderr = FALSE
+    )
+
+    if (length(gateway_check) == 0 || nchar(gateway_check[1]) == 0) {
+      # Gateway died - check logs
+      gateway_logs <- system2(
+        "docker",
+        c("logs", gateway_name),
+        stdout = TRUE,
+        stderr = TRUE
+      )
+      debug_error(paste0(
+        "Gateway container died after starting. Logs: ",
+        paste(gateway_logs, collapse = "\n")
+      ))
+      system2(
+        "docker",
+        c("rm", "-f", container_name, gateway_name),
+        stdout = FALSE,
+        stderr = FALSE
+      )
+      stop("Gateway container exited unexpectedly")
+    }
+
+    debug_log("Gateway is running, waiting for it to initialize...")
+    # Give gateway significant time to start listening before returning
+    # socat needs time to initialize, and NNG protocol handshake needs to establish
+    # We need to wait for: container start + socat init + NNG dial to succeed
+    Sys.sleep(3)
+
+    # Check gateway logs for any errors
+    gateway_logs <- system2(
+      "docker",
+      c("logs", gateway_name),
+      stdout = TRUE,
+      stderr = TRUE
+    )
+    if (length(gateway_logs) > 0) {
+      debug_log(paste0("Gateway logs: ", paste(gateway_logs, collapse = " | ")))
+    }
+
+    debug_log("Gateway initialization complete")
   }
 
   return(proc) # nolint
@@ -802,7 +1015,7 @@ cleanup_docker_containers <- function() {
       debug_log("Cleaning up orphaned replr Docker containers")
 
       # Find all replr worker containers
-      containers <- system2(
+      worker_containers <- system2(
         "docker",
         c(
           "ps",
@@ -816,46 +1029,55 @@ cleanup_docker_containers <- function() {
         stderr = FALSE
       )
 
-      if (
-        length(containers) > 0 &&
-          !is.null(attr(containers, "status")) &&
-          attr(containers, "status") == 0
-      ) {
-        # No containers found or command failed
+      # Find all replr gateway containers
+      gateway_containers <- system2(
+        "docker",
+        c(
+          "ps",
+          "-a",
+          "--filter",
+          "name=replr-gateway-",
+          "--format",
+          "{{.Names}}"
+        ),
+        stdout = TRUE,
+        stderr = FALSE
+      )
+
+      # Combine all containers
+      all_containers <- c(worker_containers, gateway_containers)
+      all_containers <- all_containers[nchar(all_containers) > 0]
+
+      if (length(all_containers) == 0) {
         debug_log("No orphaned replr containers found")
         return(TRUE)
       }
 
-      if (length(containers) > 0) {
-        debug_log(
-          "Found ",
-          length(containers),
-          " orphaned containers: ",
-          paste(containers, collapse = ", ")
-        )
+      debug_log(
+        "Found ",
+        length(all_containers),
+        " orphaned containers: ",
+        paste(all_containers, collapse = ", ")
+      )
 
-        # Remove all found containers
-        result <- system2(
-          "docker",
-          c("rm", "-f", containers),
-          stdout = FALSE,
-          stderr = FALSE
-        )
+      # Remove all found containers
+      result <- system2(
+        "docker",
+        c("rm", "-f", all_containers),
+        stdout = FALSE,
+        stderr = FALSE
+      )
 
-        if (is.null(attr(result, "status")) || attr(result, "status") == 0) {
-          debug_success(
-            "Cleaned up ",
-            length(containers),
-            " orphaned containers"
-          )
-          return(TRUE)
-        } else {
-          debug_warn("Failed to remove some containers")
-          return(FALSE)
-        }
-      } else {
-        debug_log("No orphaned replr containers found")
+      if (is.null(attr(result, "status")) || attr(result, "status") == 0) {
+        debug_success(
+          "Cleaned up ",
+          length(all_containers),
+          " orphaned containers"
+        )
         return(TRUE)
+      } else {
+        debug_warn("Failed to remove some containers")
+        return(FALSE)
       }
     },
     error = function(e) {
@@ -883,11 +1105,10 @@ create_docker_network <- function(network_name) {
     {
       debug_log("Creating isolated Docker network: ", network_name)
 
-      # Create custom bridge network for isolation
-      # Note: We disable IP masquerading and inter-container communication
-      # This provides isolation between containers but does NOT block internet access
-      # (Docker still creates a default gateway even without --gateway flag)
-      # For true internet blocking, use firewall rules or --internal (which blocks host too)
+      # Create internal bridge network for complete isolation
+      # The --internal flag blocks all external network access (no internet)
+      # A gateway sidecar container bridges host-to-worker communication
+      # Note: We do NOT use enable_icc=false because the gateway MUST communicate with the worker
       result <- system2(
         "docker",
         c(
@@ -895,12 +1116,9 @@ create_docker_network <- function(network_name) {
           "create",
           "--driver",
           "bridge",
+          "--internal", # Block all external access (no internet)
           "--subnet",
-          "172.28.0.0/16", # Custom subnet
-          "--opt",
-          "com.docker.network.bridge.enable_icc=false", # Disable inter-container communication
-          "--opt",
-          "com.docker.network.bridge.enable_ip_masquerade=false", # Disable NAT (doesn't block internet)
+          "172.28.0.0/16", # Custom subnet to avoid conflicts
           network_name
         ),
         stdout = TRUE,

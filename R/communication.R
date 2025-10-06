@@ -16,10 +16,16 @@ create_req_socket <- function(port, timeout = 5) {
   tryCatch(
     {
       debug_log("Creating REQ socket for {socket_url}")
-      sock <- nanonext::socket("req", dial = socket_url, autostart = NA)
+      # Create socket with async dial (autostart = TRUE)
+      # This is essential for Docker gateway scenarios where initial connection may be slow
+      # The socket will continue attempting to connect in the background
+      sock <- nanonext::socket("req", dial = socket_url, autostart = TRUE)
 
       # Set timeout for receive operations (timeout in milliseconds)
       nanonext::opt(sock, "recv-timeout") <- as.integer(timeout * 1000)
+
+      # Give the async dial time to establish (critical for gateway forwarding)
+      Sys.sleep(1)
 
       debug_success("REQ socket created successfully for port {port}")
       sock
