@@ -7,7 +7,8 @@
       "Bash(docker run:*)",
       "Bash(curl:*)",
       "Bash(docker stop:*)",
-      "Bash(docker network rm:*)"
+      "Bash(docker network rm:*)",
+      "Bash(Rscript:*)"
     ],
     "deny": [],
     "ask": []

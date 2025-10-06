@@ -101,12 +101,19 @@ Main R Process (Controller) ←──nanonext REQ/REP──→ Worker R Process 
 - Dockerfile in `inst/Dockerfile` based on `rocker/r-ver:4.4`
 - Security features: non-root user, read-only filesystem, capability dropping, memory/CPU limits
 - Container naming: `replr-worker-<port>-<timestamp>` for cleanup tracking
-- Port forwarding between host and container
 - Configurable via options: `replr.worker.docker.image`, `replr.worker.docker.memory`, `replr.worker.docker.cpus`
-- Network isolation: Optional isolated Docker networks with `replr.worker.docker.network.isolation`
-  - Creates internal bridge network per worker (no external access)
+- **Network Isolation (Sidecar Pattern)**: Optional air-gapped execution with `replr.worker.docker.network.isolation`
+  - Creates `--internal` bridge network (blocks all outbound traffic including internet)
+  - Worker container: Connected to isolated network only (zero internet access)
+  - Gateway sidecar: `alpine/socat` container that bridges host ↔ worker communication
+  - Architecture:
+    ```
+    Host (127.0.0.1:<port>) ← Docker publish → Gateway Container ← Internal Network → Worker Container (air-gapped)
+    ```
   - Network naming: `replr-network-<port>-<timestamp>`
-  - Automatic cleanup when worker stops
+  - Gateway naming: `replr-gateway-<port>-<timestamp>`
+  - Automatic cleanup of worker, gateway, and network when session stops
+  - Security: Worker has ZERO external network access while host communication works via gateway proxy
 
 ### ellmer Integration
 - Functions in `R/ellmer-tools.R` provide LLM agent tools for the ellmer package
