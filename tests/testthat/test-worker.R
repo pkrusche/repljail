@@ -16,7 +16,8 @@ test_that("Worker script validates command line arguments", {
     "Rscript",
     c(worker_path),
     stdout = TRUE,
-    stderr = TRUE
+    stderr = TRUE,
+    timeout = 10
   ))
   expect_true(attr(result1, "status") == 1)
 
@@ -25,16 +26,18 @@ test_that("Worker script validates command line arguments", {
     "Rscript",
     c(worker_path, "invalid"),
     stdout = TRUE,
-    stderr = TRUE
+    stderr = TRUE,
+    timeout = 10
   ))
   expect_true(attr(result2, "status") == 1)
 
   # Test with too many arguments
   result3 <- suppressWarnings(system2(
     "Rscript",
-    c(worker_path, "8888", "--debug", "extra"),
+    c(worker_path, "8888", "--debug", "extra", "extra", "extra"),
     stdout = TRUE,
-    stderr = TRUE
+    stderr = TRUE,
+    timeout = 10
   ))
   expect_true(attr(result3, "status") == 1)
 })

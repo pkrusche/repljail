@@ -2,32 +2,38 @@
 
 **Isolated REPL functionality for R**
 
-`replr` provides a robust system for executing R code in isolated worker processes, offering complete separation between the main R session and code execution environments. Perfect for applications that need to run untrusted or potentially problematic R code without affecting the parent process.
-
-## ✨ Key Features
-
-- **🔒 Process Isolation**: Complete memory separation using separate R worker processes
-- **🐳 Docker Support**: Optional Docker container execution with security hardening
-- **⚡ Robust Communication**: Built on `nanonext` for reliable inter-process messaging
-- **📊 Rich Output Capture**: Captures console output, warnings, errors, and plots via `evaluate`
-- **🔄 Error Recovery**: Workers survive errors and continue processing requests
-- **⏱️ Configurable Timeouts**: Per-execution and session-level timeout controls
-- **🐛 Debug Logging**: Beautiful CLI-styled debug output with configurable verbosity
-- **🌐 Cross-Platform**: Works on Windows, macOS, and Linux
-- **🎯 Multiple Workers**: Run concurrent isolated sessions simultaneously
-- **🔗 R6 Class Interface**: Object-oriented interface with automatic cleanup
+`replr` provides a robust system for executing R code in isolated worker processes, offering complete separation between the main R session and code execution environments. Useful for applications that need to run untrusted or potentially problematic R code without affecting the parent process.
 
 ## Installation
 
-You can install the development version of replr like so:
+You can install the development version of replr like this:
 
 ``` r
+install.packages("pak")
+pak::pak("pkrusche/replr")
+# Or using devtools:
 # install.packages("devtools")
-devtools::install_github("pkrusche/replr")
-
-# Required dependencies will be installed automatically:
-# nanonext, processx, evaluate, R6, uuid, cli
+# devtools::install_github("pkrusche/replr")
 ```
+
+## How It Works
+
+```
+┌─────────────────┐    nanonext     ┌─────────────────┐
+│   Main R        │   REQ ──────>   │   Worker R      │
+│   Process       │                 │   Process       │
+│                 │   <────── REP   │                 │
+│ • RREPLSession  │                 │ • evaluate pkg  │
+│ • execute()     │     TCP         │ • plot capture  │
+│ • stop()        │   Socket        │ • error handling│
+└─────────────────┘                 └─────────────────┘
+```
+
+1. **Isolation**: Each worker runs as a separate R process with its own memory space
+2. **Communication**: Uses `nanonext` REQ-REP pattern over TCP sockets for reliability
+3. **Evaluation**: Workers use the `evaluate` package for safe code execution with rich output capture
+4. **Error Recovery**: Workers survive errors and continue processing new requests
+5. **Resource Management**: Automatic cleanup with proper process lifecycle management
 
 ## Quick Start
 
@@ -52,36 +58,6 @@ session$pid         # Process ID
 session$stop()
 ```
 
-## Detailed Usage Examples
-
-### Basic Code Execution
-
-```r
-library(replr)
-
-# Create a session
-session <- RREPLSession$new()
-
-# Execute simple expressions
-result1 <- session$execute("1 + 1")
-print(result1$status)           # [1] "success"
-print(result1$result$output)    # [1] "[1] 2"
-print(result1$execution_time)   # execution time in seconds
-
-# Execute more complex code
-result2 <- session$execute("
-  data <- data.frame(
-    x = 1:5,
-    y = letters[1:5]
-  )
-  summary(data)
-")
-print(result2$result$output)
-
-# Clean up
-session$stop()
-```
-
 ### Error Handling
 
 ```r
@@ -102,57 +78,18 @@ print(result2$result$errors)  # [1] "Worker error: Custom error"
 # Worker continues after errors
 result3 <- session$execute("3 * 4")
 print(result3$status)         # [1] "success" - worker survived!
-
-session$stop()
-```
-
-### Working with Warnings
-
-```r
-library(replr)
-
-session <- RREPLSession$new()
-
+#
 # Code that generates warnings
-result <- session$execute("
+result4 <- session$execute("
   warning('This is a warning')
   42
 ")
 
-print(result$status)             # [1] "success"
-print(result$result$warnings)    # [1] "This is a warning"
-print(result$result$output)      # [1] "[1] 42"
+print(result4$status)             # [1] "success"
+print(result4$result$warnings)    # [1] "This is a warning"
+print(result4$result$output)      # [1] "[1] 42"
 
-session$stop()
-```
 
-### R6 Session Management
-
-The `RREPLSession` R6 class provides a convenient object-oriented interface with automatic resource management:
-
-```r
-library(replr)
-
-# Create a new session (automatically starts worker)
-session <- RREPLSession$new()
-
-# Execute code using the object
-result1 <- session$execute("x <- 10")
-result2 <- session$execute("x * 2")
-print(result2$result$output)  # [1] "[1] 20"
-
-# Access session information
-session$is_alive()    # TRUE
-session$port          # Port number (e.g., 5555)
-session$pid           # Process ID
-session$started_at    # Start timestamp
-
-# Get detailed session info
-info <- session$get_info()
-print(info)
-
-# Session automatically cleans up when object is garbage collected
-# Or explicitly stop it:
 session$stop()
 ```
 
@@ -180,24 +117,6 @@ enable_debug(FALSE)
 
 # Check current debug status
 debug_status()
-```
-
-### Debug Log Capture
-
-Worker processes capture their debug logs internally, which can be retrieved by the parent process:
-
-```r
-library(replr)
-enable_debug(TRUE)
-
-# R6 API
-session <- RREPLSession$new()
-session$execute("plot(1:10)")
-
-# Get logs as character vector for processing
-logs <- session$get_debug_logs()
-
-session$stop()
 ```
 
 ### Multiple Concurrent Sessions
@@ -249,7 +168,7 @@ print(result$result$output)  # [1] "[1] \"Completed\""
 session$stop()
 ```
 
-## 🐳 Docker Container Support
+## Docker Container Support
 
 `replr` supports running worker processes inside Docker containers for enhanced security and isolation. When Docker is available, it automatically builds a minimal container image and runs workers with stricter security constraints.
 
@@ -313,6 +232,16 @@ Docker containers provide an additional layer of security beyond process isolati
 
 You can customize Docker worker behavior using global options:
 
+| Option | Default | Description |
+|--------|---------|-------------|
+| `replr.use.docker` | `FALSE` | Enable/disable Docker mode |
+| `replr.worker.docker.image` | `"replr-worker:latest"` | Docker image name for worker containers |
+| `replr.worker.docker.memory` | `"512m"` | Memory limit for Docker containers (e.g., "1g", "256m") |
+| `replr.worker.docker.cpus` | `"1.0"` | CPU limit for Docker containers (e.g., "2.0", "0.5") |
+| `replr.worker.docker.network.isolation` | `FALSE` | Enable isolated Docker networks with no external access |
+
+These options apply to all Docker workers started after they are set. Changes take effect immediately for new worker processes.
+
 ```r
 # Configure Docker image name (default: "replr-worker:latest")
 options(replr.worker.docker.image = "my-custom-r-image:v1.0")
@@ -336,33 +265,16 @@ options(
   replr.worker.docker.cpus = "4.0"
 )
 
+# Enable network isolation
+options(
+  replr.worker.docker.network.isolation = TRUE
+)
+
 # Start session with custom settings
 session <- RREPLSession$new()
 ```
 
 ### Network Isolation
-
-For enhanced security, you can enable network isolation which creates an isolated Docker network for each worker container with no external network access:
-
-```r
-# Enable Docker with network isolation
-options(
-  replr.use.docker = TRUE,
-  replr.worker.docker.network.isolation = TRUE
-)
-
-# Create session - worker will run in isolated network
-session <- RREPLSession$new(timeout = 15)
-
-# The worker can still communicate via the exposed port
-result <- session$execute("2 + 2")
-
-# Network is automatically cleaned up when session stops
-session$stop()
-
-# You can also manually clean up orphaned networks
-cleanup_docker_networks()
-```
 
 Network isolation provides:
 - **No external network access** - Worker cannot connect to internet or external services
@@ -372,91 +284,15 @@ Network isolation provides:
 
 This matches the security model of Docker Compose's `internal: true` network configuration.
 
-### Available Options
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `replr.use.docker` | `FALSE` | Enable/disable Docker mode |
-| `replr.worker.docker.image` | `"replr-worker:latest"` | Docker image name for worker containers |
-| `replr.worker.docker.memory` | `"512m"` | Memory limit for Docker containers (e.g., "1g", "256m") |
-| `replr.worker.docker.cpus` | `"1.0"` | CPU limit for Docker containers (e.g., "2.0", "0.5") |
-| `replr.worker.docker.network.isolation` | `FALSE` | Enable isolated Docker networks with no external access |
-
-These options apply to all Docker workers started after they are set. Changes take effect immediately for new worker processes.
-
-## API Reference
-
-### RREPLSession R6 Class
-
-- **`RREPLSession$new(port = NULL, timeout = 10)`** - Create new session
-- **`session$execute(code, timeout = 30)`** - Execute R code
-- **`session$is_alive()`** - Check if worker process is running
-- **`session$stop(timeout = 5)`** - Stop the session
-- **`session$get_info()`** - Get session information
-- **`session$get_debug_logs()`** - Retrieve debug logs from worker process
-- **`session$port`** - Active binding for port number
-- **`session$pid`** - Active binding for process ID
-- **`session$started_at`** - Active binding for start timestamp
-- **`session$is_docker`** - Active binding for Docker status
-
-### Utility Functions
-
-- **`is_docker_available()`** - Check if Docker is available on the system
-- **`cleanup_docker_containers()`** - Clean up any orphaned replr Docker containers
-- **`check_dependencies()`** - Verify that all required packages are available
-
-### Debug Functions
-
-- **`enable_debug(enable = TRUE)`** - Enable/disable debug logging
-- **`debug_status()`** - Check current debug logging status
-
-### Response Structure
-
-All `session$execute()` calls return a structured response:
-
-```r
-list(
-  id = "unique_request_id",
-  status = "success",  # "success", "error", or "timeout"
-  result = list(
-    output = character(),      # Console output lines
-    warnings = character(),    # Warning messages
-    errors = character(),      # Error messages
-    visible = logical(1),      # Whether result should be printed
-    plots = list()             # Plot objects (if any)
-  ),
-  execution_time = numeric(1)  # Execution time in seconds
-)
-```
-
-## How It Works
-
-```
-┌─────────────────┐    nanonext     ┌─────────────────┐
-│   Main R        │   REQ ──────>   │   Worker R      │
-│   Process       │                 │   Process       │
-│                 │   <────── REP   │                 │
-│ • RREPLSession  │                 │ • evaluate pkg  │
-│ • execute()     │     TCP         │ • plot capture  │
-│ • stop()        │   Socket        │ • error handling│
-└─────────────────┘                 └─────────────────┘
-```
-
-1. **Isolation**: Each worker runs as a separate R process with its own memory space
-2. **Communication**: Uses `nanonext` REQ-REP pattern over TCP sockets for reliability
-3. **Evaluation**: Workers use the `evaluate` package for safe code execution with rich output capture
-4. **Error Recovery**: Workers survive errors and continue processing new requests
-5. **Resource Management**: Automatic cleanup with proper process lifecycle management
-
-## 🤖 ellmer Tools for LLM Agents
+## ellmer Tools for LLM Agents
 
 `replr` includes specialized tools designed for the [ellmer](https://ellmer.tidyverse.org/) package, allowing LLM agents to easily create and manage isolated R REPL sessions. These tools provide a standardized interface with structured responses optimized for LLM consumption.
 
-### Examples
+## Examples
 
 The package includes several demonstration scripts in `inst/examples/`:
 
-#### LLM Agent Demo (`llm-agent-demo.R`)
+### LLM Agent Demo (`llm-agent-demo.R`)
 
 Complete demonstration of an LLM agent performing data analysis using replr tools.
 
@@ -478,7 +314,7 @@ The demo shows:
 4. Watching the agent automatically create sessions, execute code, and clean up
 5. Displaying the complete analysis results and tool usage
 
-#### Docker Integration Demo (`docker-integration-demo.R`)
+### Docker Integration Demo (`docker-integration-demo.R`)
 
 Shows how to use replr with Docker containers for enhanced isolation:
 
@@ -492,7 +328,7 @@ Demonstrates:
 - Executing code in Docker containers
 - Session cleanup
 
-#### Agentic Coding Evaluation (`agentic-coding.R`)
+### Agentic Coding Evaluation (`agentic-coding.R`)
 
 Compares LLM performance with and without replr tool access:
 
@@ -505,34 +341,7 @@ Features:
 - Automated evaluation using a judge LLM
 - Demonstrates benefit of code execution tools for complex computational tasks
 
-### Response Format
-
-All tools return standardized responses:
-
-```r
-list(
-  success = TRUE/FALSE,           # Operation success status
-  message = "descriptive text",   # Human-readable message
-  data = list(...),              # Operation-specific data
-  error = "error details"        # Error information (if applicable)
-)
-```
-
-## Development Environment
-
-This repository includes a custom GitHub Copilot environment with R and all required packages pre-installed. The environment is configured using:
-
-- **Dev Container**: `.devcontainer/` directory with Docker configuration
-- **GitHub Codespaces**: Optimized settings for cloud development
-- **Pre-installed packages**: All dependencies ready for immediate use
-
-### Quick Start with Codespaces
-
-1. Click "Code" → "Open with Codespaces" → "New codespace"
-2. Wait for the environment to build (first time takes ~5-10 minutes)
-3. Start developing with R and all dependencies ready!
-
-## Contributing
+## Development and Testing
 
 This package has comprehensive test coverage and follows R package development best practices:
 
