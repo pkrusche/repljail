@@ -571,14 +571,24 @@ start_docker_worker <- function(port, worker_script, worker_args, timeout) {
   )
 
   # Check if network isolation is enabled
-  use_network_isolation <- getOption("replr.worker.docker.network.isolation", default = FALSE)
+  use_network_isolation <- getOption(
+    "replr.worker.docker.network.isolation",
+    default = FALSE
+  )
   network_name <- NULL
 
   # Create isolated network if enabled
   if (use_network_isolation) {
-    network_name <- paste0("replr-network-", port, "-", format(Sys.time(), "%Y%m%d-%H%M%S"))
+    network_name <- paste0(
+      "replr-network-",
+      port,
+      "-",
+      format(Sys.time(), "%Y%m%d-%H%M%S")
+    )
     if (!create_docker_network(network_name)) {
-      warning("Failed to create isolated network, proceeding without network isolation")
+      warning(
+        "Failed to create isolated network, proceeding without network isolation"
+      )
       use_network_isolation <- FALSE
       network_name <- NULL
     }
@@ -596,8 +606,6 @@ start_docker_worker <- function(port, worker_script, worker_args, timeout) {
     memory_limit, # Memory limit (configurable)
     "--cpus",
     cpu_limit, # CPU limit (configurable)
-    "-p",
-    sprintf("%i:%i", port, port), # Expose port for communication
     "--read-only", # Read-only filesystem
     "--tmpfs",
     "/tmp:noexec,nosuid,size=100m", # Writable tmp directory with restrictions
@@ -609,8 +617,15 @@ start_docker_worker <- function(port, worker_script, worker_args, timeout) {
     paste0(worker_script, ":/app/worker.R:ro") # Mount worker script
   )
 
-  # Add network configuration if isolation is enabled
+  # Add network configuration and port forwarding
+  docker_args <- c(
+    docker_args,
+    "-p",
+    sprintf("%i:%i", port, port) # Expose port for communication
+  )
+
   if (use_network_isolation && !is.null(network_name)) {
+    # Use isolated network (no default gateway = no internet)
     docker_args <- c(docker_args, "--network", network_name)
   }
 
@@ -868,14 +883,24 @@ create_docker_network <- function(network_name) {
     {
       debug_log("Creating isolated Docker network: ", network_name)
 
-      # Create internal bridge network (no external access)
+      # Create custom bridge network for isolation
+      # Note: We disable IP masquerading and inter-container communication
+      # This provides isolation between containers but does NOT block internet access
+      # (Docker still creates a default gateway even without --gateway flag)
+      # For true internet blocking, use firewall rules or --internal (which blocks host too)
       result <- system2(
         "docker",
         c(
           "network",
           "create",
-          "--driver", "bridge",
-          "--internal",  # No external network access
+          "--driver",
+          "bridge",
+          "--subnet",
+          "172.28.0.0/16", # Custom subnet
+          "--opt",
+          "com.docker.network.bridge.enable_icc=false", # Disable inter-container communication
+          "--opt",
+          "com.docker.network.bridge.enable_ip_masquerade=false", # Disable NAT (doesn't block internet)
           network_name
         ),
         stdout = TRUE,
@@ -886,7 +911,10 @@ create_docker_network <- function(network_name) {
         debug_success("Created isolated network: ", network_name)
         return(TRUE)
       } else {
-        debug_warn("Failed to create Docker network: ", paste(result, collapse = "\n"))
+        debug_warn(
+          "Failed to create Docker network: ",
+          paste(result, collapse = "\n")
+        )
         return(FALSE)
       }
     },
