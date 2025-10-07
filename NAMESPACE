@@ -3,6 +3,7 @@
 export(RREPLSession)
 export(check_dependencies)
 export(cleanup_docker_containers)
+export(cleanup_docker_networks)
 export(debug_status)
 export(enable_debug)
 export(is_docker_available)
