@@ -37,8 +37,6 @@ pak::pak("pkrusche/replr")
 
 ## Quick Start
 
-### R6 Class Interface
-
 ```r
 library(replr)
 
@@ -49,124 +47,15 @@ session <- RREPLSession$new()
 result <- session$execute("2 + 2")
 print(result$result$output)  # [1] "[1] 4"
 
-# Check session status
-session$is_alive()  # TRUE
-session$port        # Port number
-session$pid         # Process ID
+# Workers survive errors and continue processing
+result <- session$execute("stop('error')")  # Returns error status
+result <- session$execute("3 + 3")          # Still works!
 
 # Stop the session (or it will auto-cleanup on garbage collection)
 session$stop()
 ```
 
-### Error Handling
-
-```r
-library(replr)
-
-session <- RREPLSession$new()
-
-# Handle syntax errors
-result1 <- session$execute("1 +")
-print(result1$status)         # [1] "error"
-print(result1$result$errors)  # [1] "Worker error: <text>:2:0: unexpected end of input\n1: 1 +\n   ^"
-
-# Handle runtime errors
-result2 <- session$execute("stop('Custom error')")
-print(result2$status)         # [1] "error"
-print(result2$result$errors)  # [1] "Worker error: Custom error"
-
-# Worker continues after errors
-result3 <- session$execute("3 * 4")
-print(result3$status)         # [1] "success" - worker survived!
-#
-# Code that generates warnings
-result4 <- session$execute("
-  warning('This is a warning')
-  42
-")
-
-print(result4$status)             # [1] "success"
-print(result4$result$warnings)    # [1] "This is a warning"
-print(result4$result$output)      # [1] "[1] 42"
-
-
-session$stop()
-```
-
-### Debug Logging
-
-```r
-library(replr)
-
-# Enable debug logging
-enable_debug(TRUE)
-
-# Now see output of what is happening
-session <- RREPLSession$new()  # Shows startup debug messages
-
-result <- session$execute("sqrt(16)")  # Shows communication debug
-
-# Get logs programmatically
-logs <- session$get_debug_logs()
-cat("Worker generated", length(logs), "debug messages\n")
-
-session$stop()  # Shows cleanup debug
-
-# Disable debug logging
-enable_debug(FALSE)
-
-# Check current debug status
-debug_status()
-```
-
-### Multiple Concurrent Sessions
-
-```r
-library(replr)
-
-# Start multiple isolated sessions
-session1 <- RREPLSession$new()
-session2 <- RREPLSession$new()
-
-# They run on different ports and are completely isolated
-print(session1$port)  # e.g., 5555
-print(session2$port)  # e.g., 5556
-
-# Set different variables in each session
-session1$execute("my_var <- 'Session 1'")
-session2$execute("my_var <- 'Session 2'")
-
-# Verify isolation - each session only sees its own variables
-result1 <- session1$execute("my_var")
-result2 <- session2$execute("my_var")
-
-print(result1$result$output)  # [1] "[1] \"Session 1\""
-print(result2$result$output)  # [1] "[1] \"Session 2\""
-
-# Clean up both sessions
-session1$stop()
-session2$stop()
-```
-
-### Advanced Usage with Timeouts
-
-```r
-library(replr)
-
-session <- RREPLSession$new()
-
-# Set custom timeout for long-running operations
-result <- session$execute(
-  "Sys.sleep(2); 'Completed'",
-  timeout = 5  # 5 second timeout
-)
-print(result$result$output)  # [1] "[1] \"Completed\""
-
-# This would timeout:
-# result <- session$execute("Sys.sleep(10)", timeout = 2)
-
-session$stop()
-```
+For detailed examples including error handling, debug logging, multiple sessions, and timeouts, see `vignette("getting-started")`.
 
 ## Docker Container Support
 
@@ -279,10 +168,10 @@ session <- RREPLSession$new()
 Network isolation provides:
 - **No external network access** - Worker cannot connect to internet or external services
 - **Isolated bridge network** - Each worker gets its own private network
-- **Port-only communication** - Only the worker port is exposed to the host
-- **Automatic cleanup** - Networks are removed when workers stop
+- **Gateway sidecar pattern** - Secure proxy for host-to-worker communication
+- **Automatic cleanup** - Networks and gateway containers are removed when workers stop
 
-This matches the security model of Docker Compose's `internal: true` network configuration.
+For detailed architecture and implementation, see `vignette("network-isolation")`.
 
 ## ellmer Tools for LLM Agents
 

@@ -1,0 +1,165 @@
+---
+title: "Getting Started with replr"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting Started with replr}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## Introduction
+
+`replr` provides isolated REPL (Read-Eval-Print Loop) functionality for R, allowing you to execute R code in separate worker processes. This vignette demonstrates the core features and usage patterns.
+
+## R6 Class Interface
+
+The primary interface for `replr` is the `RREPLSession` R6 class:
+
+```{r basic-usage, eval = FALSE}
+library(replr)
+
+# Create a new isolated R session
+session <- RREPLSession$new()
+
+# Execute R code in the isolated process
+result <- session$execute("2 + 2")
+print(result$result$output)  # [1] "[1] 4"
+
+# Check session status
+session$is_alive()  # TRUE
+session$port        # Port number
+session$pid         # Process ID
+
+# Stop the session (or it will auto-cleanup on garbage collection)
+session$stop()
+```
+
+## Error Handling
+
+Workers are resilient and continue processing after errors:
+
+```{r error-handling, eval = FALSE}
+library(replr)
+
+session <- RREPLSession$new()
+
+# Handle syntax errors
+result1 <- session$execute("1 +")
+print(result1$status)         # [1] "error"
+print(result1$result$errors)  # [1] "Worker error: <text>:2:0: unexpected end of input\n1: 1 +\n   ^"
+
+# Handle runtime errors
+result2 <- session$execute("stop('Custom error')")
+print(result2$status)         # [1] "error"
+print(result2$result$errors)  # [1] "Worker error: Custom error"
+
+# Worker continues after errors
+result3 <- session$execute("3 * 4")
+print(result3$status)         # [1] "success" - worker survived!
+
+# Code that generates warnings
+result4 <- session$execute("
+  warning('This is a warning')
+  42
+")
+
+print(result4$status)             # [1] "success"
+print(result4$result$warnings)    # [1] "This is a warning"
+print(result4$result$output)      # [1] "[1] 42"
+
+session$stop()
+```
+
+## Debug Logging
+
+Enable debug logging to see detailed information about worker processes:
+
+```{r debug-logging, eval = FALSE}
+library(replr)
+
+# Enable debug logging
+enable_debug(TRUE)
+
+# Now see output of what is happening
+session <- RREPLSession$new()  # Shows startup debug messages
+
+result <- session$execute("sqrt(16)")  # Shows communication debug
+
+# Get logs programmatically
+logs <- session$get_debug_logs()
+cat("Worker generated", length(logs), "debug messages\n")
+
+session$stop()  # Shows cleanup debug
+
+# Disable debug logging
+enable_debug(FALSE)
+
+# Check current debug status
+debug_status()
+```
+
+## Multiple Concurrent Sessions
+
+You can run multiple isolated sessions simultaneously:
+
+```{r multiple-sessions, eval = FALSE}
+library(replr)
+
+# Start multiple isolated sessions
+session1 <- RREPLSession$new()
+session2 <- RREPLSession$new()
+
+# They run on different ports and are completely isolated
+print(session1$port)  # e.g., 5555
+print(session2$port)  # e.g., 5556
+
+# Set different variables in each session
+session1$execute("my_var <- 'Session 1'")
+session2$execute("my_var <- 'Session 2'")
+
+# Verify isolation - each session only sees its own variables
+result1 <- session1$execute("my_var")
+result2 <- session2$execute("my_var")
+
+print(result1$result$output)  # [1] "[1] \"Session 1\""
+print(result2$result$output)  # [1] "[1] \"Session 2\""
+
+# Clean up both sessions
+session1$stop()
+session2$stop()
+```
+
+## Advanced Usage with Timeouts
+
+Control execution timeouts for long-running operations:
+
+```{r timeouts, eval = FALSE}
+library(replr)
+
+session <- RREPLSession$new()
+
+# Set custom timeout for long-running operations
+result <- session$execute(
+  "Sys.sleep(2); 'Completed'",
+  timeout = 5  # 5 second timeout
+)
+print(result$result$output)  # [1] "[1] \"Completed\""
+
+# This would timeout:
+# result <- session$execute("Sys.sleep(10)", timeout = 2)
+
+session$stop()
+```
+
+## Next Steps
+
+- Learn about [Docker container support](https://github.com/pkrusche/replr#docker-container-support) for enhanced security
+- Explore [ellmer integration](https://github.com/pkrusche/replr#ellmer-tools-for-llm-agents) for LLM agent capabilities
+- Check out example scripts in `inst/examples/`

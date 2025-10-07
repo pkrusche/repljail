@@ -9,3 +9,5 @@
 ^\.github$
 ^\.claude$
 ^replr/tests/testthat/_snaps.*$
+^doc$
+^Meta$

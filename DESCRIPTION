@@ -23,4 +23,7 @@ Suggests:
     testthat (>= 3.0.0),
     here,
     devtools,
-    png
+    png,
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr
