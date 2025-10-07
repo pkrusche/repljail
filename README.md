@@ -8,7 +8,7 @@
 
 You can install the development version of replr like this:
 
-``` r
+```r
 install.packages("pak")
 pak::pak("pkrusche/replr")
 # Or using devtools:
@@ -61,18 +61,18 @@ For detailed examples including error handling, debug logging, multiple sessions
 
 `replr` supports running worker processes inside Docker containers for enhanced security and isolation. When Docker is available, it automatically builds a minimal container image and runs workers with stricter security constraints.
 
-### Security Features
+For Docker support, you need:
 
-- **Non-root execution**: Workers run as user `replr` (UID 1000)
-- **Port forwarding**: Containers use port mapping for network communication
-- **Read-only filesystem**: Prevents modification of container files
-- **Restricted /tmp**: Temporary directory with `noexec,nosuid` restrictions
-- **Capability dropping**: All Linux capabilities removed with `--cap-drop ALL`
-- **Resource limits**: Configurable memory and CPU constraints (default: 512MB, 1.0 CPU)
-- **Privilege prevention**: `--security-opt no-new-privileges`
-- **Automatic cleanup**: Containers are automatically removed on shutdown or failure
+- Docker installed and accessible
+- Permission to run `docker` commands
+- Internet access for initial image build (pulls `rocker/r-ver:4.4`)
 
-### Using Docker
+The package automatically:
+
+1. Detects Docker availability
+2. Builds the minimal worker image on first use (worker images can be configured also)
+
+### Example
 
 ```r
 library(replr)
@@ -92,42 +92,35 @@ session$stop()
 cleanup_docker_containers()
 ```
 
-### Docker Requirements
+See also `inst/examples/docker-integration-demo.R`.
 
-For Docker support, you need:
-- Docker installed and accessible
-- Permission to run `docker` commands
-- Internet access for initial image build (pulls `rocker/r-ver:4.4`)
+### Docker Security Model
 
-The package automatically:
-1. Detects Docker availability
-2. Builds the minimal worker image on first use
+Docker containers can provide an additional layer of security beyond process isolation:
 
-### Security Model
+| Security Layer          | Native | Docker      | Network Isolation           |
+| ----------------------- | ------ | ----------- | --------------------------- |
+| Process isolation       | ✅     | ✅          | ✅                          |
+| Memory separation       | ✅     | ✅          | ✅                          |
+| Filesystem isolation    | ❌     | ✅          | ✅                          |
+| Network communication   | Direct | Port-mapped | Proxied, no external access |
+| Capability restrictions | ❌     | ✅          | ✅                          |
+| Resource limits         | ❌     | ✅          | ✅                          |
+| Automatic cleanup       | ❌     | ✅          | ✅                          |
 
-Docker containers provide an additional layer of security beyond process isolation:
-
-| Security Layer | Native | Docker |
-|----------------|--------|--------|
-| Process isolation | ✅ | ✅ |
-| Memory separation | ✅ | ✅ |
-| Filesystem isolation | ❌ | ✅ |
-| Network communication | Direct | Port-mapped |
-| Capability restrictions | ❌ | ✅ |
-| Resource limits | ❌ | ✅ |
-| Automatic cleanup | ❌ | ✅ |
+For detailed architecture and implementation, see `vignette("network-isolation")`.
 
 ### Docker Configuration
 
 You can customize Docker worker behavior using global options:
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `replr.use.docker` | `FALSE` | Enable/disable Docker mode |
-| `replr.worker.docker.image` | `"replr-worker:latest"` | Docker image name for worker containers |
-| `replr.worker.docker.memory` | `"512m"` | Memory limit for Docker containers (e.g., "1g", "256m") |
-| `replr.worker.docker.cpus` | `"1.0"` | CPU limit for Docker containers (e.g., "2.0", "0.5") |
-| `replr.worker.docker.network.isolation` | `FALSE` | Enable isolated Docker networks with no external access |
+| Option                                  | Default                 | Description                                             |
+| --------------------------------------- | ----------------------- | ------------------------------------------------------- |
+| `replr.use.docker`                      | `FALSE`                 | Enable/disable Docker mode                              |
+| `replr.worker.docker.image`             | `"replr-worker:latest"` | Docker image name for worker containers                 |
+| `replr.worker.docker.memory`            | `"512m"`                | Memory limit for Docker containers (e.g., "1g", "256m") |
+| `replr.worker.docker.cpus`              | `"1.0"`                 | CPU limit for Docker containers (e.g., "2.0", "0.5")    |
+| `replr.worker.docker.network.isolation` | `FALSE`                 | Enable isolated Docker networks with no external access |
 
 These options apply to all Docker workers started after they are set. Changes take effect immediately for new worker processes.
 
@@ -163,23 +156,11 @@ options(
 session <- RREPLSession$new()
 ```
 
-### Network Isolation
-
-Network isolation provides:
-- **No external network access** - Worker cannot connect to internet or external services
-- **Isolated bridge network** - Each worker gets its own private network
-- **Gateway sidecar pattern** - Secure proxy for host-to-worker communication
-- **Automatic cleanup** - Networks and gateway containers are removed when workers stop
-
-For detailed architecture and implementation, see `vignette("network-isolation")`.
-
 ## ellmer Tools for LLM Agents
 
 `replr` includes specialized tools designed for the [ellmer](https://ellmer.tidyverse.org/) package, allowing LLM agents to easily create and manage isolated R REPL sessions. These tools provide a standardized interface with structured responses optimized for LLM consumption.
 
-## Examples
-
-The package includes several demonstration scripts in `inst/examples/`:
+The package includes several demonstration scripts in `inst/examples/` for this.
 
 ### LLM Agent Demo (`llm-agent-demo.R`)
 
@@ -197,25 +178,12 @@ source(system.file("examples", "llm-agent-demo.R", package = "replr"))
 ```
 
 The demo shows:
+
 1. Initializing an OpenAI chat session with replr tools
 2. Registering all replr tools with the LLM agent
 3. Sending a data analysis task to the agent
 4. Watching the agent automatically create sessions, execute code, and clean up
 5. Displaying the complete analysis results and tool usage
-
-### Docker Integration Demo (`docker-integration-demo.R`)
-
-Shows how to use replr with Docker containers for enhanced isolation:
-
-```r
-source(system.file("examples", "docker-integration-demo.R", package = "replr"))
-```
-
-Demonstrates:
-- Checking Docker availability
-- Creating sessions with automatic Docker detection
-- Executing code in Docker containers
-- Session cleanup
 
 ### Agentic Coding Evaluation (`agentic-coding.R`)
 
@@ -226,6 +194,7 @@ source(system.file("examples", "agentic-coding.R", package = "replr"))
 ```
 
 Features:
+
 - Side-by-side comparison of vanilla vs. tool-augmented chat
 - Automated evaluation using a judge LLM
 - Demonstrates benefit of code execution tools for complex computational tasks
@@ -240,10 +209,6 @@ devtools::load_all()      # Load package for testing
 devtools::test()          # Run all tests (42 test cases)
 devtools::check()         # R CMD check (passes cleanly)
 devtools::document()      # Generate documentation
-
-# Current test status: ✅ 42 test cases passing, 0 errors/warnings
-# Note: Test suite includes comprehensive plot capture validation with PNG comparison
-# Note: Includes Docker container functionality tests and debug log capture tests
 ```
 
 ## License

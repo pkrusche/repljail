@@ -1,6 +1,6 @@
 Rplots.pdf
 tests/testthat/_snaps
-..Rcheck
+.Rcheck
 hist.png
 
 # Keep reference plots but ignore test output files
@@ -8,12 +8,5 @@ tests/testthat/test_*.png
 !tests/testthat/reference_plots/
 .DS_Store
 logs
-logs
 
-# Temporary test scripts
-test_network_isolation.R
-
-# Verification files
-VERIFICATION_CHECKLIST.md
-/doc/
-/Meta/
+.claude
