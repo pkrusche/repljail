@@ -238,3 +238,65 @@ test_that("Multiple sessions maintain isolation", {
     }
   )
 })
+
+test_that("replr_run_r_code works with simple arithmetic", {
+  # Test simple arithmetic
+  result <- replr_run_r_code("2 + 2")
+  expect_true(result$success)
+  expect_equal(result$data$status, "success")
+  expect_true(length(result$data$output) > 0)
+  expect_true(any(grepl("4", result$data$output)))
+  
+  # Verify session was cleaned up (check no new sessions exist)
+  list_result <- replr_list_sessions()
+  initial_count <- list_result$data$count
+  
+  # Run another simple calculation
+  result2 <- replr_run_r_code("3 * 7")
+  expect_true(result2$success)
+  expect_true(any(grepl("21", result2$data$output)))
+  
+  # Verify still same number of sessions (auto-cleanup worked)
+  list_result2 <- replr_list_sessions()
+  expect_equal(list_result2$data$count, initial_count)
+})
+
+test_that("replr_run_r_code works with complex code", {
+  code <- "
+    data <- data.frame(x = 1:5, y = letters[1:5])
+    summary(data)
+  "
+  result <- replr_run_r_code(code)
+  expect_true(result$success)
+  expect_equal(result$data$status, "success")
+  expect_true(length(result$data$output) > 0)
+})
+
+test_that("replr_run_r_code handles errors correctly", {
+  # Test code with error
+  result <- replr_run_r_code("stop('test error')")
+  expect_false(result$success)
+  expect_equal(result$data$status, "error")
+  expect_true(length(result$data$errors) > 0)
+  
+  # Verify session was still cleaned up
+  list_result <- replr_list_sessions()
+  expect_equal(list_result$data$count, 0)
+})
+
+test_that("replr_run_r_code handles warnings", {
+  # Test code with warning
+  result <- replr_run_r_code("warning('test warning'); 42")
+  expect_true(result$success)
+  expect_equal(result$data$status, "success")
+  expect_true(length(result$data$warnings) > 0)
+  expect_true(any(grepl("test warning", result$data$warnings)))
+  expect_true(any(grepl("42", result$data$output)))
+})
+
+test_that("replr_run_r_code respects timeout parameter", {
+  # Test with custom timeout
+  result <- replr_run_r_code("Sys.sleep(0.1); 'done'", timeout = 5)
+  expect_true(result$success)
+  expect_true(any(grepl("done", result$data$output)))
+})
