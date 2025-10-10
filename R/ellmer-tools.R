@@ -562,6 +562,80 @@ replr_stop_all_sessions <- function(timeout = 5) {
   )
 }
 
+#' Run R Code (Simple Interface)
+#'
+#' Executes R code in a temporary isolated REPL session. This is a simplified
+#' interface that creates a session, executes the code, and stops the session
+#' automatically. Ideal for one-off code execution without manual session management.
+#'
+#' @param code character, R code to execute
+#' @param timeout numeric, timeout in seconds for code execution (default: 30)
+#' @return list with execution results, output, warnings, errors, and success status
+#' @export
+#' @examples
+#' \dontrun{
+#' # Execute simple arithmetic
+#' result <- replr_run_r_code("2 + 2")
+#' if (result$success) {
+#'   cat("Output:", result$data$output)
+#' }
+#'
+#' # Execute more complex code
+#' result <- replr_run_r_code("
+#'   data <- data.frame(x = 1:5, y = letters[1:5])
+#'   summary(data)
+#' ")
+#' }
+replr_run_r_code <- function(code, timeout = 30) {
+  session_result <- NULL
+  session_id <- NULL
+  
+  tryCatch(
+    {
+      # Create a temporary session
+      session_result <- replr_create_repl_session(timeout = 10)
+      
+      if (!session_result$success) {
+        return(list(
+          success = FALSE,
+          message = paste("Failed to create session:", session_result$message),
+          data = NULL,
+          error = session_result$error
+        ))
+      }
+      
+      session_id <- session_result$data$session_id
+      
+      # Execute the code
+      exec_result <- replr_execute_code(session_id, code, timeout = timeout)
+      
+      # Return the execution result
+      exec_result
+    },
+    error = function(e) {
+      list(
+        success = FALSE,
+        message = paste("Error running R code:", e$message),
+        data = NULL,
+        error = as.character(e$message)
+      )
+    },
+    finally = {
+      # Always clean up the session
+      if (!is.null(session_id)) {
+        tryCatch(
+          {
+            replr_stop_session(session_id, timeout = 5)
+          },
+          error = function(e) {
+            # Silent cleanup - session may already be dead
+          }
+        )
+      }
+    }
+  )
+}
+
 # ellmer Tool Definitions
 # These tools wrap the replr functions to provide a standardized interface for LLM agents
 
@@ -885,6 +959,72 @@ replr_stop_all_sessions_tool <- function() {
         )
       ),
       fn = replr_stop_all_sessions
+    )
+  }
+}
+
+#' Run R Code Tool Definition
+#'
+#' Returns an ellmer tool definition for executing R code in a temporary session.
+#' This function provides the tool metadata that LLM agents need to
+#' understand how to execute R code without manual session management.
+#'
+#' @return An ellmer tool object (when ellmer is available) or a compatible
+#'   structure containing the tool name, description, parameters, and function.
+#' @export
+#' @examples
+#' \dontrun{
+#' # Get the tool definition
+#' run_tool <- replr_run_r_code_tool()
+#' print(run_tool$name)
+#' print(run_tool$description)
+#' }
+replr_run_r_code_tool <- function() {
+  if (requireNamespace("ellmer", quietly = TRUE)) {
+    ellmer::tool(
+      replr_run_r_code,
+      name = "replr_run_r_code",
+      description = paste0(
+        "Execute R code in a temporary isolated REPL session. ",
+        "The session is automatically created and cleaned up after execution. ",
+        "This is a simple interface for one-off R code execution without manual session management. ",
+        "When creating plots in the code, they will be converted to data URLs in ",
+        "the structured output for compatibility with vision models."
+      ),
+      arguments = list(
+        code = ellmer::type_string(
+          "R code to execute in the temporary session",
+          required = TRUE
+        ),
+        timeout = ellmer::type_number(
+          "Timeout in seconds for code execution",
+          required = FALSE
+        )
+      )
+    )
+  } else {
+    list(
+      name = "replr_run_r_code",
+      description = paste0(
+        "Execute R code in a temporary isolated REPL session. ",
+        "The session is automatically created and cleaned up after execution. ",
+        "This is a simple interface for one-off R code execution without manual session management. ",
+        "When creating plots in the code, they will be converted to data URLs in ",
+        "the structured output for compatibility with vision models."
+      ),
+      parameters = list(
+        code = list(
+          type = "string",
+          description = "R code to execute",
+          required = TRUE
+        ),
+        timeout = list(
+          type = "number",
+          description = "Timeout in seconds",
+          default = 30
+        )
+      ),
+      fn = replr_run_r_code
     )
   }
 }
