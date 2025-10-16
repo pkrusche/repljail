@@ -589,18 +589,18 @@ replr_stop_all_sessions <- function(timeout = 5) {
 replr_run_r_code <- function(code, timeout = 30) {
   session_result <- NULL
   session_id <- NULL
-  
+
   # Use timeout for session creation and cleanup as well
   # Session creation gets a reasonable fraction of total timeout
   session_timeout <- min(timeout, 10)
   # Cleanup gets a short timeout since it's just sending a shutdown signal
   cleanup_timeout <- min(timeout / 6, 5)
-  
+
   tryCatch(
     {
       # Create a temporary session
       session_result <- replr_create_repl_session(timeout = session_timeout)
-      
+
       if (!session_result$success) {
         return(list(
           success = FALSE,
@@ -609,12 +609,12 @@ replr_run_r_code <- function(code, timeout = 30) {
           error = session_result$error
         ))
       }
-      
+
       session_id <- session_result$data$session_id
-      
+
       # Execute the code
       exec_result <- replr_execute_code(session_id, code, timeout = timeout)
-      
+
       # Return the execution result
       exec_result
     },
