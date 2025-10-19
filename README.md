@@ -160,6 +160,20 @@ session <- RREPLSession$new()
 
 `replr` includes specialized tools designed for the [ellmer](https://ellmer.tidyverse.org/) package, allowing LLM agents to easily create and manage isolated R REPL sessions. These tools provide a standardized interface with structured responses optimized for LLM consumption.
 
+### Available Tools
+
+- **replr_create_repl_session()** - Create isolated R sessions
+- **replr_execute_code()** - Execute R code in a session
+- **replr_check_syntax()** - Check R code syntax without execution (safe validation)
+- **replr_run_r_code()** - One-off code execution with automatic cleanup
+- **replr_get_session_info()** - Get session status and details
+- **replr_list_sessions()** - List all active sessions
+- **replr_stop_session()** - Stop a specific session
+- **replr_cleanup_sessions()** - Remove dead sessions
+- **replr_stop_all_sessions()** - Stop all active sessions
+
+Each tool function has a corresponding `*_tool()` variant (e.g., `replr_check_syntax_tool()`) that returns an ellmer-compatible tool definition for LLM integration.
+
 The package includes several demonstration scripts in `inst/examples/` for this.
 
 ### LLM Agent Demo (`llm-agent-demo.R`)
