@@ -18,6 +18,7 @@ Imports:
     cli,
     base64enc
 Suggests:
+    covr,
     ellmer,
     pryr,
     testthat (>= 3.0.0),
