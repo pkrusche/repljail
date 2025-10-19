@@ -1,0 +1,32 @@
+
+R version 4.3.3 (2024-02-29) -- "Angel Food Cake"
+Copyright (C) 2024 The R Foundation for Statistical Computing
+Platform: x86_64-pc-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> library(testthat)
+> library(replr)
+> test_check("replr")
+[ FAIL 0 | WARN 1 | SKIP 7 | PASS 278 ]
+
+══ Skipped tests (7) ═══════════════════════════════════════════════════════════
+• Docker tests skipped on CI (7): 'test-docker.R:12:3', 'test-docker.R:21:3',
+  'test-docker.R:30:3', 'test-docker.R:61:3', 'test-docker.R:97:3',
+  'test-docker.R:147:3', 'test-docker.R:210:3'
+
+[ FAIL 0 | WARN 1 | SKIP 7 | PASS 278 ]
+> 
+> proc.time()
+   user  system elapsed 
+ 12.656   2.328 151.464 

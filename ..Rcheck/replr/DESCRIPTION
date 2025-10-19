@@ -1,0 +1,16 @@
+Package: replr
+Type: Package
+Title: Isolated REPL functionality for R
+Version: 0.1.0
+Author: Peter Krusche <pkrusche@gmail.com>
+Maintainer: Peter Krusche <pkrusche@gmail.com>
+Description: Provides isolated REPL functionality for R, allowing users to execute R code in a separate environment.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+Imports: nanonext, processx, evaluate, R6, uuid, cli, base64enc
+Suggests: ellmer, pryr, testthat (>= 3.0.0), here, devtools, png,
+        knitr, rmarkdown
+VignetteBuilder: knitr
+Built: R 4.3.3; ; 2025-10-19 16:41:49 UTC; unix
