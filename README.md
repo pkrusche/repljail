@@ -228,6 +228,8 @@ This package has comprehensive test coverage and follows R package development b
 devtools::load_all()      # Load package for testing
 devtools::test()          # Run all tests (42 test cases)
 devtools::check()         # R CMD check (passes cleanly)
+covr::report(covr::package_coverage(), file = NULL)
+                          # Generate an in-terminal coverage summary
 devtools::document()      # Generate documentation
 ```
 
