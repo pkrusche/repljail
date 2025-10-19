@@ -43,8 +43,13 @@ if (result2$data$lint_count > 0) {
   cat("\nLinting issues found:\n")
   for (i in seq_along(result2$data$lints)) {
     lint <- result2$data$lints[[i]]
-    cat(sprintf("  [Line %d, Col %d] %s: %s\n", 
-                lint$line, lint$column, lint$type, lint$message))
+    cat(sprintf(
+      "  [Line %d, Col %d] %s: %s\n",
+      lint$line,
+      lint$column,
+      lint$type,
+      lint$message
+    ))
   }
 }
 cat("\n")
