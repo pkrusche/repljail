@@ -1034,3 +1034,113 @@ replr_run_r_code_tool <- function() {
     )
   }
 }
+
+#' Check R Code Syntax
+#'
+#' Validates the syntax of R code without executing it. This function
+#' parses the code to check for syntax errors but does not run it,
+#' making it safe for checking potentially problematic code.
+#'
+#' @param code character, R code to check for syntax errors
+#' @return list with syntax validation results and any error messages
+#' @export
+#' @examples
+#' \dontrun{
+#' # Check valid code
+#' result <- replr_check_syntax("x <- 1 + 2\nprint(x)")
+#' if (result$success) {
+#'   cat("Valid syntax with", result$data$expression_count, "expressions\n")
+#' }
+#'
+#' # Check invalid code
+#' result <- replr_check_syntax("x <- mean(c(1, 2, 3)")
+#' if (!result$success) {
+#'   cat("Syntax error:", result$error, "\n")
+#' }
+#' }
+replr_check_syntax <- function(code) {
+  tryCatch(
+    {
+      # Parse the code without executing it
+      parsed <- parse(text = code, keep.source = TRUE)
+      
+      list(
+        success = TRUE,
+        message = "Code syntax is valid",
+        data = list(
+          valid = TRUE,
+          expression_count = length(parsed),
+          code = code
+        ),
+        error = NULL
+      )
+    },
+    error = function(e) {
+      list(
+        success = FALSE,
+        message = paste("Syntax error:", e$message),
+        data = list(
+          valid = FALSE,
+          code = code,
+          error_details = as.character(e$message)
+        ),
+        error = as.character(e$message)
+      )
+    }
+  )
+}
+
+#' Check R Code Syntax Tool Definition
+#'
+#' Returns an ellmer tool definition for checking R code syntax without execution.
+#' This function provides the tool metadata that LLM agents need to
+#' understand how to validate R code syntax safely.
+#'
+#' @return An ellmer tool object (when ellmer is available) or a compatible
+#'   structure containing the tool name, description, parameters, and function.
+#' @export
+#' @examples
+#' \dontrun{
+#' # Get the tool definition
+#' syntax_tool <- replr_check_syntax_tool()
+#' print(syntax_tool$name)
+#' print(syntax_tool$description)
+#' }
+replr_check_syntax_tool <- function() {
+  if (requireNamespace("ellmer", quietly = TRUE)) {
+    ellmer::tool(
+      replr_check_syntax,
+      name = "replr_check_syntax",
+      description = paste0(
+        "Check R code for syntax errors without executing it. ",
+        "This is useful for validating code before execution, ",
+        "catching syntax problems early, or checking code from untrusted sources. ",
+        "The code is parsed but never run, making this operation completely safe."
+      ),
+      arguments = list(
+        code = ellmer::type_string(
+          "R code to check for syntax errors",
+          required = TRUE
+        )
+      )
+    )
+  } else {
+    list(
+      name = "replr_check_syntax",
+      description = paste0(
+        "Check R code for syntax errors without executing it. ",
+        "This is useful for validating code before execution, ",
+        "catching syntax problems early, or checking code from untrusted sources. ",
+        "The code is parsed but never run, making this operation completely safe."
+      ),
+      parameters = list(
+        code = list(
+          type = "string",
+          description = "R code to check for syntax errors",
+          required = TRUE
+        )
+      ),
+      fn = replr_check_syntax
+    )
+  }
+}
