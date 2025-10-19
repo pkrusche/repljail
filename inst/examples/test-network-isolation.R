@@ -26,14 +26,17 @@ if (!is.null(result1) && !is.null(result1$result)) {
 
 # Test 2: Internet access (should be blocked)
 cat("\nTest 2: Internet access (should be blocked)\n")
-result2 <- send_command(worker, '
+result2 <- send_command(
+  worker,
+  '
   tryCatch({
     readLines("http://example.com", n = 1)
     "FAIL: Internet is accessible"
   }, error = function(e) {
     paste("SUCCESS: Blocked -", e$message)
   })
-')
+'
+)
 if (!is.null(result2) && !is.null(result2$result)) {
   cat("  ", result2$result$output, "\n")
 } else {
