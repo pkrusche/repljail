@@ -25,5 +25,6 @@ Suggests:
     devtools,
     png,
     knitr,
-    rmarkdown
+    rmarkdown,
+    lintr
 VignetteBuilder: knitr

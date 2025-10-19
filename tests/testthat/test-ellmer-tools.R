@@ -364,3 +364,84 @@ y <- undefined_variable + 1
   expect_true(result$success)
   expect_true(result$data$valid)
 })
+
+test_that("replr_lint_code works with clean code", {
+  skip_if_not_installed("lintr")
+
+  # Test code with no issues
+  clean_code <- "x <- 1\ny <- 2\nz <- x + y"
+  result <- replr_lint_code(clean_code)
+
+  expect_true(result$success)
+  expect_equal(result$data$lint_count, 0)
+  expect_equal(length(result$data$lints), 0)
+  expect_true(grepl("No linting issues", result$message))
+})
+
+test_that("replr_lint_code detects style issues", {
+  skip_if_not_installed("lintr")
+
+  # Test code with assignment operator issue (= instead of <-)
+  bad_code <- "x = 1"
+  result <- replr_lint_code(bad_code)
+
+  expect_true(result$success)
+  expect_true(result$data$lint_count > 0)
+  expect_true(length(result$data$lints) > 0)
+  expect_true(grepl("Found.*linting issue", result$message))
+
+  # Check lint structure
+  lint <- result$data$lints[[1]]
+  expect_true(is.numeric(lint$line))
+  expect_true(is.character(lint$message))
+  expect_true(is.character(lint$type))
+})
+
+test_that("replr_lint_code works with multiline code", {
+  skip_if_not_installed("lintr")
+
+  # Test multiline code
+  multiline_code <- "x = 1\ny = 2\nz <- x + y"
+  result <- replr_lint_code(multiline_code)
+
+  expect_true(result$success)
+  expect_true(result$data$lint_count >= 2) # At least 2 assignment issues
+})
+
+test_that("replr_lint_code returns proper structure", {
+  skip_if_not_installed("lintr")
+
+  # Test that result has expected structure
+  result <- replr_lint_code("x = 1")
+
+  expect_true(is.list(result))
+  expect_true("success" %in% names(result))
+  expect_true("message" %in% names(result))
+  expect_true("data" %in% names(result))
+  expect_true("error" %in% names(result))
+
+  # Check data structure
+  expect_true(is.list(result$data))
+  expect_true("code" %in% names(result$data))
+  expect_true("lint_count" %in% names(result$data))
+  expect_true("lints" %in% names(result$data))
+})
+
+test_that("replr_lint_code handles errors gracefully", {
+  skip_if_not_installed("lintr")
+
+  # This should not error even with unusual input
+  result <- replr_lint_code("")
+  expect_true(result$success)
+})
+
+test_that("replr_lint_code_tool returns proper structure", {
+  # Test that tool definition has expected structure
+  tool <- replr_lint_code_tool()
+
+  expect_true(is.list(tool))
+  expect_true("name" %in% names(tool))
+  expect_true("description" %in% names(tool))
+  expect_equal(tool$name, "replr_lint_code")
+  expect_true(nchar(tool$description) > 0)
+})
