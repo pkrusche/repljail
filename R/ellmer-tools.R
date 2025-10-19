@@ -1063,7 +1063,7 @@ replr_check_syntax <- function(code) {
     {
       # Parse the code without executing it
       parsed <- parse(text = code, keep.source = TRUE)
-      
+
       list(
         success = TRUE,
         message = "Code syntax is valid",

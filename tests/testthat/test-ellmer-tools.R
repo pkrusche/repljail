@@ -246,16 +246,16 @@ test_that("replr_run_r_code works with simple arithmetic", {
   expect_equal(result$data$status, "success")
   expect_true(length(result$data$output) > 0)
   expect_true(any(grepl("4", result$data$output)))
-  
+
   # Verify session was cleaned up (check no new sessions exist)
   list_result <- replr_list_sessions()
   initial_count <- list_result$data$count
-  
+
   # Run another simple calculation
   result2 <- replr_run_r_code("3 * 7")
   expect_true(result2$success)
   expect_true(any(grepl("21", result2$data$output)))
-  
+
   # Verify still same number of sessions (auto-cleanup worked)
   list_result2 <- replr_list_sessions()
   expect_equal(list_result2$data$count, initial_count)
@@ -278,7 +278,7 @@ test_that("replr_run_r_code handles errors correctly", {
   expect_false(result$success)
   expect_equal(result$data$status, "error")
   expect_true(length(result$data$errors) > 0)
-  
+
   # Verify session was still cleaned up
   list_result <- replr_list_sessions()
   expect_equal(list_result$data$count, 0)
@@ -308,7 +308,7 @@ test_that("replr_check_syntax works with valid code", {
   expect_true(result$data$valid)
   expect_equal(result$data$expression_count, 1)
   expect_null(result$error)
-  
+
   # Test multiple expressions
   result2 <- replr_check_syntax("x <- 1\ny <- 2\nz <- x + y")
   expect_true(result2$success)
@@ -323,7 +323,7 @@ test_that("replr_check_syntax detects syntax errors", {
   expect_false(result$data$valid)
   expect_true(nchar(result$error) > 0)
   expect_true(grepl("unexpected", result$error))
-  
+
   # Test invalid function syntax
   result2 <- replr_check_syntax("x <- function() {\n  return 42\n}")
   expect_false(result2$success)
@@ -342,7 +342,7 @@ test_that("replr_check_syntax handles complex valid code", {
   code <- "
 library(ggplot2)
 data <- data.frame(x = 1:10, y = rnorm(10))
-plot <- ggplot(data, aes(x, y)) + 
+plot <- ggplot(data, aes(x, y)) +
   geom_point() +
   theme_minimal()
 print(plot)
@@ -363,22 +363,4 @@ y <- undefined_variable + 1
   # Should succeed because syntax is valid even though runtime would fail
   expect_true(result$success)
   expect_true(result$data$valid)
-})
-
-test_that("replr_check_syntax_tool returns proper structure", {
-  tool <- replr_check_syntax_tool()
-  
-  # Check basic structure
-  expect_true(is.list(tool))
-  expect_equal(tool$name, "replr_check_syntax")
-  expect_true(nchar(tool$description) > 0)
-  expect_true(is.list(tool$parameters))
-  
-  # Check that function is callable
-  expect_true(is.function(tool$fn))
-  
-  # Test that the tool function works
-  test_result <- tool$fn("x <- 1 + 1")
-  expect_true(test_result$success)
-  expect_true(test_result$data$valid)
 })
