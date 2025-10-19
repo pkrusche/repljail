@@ -162,7 +162,7 @@ session <- RREPLSession$new()
 
 ### Available Tools
 
-Each tool function has a corresponding `*_tool()` variant (e.g., `replr_check_syntax_tool()`) that returns an ellmer-compatible tool definition for LLM integration.
+Each tool function has a corresponding `*_tool()` function that returns a tool definition for use with ellmer or other LLM agent frameworks.
 
 The package includes several demonstration scripts in `inst/examples/` for this.
 
@@ -170,6 +170,7 @@ The package includes several demonstration scripts in `inst/examples/` for this.
 
 - **replr_check_syntax()** - Check R code syntax without execution (safe validation)
 - **replr_run_r_code()** - One-off code execution with automatic cleanup
+- **replr_lint_code()** - Analyze code for style issues without executing it
 
 #### Full Session Management
 
