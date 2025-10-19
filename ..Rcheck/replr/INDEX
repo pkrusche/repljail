@@ -1,0 +1,63 @@
+.replr_sessions         replr Tools for REPL Session Management
+RREPLSession            RREPLSession: R6 Class for Isolated R Session
+                        Management
+build_worker_docker_image
+                        Build or Pull Worker Docker Image
+check_dependencies      Check Package Dependencies
+check_process_requirements
+                        Check Process Availability
+cleanup_docker_containers
+                        Clean up orphaned replr Docker containers
+cleanup_docker_networks
+                        Cleanup Orphaned Docker Networks
+close_socket            Close Socket
+create_req_socket       Communication Helpers for nanonext REQ-REP
+debug_error             Debug log error message
+debug_log               Debug log message
+debug_status            Show Debug Status
+debug_success           Debug log success message
+debug_warn              Debug log warning message
+docker_image_exists     Check if Docker Image Exists
+enable_debug            Enable Debug Logging
+get_available_port      Get Available Port
+get_worker_docker_image
+                        Get Docker Image Name for Worker
+get_worker_script_path
+                        Get Worker Script Path
+is_debug_enabled        Debug Logging Utilities
+is_docker_available     Check Docker Availability
+replr                   replr: Isolated REPL functionality for R
+replr_check_syntax      Check R Code Syntax
+replr_check_syntax_tool
+                        Check R Code Syntax Tool Definition
+replr_cleanup_sessions
+                        Clean Up Dead REPL Sessions
+replr_cleanup_sessions_tool
+                        Cleanup Sessions Tool Definition
+replr_create_repl_session
+                        Create a New REPL Session for replr
+replr_create_repl_session_tool
+                        Create REPL Session Tool Definition
+replr_execute_code      Execute R Code in a REPL Session
+replr_execute_code_tool
+                        Execute Code Tool Definition
+replr_get_session_info
+                        Get Information About a REPL Session
+replr_get_session_info_tool
+                        Get Session Info Tool Definition
+replr_list_sessions     List All Active REPL Sessions
+replr_list_sessions_tool
+                        List Sessions Tool Definition
+replr_run_r_code        Run R Code (Simple Interface)
+replr_run_r_code_tool   Run R Code Tool Definition
+replr_stop_all_sessions
+                        Stop All REPL Sessions
+replr_stop_all_sessions_tool
+                        Stop All Sessions Tool Definition
+replr_stop_session      Stop a REPL Session
+replr_stop_session_tool
+                        Stop Session Tool Definition
+send_request            Send Request to Worker
+start_docker_worker     Start Docker Worker Process
+test_socket_connection
+                        Test Socket Connection
