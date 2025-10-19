@@ -1144,3 +1144,173 @@ replr_check_syntax_tool <- function() {
     )
   }
 }
+
+#' Lint R Code Without Executing It
+#'
+#' Analyzes R code for style issues and potential problems using the lintr package
+#' without executing the code. This is useful for checking code quality and
+#' identifying potential issues before execution.
+#'
+#' @param code character, R code to lint
+#' @param linters character vector, optional linters to use. If NULL, uses default linters.
+#'   Common linters include: "trailing_whitespace_linter", "line_length_linter",
+#'   "object_name_linter", "assignment_linter", etc.
+#' @return list with lint results and success status
+#' @export
+#' @examples
+#' \dontrun{
+#' # Lint simple code
+#' result <- replr_lint_code("x = 1")
+#' if (result$success) {
+#'   print(result$data$lints)
+#' }
+#'
+#' # Lint code with specific linters
+#' result <- replr_lint_code(
+#'   "my_var <- 1",
+#'   linters = c("object_name_linter", "line_length_linter")
+#' )
+#' }
+replr_lint_code <- function(code, linters = NULL) {
+  tryCatch(
+    {
+      # Check if lintr is available
+      if (!requireNamespace("lintr", quietly = TRUE)) {
+        return(list(
+          success = FALSE,
+          message = "lintr package is not installed. Install it with: install.packages('lintr')",
+          data = NULL,
+          error = "LINTR_NOT_AVAILABLE"
+        ))
+      }
+
+      # Write code to a temporary file for linting
+      temp_file <- tempfile(fileext = ".R")
+      on.exit(unlink(temp_file), add = TRUE)
+      writeLines(code, temp_file)
+
+      # Prepare linters
+      if (is.null(linters)) {
+        # Use default linters
+        lint_results <- lintr::lint(temp_file)
+      } else {
+        # Build linter list from names
+        linter_list <- list()
+        for (linter_name in linters) {
+          # Try to get the linter function
+          linter_func <- tryCatch(
+            get(linter_name, envir = asNamespace("lintr"), mode = "function"),
+            error = function(e) NULL
+          )
+          if (!is.null(linter_func)) {
+            linter_list[[linter_name]] <- linter_func()
+          }
+        }
+        lint_results <- lintr::lint(temp_file, linters = linter_list)
+      }
+
+      # Convert lint results to a structured format
+      lints <- list()
+      if (length(lint_results) > 0) {
+        for (i in seq_along(lint_results)) {
+          lint <- lint_results[[i]]
+          lints[[i]] <- list(
+            line = lint$line_number,
+            column = lint$column_number,
+            type = lint$type,
+            message = lint$message,
+            linter = lint$linter,
+            line_content = lint$line
+          )
+        }
+      }
+
+      list(
+        success = TRUE,
+        message = if (length(lints) == 0) {
+          "No linting issues found"
+        } else {
+          paste("Found", length(lints), "linting issue(s)")
+        },
+        data = list(
+          code = code,
+          lint_count = length(lints),
+          lints = lints
+        ),
+        error = NULL
+      )
+    },
+    error = function(e) {
+      list(
+        success = FALSE,
+        message = paste("Error linting code:", e$message),
+        data = NULL,
+        error = as.character(e$message)
+      )
+    }
+  )
+}
+
+#' Lint Code Tool Definition
+#'
+#' Returns an ellmer tool definition for linting R code without execution.
+#' This function provides the tool metadata that LLM agents need to
+#' understand how to check code quality using lintr.
+#'
+#' @return An ellmer tool object (when ellmer is available) or a compatible
+#'   structure containing the tool name, description, parameters, and function.
+#' @export
+#' @examples
+#' \dontrun{
+#' # Get the tool definition
+#' lint_tool <- replr_lint_code_tool()
+#' print(lint_tool$name)
+#' print(lint_tool$description)
+#' }
+replr_lint_code_tool <- function() {
+  if (requireNamespace("ellmer", quietly = TRUE)) {
+    ellmer::tool(
+      replr_lint_code,
+      name = "replr_lint_code",
+      description = paste0(
+        "Analyze R code for style issues and potential problems using lintr without executing it. ",
+        "This is useful for checking code quality, identifying potential issues, ",
+        "and ensuring code follows best practices before execution. ",
+        "Returns a structured list of linting issues including line numbers, messages, and types."
+      ),
+      arguments = list(
+        code = ellmer::type_string(
+          "R code to lint and analyze for style issues",
+          required = TRUE
+        ),
+        linters = ellmer::type_array(
+          "Optional list of specific linter names to use (e.g., ['line_length_linter', 'object_name_linter']). If not provided, uses default linters.",
+          required = FALSE
+        )
+      )
+    )
+  } else {
+    list(
+      name = "replr_lint_code",
+      description = paste0(
+        "Analyze R code for style issues and potential problems using lintr without executing it. ",
+        "This is useful for checking code quality, identifying potential issues, ",
+        "and ensuring code follows best practices before execution. ",
+        "Returns a structured list of linting issues including line numbers, messages, and types."
+      ),
+      parameters = list(
+        code = list(
+          type = "string",
+          description = "R code to lint",
+          required = TRUE
+        ),
+        linters = list(
+          type = "array",
+          description = "Optional list of linter names",
+          required = FALSE
+        )
+      ),
+      fn = replr_lint_code
+    )
+  }
+}
