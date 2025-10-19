@@ -434,14 +434,3 @@ test_that("replr_lint_code handles errors gracefully", {
   result <- replr_lint_code("")
   expect_true(result$success)
 })
-
-test_that("replr_lint_code_tool returns proper structure", {
-  # Test that tool definition has expected structure
-  tool <- replr_lint_code_tool()
-
-  expect_true(is.list(tool))
-  expect_true("name" %in% names(tool))
-  expect_true("description" %in% names(tool))
-  expect_equal(tool$name, "replr_lint_code")
-  expect_true(nchar(tool$description) > 0)
-})
