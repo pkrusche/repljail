@@ -10,3 +10,4 @@ tests/testthat/test_*.png
 logs
 
 .claude
+..Rcheck/
