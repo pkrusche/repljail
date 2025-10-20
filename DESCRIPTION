@@ -27,5 +27,7 @@ Suggests:
     png,
     knitr,
     rmarkdown,
-    lintr
+    lintr,
+    DT,
+    htmltools
 VignetteBuilder: knitr

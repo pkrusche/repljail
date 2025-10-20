@@ -30,5 +30,4 @@ jobs:
         run: |
           cov <- covr::package_coverage()
           print(cov)
-          covr::report(cov, file = NULL)
         shell: Rscript {0}

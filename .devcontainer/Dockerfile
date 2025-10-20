@@ -38,7 +38,7 @@ RUN Rscript -e "install.packages('nanonext', repos='https://cran.rstudio.com/', 
 RUN Rscript -e "install.packages(c('pryr', 'testthat'), repos='https://cran.rstudio.com/', dependencies=TRUE)"
 
 # Install R development tools
-RUN Rscript -e "install.packages(c('devtools', 'roxygen2', 'pkgdown', 'lintr', 'remotes', 'here', 'languageserver', 'httpgd', 'png', 'pak', 'ellmer'), repos='https://cran.rstudio.com/', dependencies=TRUE)"
+RUN Rscript -e "install.packages(c('devtools', 'roxygen2', 'pkgdown', 'lintr', 'remotes', 'here', 'languageserver', 'httpgd', 'png', 'pak', 'ellmer', 'covr', 'knitr', 'rmarkdown', 'DT', 'htmltools'), repos='https://cran.rstudio.com/', dependencies=TRUE)"
 
 # Set working directory
 WORKDIR /workspaces/replr
