@@ -88,6 +88,7 @@ Main R Process (Controller) ←──nanonext REQ/REP──→ Worker R Process 
 - **R/communication.R**: Socket management (create_req_socket, send_request, close_socket)
 - **R/debug.R**: Debug logging system using `cli` package
 - **R/ellmer-tools.R**: LLM agent tools for ellmer integration (session management, structured responses)
+- **R/conversation-logger.R**: Conversation logging system for ellmer chat sessions (markdown format)
 - **inst/worker.R**: Worker script that runs in isolated process, handles code evaluation
 
 ### Worker Process Details
@@ -122,6 +123,29 @@ Main R Process (Controller) ←──nanonext REQ/REP──→ Worker R Process 
 - All tools return standardized responses: `list(success, message, data, error)`
 - Plot handling: Converts base64 plots to temporary PNG files for LLM consumption
 - Demo: `inst/examples/llm-agent-demo.R` shows complete LLM agent workflow
+
+### Conversation Logging
+- `R/conversation-logger.R` provides markdown-formatted logging for ellmer chat sessions
+- `ConversationLogger` R6 class attaches to ellmer Chat objects via callbacks
+- Logs captured in markdown format with:
+  - User prompts and assistant responses
+  - Tool calls with R code formatted in markdown code blocks
+  - Tool results with output, warnings, errors, and execution time
+  - Timestamp tracking for each turn
+- Usage:
+  ```r
+  # Create and attach logger
+  logger <- create_conversation_logger(log_file = "chat.md", auto_save = TRUE)
+  logger$attach(chat)
+
+  # Chat normally - logging happens automatically
+  chat$chat("Analyze this data...")
+
+  # Access or save log
+  logger$save()  # or logger$get_log()
+  ```
+- Demo: `inst/examples/conversation-logging-demo.R` shows complete logging workflow
+- Tests: `tests/testthat/test-conversation-logger.R` with mock Chat objects
 
 ## Response Format
 
@@ -170,13 +194,14 @@ list(
 
 ## Testing
 
-Test suite (42 test cases) in `tests/testthat/`:
+Test suite in `tests/testthat/`:
 - **test-session.R**: RREPLSession R6 class functionality
 - **test-worker.R**: Worker process communication
 - **test-end-to-end.R**: Full execution workflows
 - **test-plots.R**: Plot capture with PNG comparison against reference images
 - **test-docker.R**: Docker container functionality (skipped if Docker unavailable)
 - **test-ellmer-tools.R**: LLM agent tool interfaces
+- **test-conversation-logger.R**: Conversation logging with mock Chat objects
 - **test-debug-integration.R**: Debug logging system
 - **helper.R**: Test utilities and shared fixtures
 

@@ -16,7 +16,8 @@ Imports:
     R6,
     uuid,
     cli,
-    base64enc
+    base64enc,
+    jsonlite
 Suggests:
     covr,
     ellmer,
