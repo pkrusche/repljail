@@ -15,7 +15,7 @@ library(replr)
 library(ellmer)
 
 # Create a log file path
-log_file <- file.path(tempdir(), "conversation_log.md")
+log_file <- file.path("conversation_log.md")
 cat("Log will be saved to:", log_file, "\n\n")
 
 # Initialize chat with OpenAI (requires API key)
@@ -44,7 +44,7 @@ tryCatch(
 cat("Creating conversation logger...\n")
 logger <- create_conversation_logger(
   log_file = log_file,
-  auto_save = TRUE  # Automatically save after each turn
+  auto_save = TRUE # Automatically save after each turn
 )
 
 cat("Attaching logger to chat...\n")

@@ -207,7 +207,7 @@ replr_execute_code <- function(session_id, code, timeout = 30) {
         visible = result$result$visible,
         plots = list(
           count = length(result$result$plots),
-          data_urls = result$result$plots,
+          # data_urls = result$result$plots,  # nolint don't include base64 data URLs in structured output
           file_paths = plot_files
         ),
         execution_time = result$execution_time,

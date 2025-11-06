@@ -111,6 +111,7 @@ ConversationLogger <- R6::R6Class(
     #'
     #' @param file character, path to save the log (uses log_file if not provided)
     #' @return self (invisibly)
+    #' @importFrom jsonlite toJSON
     save = function(file = NULL) {
       file_path <- file %||% self$log_file
 
@@ -147,7 +148,6 @@ ConversationLogger <- R6::R6Class(
       invisible(self)
     }
   ),
-
   private = list(
     log_buffer = NULL,
     session_start = NULL,
@@ -155,11 +155,9 @@ ConversationLogger <- R6::R6Class(
     chat = NULL,
     original_chat_method = NULL,
     current_tool_request = NULL,
-
     append_log = function(text) {
       private$log_buffer <- c(private$log_buffer, text)
     },
-
     create_chat_wrapper = function() {
       # Return a function that wraps the original chat method
       function(...) {
@@ -196,7 +194,6 @@ ConversationLogger <- R6::R6Class(
         result
       }
     },
-
     log_tool_request = function(request) {
       # Store for matching with result
       private$current_tool_request <- request
@@ -242,12 +239,11 @@ ConversationLogger <- R6::R6Class(
         if (length(args) > 0) {
           private$append_log("**Arguments:**\n\n")
           private$append_log("```json\n")
-          private$append_log(jsonlite::toJSON(args, pretty = TRUE, auto_unbox = TRUE))
+          private$append_log(toJSON(args, pretty = TRUE, auto_unbox = TRUE))
           private$append_log("\n```\n\n")
         }
       }
     },
-
     log_tool_result = function(result) {
       # Log tool result
       private$append_log("### Tool Result\n\n")
@@ -323,6 +319,41 @@ ConversationLogger <- R6::R6Class(
               plots_val$count,
               " plot(s) generated\n\n"
             ))
+
+            # Embed plot images using file_paths if available
+            if (!is.null(plots_val$file_paths) && length(plots_val$file_paths) > 0) {
+              for (i in seq_along(plots_val$file_paths)) {
+                temp_file_path <- plots_val$file_paths[[i]]
+
+                # Copy the temp file to the log directory if log_file is set
+                final_path <- temp_file_path
+                if (!is.null(self$log_file)) {
+                  log_dir <- normalizePath(dirname(self$log_file))
+                  log_basename <- tools::file_path_sans_ext(basename(self$log_file))
+
+                  # Create a unique filename for the plot
+                  plot_filename <- paste0(
+                    log_basename,
+                    "_plot_",
+                    format(Sys.time(), "%Y%m%d_%H%M%S"),
+                    "_",
+                    i,
+                    ".png"
+                  )
+                  final_path <- file.path(log_dir, plot_filename)
+
+                  # Copy the temp file to the log directory
+                  message("Copy ", temp_file_path, " to ", final_path)
+                  stopifnot(file.copy(temp_file_path, final_path, overwrite = TRUE))
+
+                  # Use relative path for markdown (just the filename)
+                  final_path <- plot_filename
+                }
+
+                private$append_log(paste0("**Plot ", i, ":**\n\n"))
+                private$append_log(paste0("![Plot ", i, "](", basename(final_path), ")\n\n"))
+              }
+            }
           }
 
           # Execution time
@@ -348,17 +379,20 @@ ConversationLogger <- R6::R6Class(
         # Generic result - try to convert to something JSON-serializable
         result_for_json <- if (is_s7) {
           # For S7 objects, try to extract a reasonable representation
-          tryCatch({
-            # Try to get all slot names and values
-            list(result = paste(capture.output(print(result)), collapse = "\n"))
-          }, error = function(e) {
-            list(result = "S7 object (cannot serialize)")
-          })
+          tryCatch(
+            {
+              # Try to get all slot names and values
+              list(result = paste(capture.output(print(result)), collapse = "\n"))
+            },
+            error = function(e) {
+              list(result = "S7 object (cannot serialize)")
+            }
+          )
         } else {
           result
         }
         private$append_log("```json\n")
-        private$append_log(jsonlite::toJSON(result_for_json, pretty = TRUE, auto_unbox = TRUE))
+        private$append_log(toJSON(result_for_json, pretty = TRUE, auto_unbox = TRUE))
         private$append_log("\n```\n\n")
       }
 
