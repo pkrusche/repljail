@@ -77,8 +77,14 @@ ConversationLogger <- R6::R6Class(
       # Store the original chat method
       private$original_chat_method <- chat$chat
 
+      # Unlock the binding to allow wrapping (R6 objects have locked bindings)
+      unlockBinding("chat", chat)
+
       # Wrap the chat method to log prompts and responses
       chat$chat <- private$create_chat_wrapper()
+
+      # Re-lock the binding to maintain R6 semantics
+      lockBinding("chat", chat)
 
       # Register tool callbacks
       if ("on_tool_request" %in% names(chat)) {
@@ -198,12 +204,23 @@ ConversationLogger <- R6::R6Class(
       # Log tool call
       private$append_log("### Tool Call\n\n")
 
-      tool_name <- request$name %||% "unknown"
+      # Handle both S7 objects (use @) and regular lists (use $)
+      tool_name <- if (inherits(request, "S7_object")) {
+        request@name %||% "unknown"
+      } else {
+        request$name %||% "unknown"
+      }
       private$append_log(paste0("**Tool:** `", tool_name, "`\n\n"))
+
+      # Get arguments - handle both S7 and list
+      args <- if (inherits(request, "S7_object")) {
+        request@arguments %||% list()
+      } else {
+        request$arguments %||% list()
+      }
 
       # Special handling for R code execution
       if (tool_name == "replr_execute_code") {
-        args <- request$arguments %||% list()
         if (!is.null(args$code)) {
           private$append_log("**Code:**\n\n")
           private$append_log("```r\n")
@@ -214,7 +231,6 @@ ConversationLogger <- R6::R6Class(
           private$append_log(paste0("**Session:** ", args$session_id, "\n\n"))
         }
       } else if (tool_name == "replr_run_r_code") {
-        args <- request$arguments %||% list()
         if (!is.null(args$code)) {
           private$append_log("**Code:**\n\n")
           private$append_log("```r\n")
@@ -223,7 +239,6 @@ ConversationLogger <- R6::R6Class(
         }
       } else {
         # Generic tool arguments
-        args <- request$arguments %||% list()
         if (length(args) > 0) {
           private$append_log("**Arguments:**\n\n")
           private$append_log("```json\n")
@@ -237,76 +252,113 @@ ConversationLogger <- R6::R6Class(
       # Log tool result
       private$append_log("### Tool Result\n\n")
 
+      # Handle S7 objects - extract properties using @ notation
+      is_s7 <- inherits(result, "S7_object")
+
+      # For ellmer ContentToolResult objects, extract the actual value
+      # Check class name contains "ContentToolResult" (may have namespace prefix)
+      if (is_s7 && any(grepl("ContentToolResult", class(result)))) {
+        result <- tryCatch(slot(result, "value"), error = function(e) result)
+        is_s7 <- inherits(result, "S7_object")
+      }
+
+      # Helper function to safely get property from S7 or list
+      get_prop <- function(obj, name) {
+        if (is_s7) {
+          tryCatch(slot(obj, name), error = function(e) NULL)
+        } else {
+          obj[[name]]
+        }
+      }
+
       # Check if this is a replr tool result (standard format)
-      if (is.list(result) && !is.null(result$success)) {
+      success_val <- get_prop(result, "success")
+      if (!is.null(success_val)) {
         private$append_log(paste0(
           "**Status:** ",
-          if (result$success) "✓ Success" else "✗ Failed",
+          if (success_val) "✓ Success" else "✗ Failed",
           "\n\n"
         ))
 
-        if (!is.null(result$message)) {
-          private$append_log(paste0("**Message:** ", result$message, "\n\n"))
+        message_val <- get_prop(result, "message")
+        if (!is.null(message_val)) {
+          private$append_log(paste0("**Message:** ", message_val, "\n\n"))
         }
 
         # Special handling for execution results
-        if (!is.null(result$data)) {
-          data <- result$data
-
+        data <- get_prop(result, "data")
+        if (!is.null(data)) {
           # Output from code execution
-          if (!is.null(data$output) && length(data$output) > 0) {
+          output_val <- data$output
+          if (!is.null(output_val) && length(output_val) > 0) {
             private$append_log("**Output:**\n\n")
             private$append_log("```\n")
-            private$append_log(paste(data$output, collapse = "\n"))
+            private$append_log(paste(output_val, collapse = "\n"))
             private$append_log("\n```\n\n")
           }
 
           # Warnings
-          if (!is.null(data$warnings) && length(data$warnings) > 0) {
+          warnings_val <- data$warnings
+          if (!is.null(warnings_val) && length(warnings_val) > 0) {
             private$append_log("**Warnings:**\n\n")
             private$append_log("```\n")
-            private$append_log(paste(data$warnings, collapse = "\n"))
+            private$append_log(paste(warnings_val, collapse = "\n"))
             private$append_log("\n```\n\n")
           }
 
           # Errors
-          if (!is.null(data$errors) && length(data$errors) > 0) {
+          errors_val <- data$errors
+          if (!is.null(errors_val) && length(errors_val) > 0) {
             private$append_log("**Errors:**\n\n")
             private$append_log("```\n")
-            private$append_log(paste(data$errors, collapse = "\n"))
+            private$append_log(paste(errors_val, collapse = "\n"))
             private$append_log("\n```\n\n")
           }
 
           # Plots
-          if (!is.null(data$plots) && !is.null(data$plots$count) && data$plots$count > 0) {
+          plots_val <- data$plots
+          if (!is.null(plots_val) && !is.null(plots_val$count) && plots_val$count > 0) {
             private$append_log(paste0(
               "**Plots:** ",
-              data$plots$count,
+              plots_val$count,
               " plot(s) generated\n\n"
             ))
           }
 
           # Execution time
-          if (!is.null(data$execution_time)) {
+          exec_time <- data$execution_time
+          if (!is.null(exec_time)) {
             private$append_log(paste0(
               "**Execution time:** ",
-              round(data$execution_time, 3),
+              round(exec_time, 3),
               " seconds\n\n"
             ))
           }
         }
 
         # Log error if present
-        if (!is.null(result$error)) {
+        error_val <- get_prop(result, "error")
+        if (!is.null(error_val)) {
           private$append_log("**Error Details:**\n\n")
           private$append_log("```\n")
-          private$append_log(paste(result$error, collapse = "\n"))
+          private$append_log(paste(error_val, collapse = "\n"))
           private$append_log("\n```\n\n")
         }
       } else {
-        # Generic result
+        # Generic result - try to convert to something JSON-serializable
+        result_for_json <- if (is_s7) {
+          # For S7 objects, try to extract a reasonable representation
+          tryCatch({
+            # Try to get all slot names and values
+            list(result = paste(capture.output(print(result)), collapse = "\n"))
+          }, error = function(e) {
+            list(result = "S7 object (cannot serialize)")
+          })
+        } else {
+          result
+        }
         private$append_log("```json\n")
-        private$append_log(jsonlite::toJSON(result, pretty = TRUE, auto_unbox = TRUE))
+        private$append_log(jsonlite::toJSON(result_for_json, pretty = TRUE, auto_unbox = TRUE))
         private$append_log("\n```\n\n")
       }
 

@@ -87,6 +87,7 @@ test_that("ConversationLogger validates chat object on attach", {
 create_mock_chat <- function() {
   mock_chat <- R6::R6Class(
     "Chat",
+    lock_objects = FALSE,  # Allow modification of bindings
     public = list(
       chat = function(...) {
         private$chat_history <- c(private$chat_history, list(list(...)))
@@ -115,6 +116,9 @@ create_mock_chat <- function() {
       tool_result_callback = NULL
     )
   )$new()
+
+  # Unlock the 'chat' binding to allow ConversationLogger to wrap it
+  unlockBinding("chat", mock_chat)
 
   return(mock_chat)
 }

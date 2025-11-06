@@ -8,7 +8,7 @@ replr_lint_code_tool()
 }
 \value{
 An ellmer tool object (when ellmer is available) or a compatible
-  structure containing the tool name, description, parameters, and function.
+structure containing the tool name, description, parameters, and function.
 }
 \description{
 Returns an ellmer tool definition for linting R code without execution.
