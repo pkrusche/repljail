@@ -305,6 +305,10 @@ test_that("ConversationLogger logs tool results with plots", {
   # Check log contains plot information
   log <- logger$get_log()
   expect_true(grepl("\\*\\*Plots:\\*\\* 2 plot\\(s\\) generated", log))
+
+  # Check that plot images are embedded with markdown image syntax
+  expect_true(grepl("!\\[Plot 1\\]\\(data:image/png;base64,abc123\\)", log))
+  expect_true(grepl("!\\[Plot 2\\]\\(data:image/png;base64,def456\\)", log))
 })
 
 test_that("ConversationLogger logs generic tool results", {
