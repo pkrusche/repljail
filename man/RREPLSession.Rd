@@ -76,6 +76,7 @@ session$stop()
 \item \href{#method-RREPLSession-stop}{\code{RREPLSession$stop()}}
 \item \href{#method-RREPLSession-get_info}{\code{RREPLSession$get_info()}}
 \item \href{#method-RREPLSession-get_debug_logs}{\code{RREPLSession$get_debug_logs()}}
+\item \href{#method-RREPLSession-register_temp_file}{\code{RREPLSession$register_temp_file()}}
 \item \href{#method-RREPLSession-clone}{\code{RREPLSession$clone()}}
 }
 }
@@ -177,6 +178,23 @@ Retrieve debug logs from the worker process
 
 \subsection{Returns}{
 character vector of debug log messages
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-RREPLSession-register_temp_file"></a>}}
+\if{latex}{\out{\hypertarget{method-RREPLSession-register_temp_file}{}}}
+\subsection{Method \code{register_temp_file()}}{
+Register a temporary file for cleanup when session stops
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{RREPLSession$register_temp_file(file_path)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{file_path}}{character, path to temporary file}
+}
+\if{html}{\out{</div>}}
 }
 }
 \if{html}{\out{<hr>}}
