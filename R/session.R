@@ -68,6 +68,14 @@ RREPLSession <- R6::R6Class(
               }
             )
           }
+          # Clean up temp files
+          if (length(private$.temp_files) > 0) {
+            for (temp_file in private$.temp_files) {
+              if (file.exists(temp_file)) {
+                tryCatch(unlink(temp_file), error = function(e) {})
+              }
+            }
+          }
         },
         onexit = TRUE
       )
@@ -114,6 +122,16 @@ RREPLSession <- R6::R6Class(
       result <- stop_worker(private$.worker_info, timeout = timeout)
       private$.stopped <- TRUE
 
+      # Clean up temp files
+      if (length(private$.temp_files) > 0) {
+        for (temp_file in private$.temp_files) {
+          if (file.exists(temp_file)) {
+            unlink(temp_file)
+          }
+        }
+        private$.temp_files <- character(0)
+      }
+
       result
     },
 
@@ -152,6 +170,14 @@ RREPLSession <- R6::R6Class(
       }
 
       return(replr:::get_worker_debug_logs(private$.worker_info)) # nolint
+    },
+
+    #' @description
+    #' Register a temporary file for cleanup when session stops
+    #' @param file_path character, path to temporary file
+    register_temp_file = function(file_path) {
+      private$.temp_files <- c(private$.temp_files, file_path)
+      invisible(self)
     }
   ),
   active = list(
@@ -189,6 +215,7 @@ RREPLSession <- R6::R6Class(
   ),
   private = list(
     .worker_info = NULL,
-    .stopped = FALSE
+    .stopped = FALSE,
+    .temp_files = character(0)
   )
 )

@@ -28,11 +28,12 @@ test_that("replr_execute_code handles multiple plots correctly", {
 
       # Check that multiple plots are handled
       expect_equal(result$data$plots$count, 2)
-      expect_equal(length(result$data$plots$data_urls), 2)
+      expect_equal(length(result$data$plots$file_paths), 2)
 
-      # All data URLs should be valid
-      for (url in result$data$plots$data_urls) {
-        expect_true(grepl("^data:image/png;base64,", url))
+      # All file paths should be valid and exist
+      for (file_path in result$data$plots$file_paths) {
+        expect_true(file.exists(file_path))
+        expect_true(grepl("\\.png$", file_path))
       }
     },
     finally = {
@@ -59,7 +60,7 @@ test_that("replr_execute_code works without plots (backward compatibility)", {
 
       # Check plot structure for non-plotting code
       expect_equal(result$data$plots$count, 0)
-      expect_equal(length(result$data$plots$data_urls), 0)
+      expect_equal(length(result$data$plots$file_paths), 0)
     },
     finally = {
       # Clean up

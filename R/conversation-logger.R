@@ -272,7 +272,7 @@ ConversationLogger <- R6::R6Class(
       if (!is.null(success_val)) {
         private$append_log(paste0(
           "**Status:** ",
-          if (success_val) "✓ Success" else "✗ Failed",
+          if (success_val) "\u2713 Success" else "\u2717 Failed",
           "\n\n"
         ))
 
@@ -320,7 +320,7 @@ ConversationLogger <- R6::R6Class(
               " plot(s) generated\n\n"
             ))
 
-            # Embed plot images using file_paths if available
+            # Embed plot images using file_paths if available, otherwise fall back to data_urls
             if (!is.null(plots_val$file_paths) && length(plots_val$file_paths) > 0) {
               for (i in seq_along(plots_val$file_paths)) {
                 temp_file_path <- plots_val$file_paths[[i]]
@@ -343,7 +343,6 @@ ConversationLogger <- R6::R6Class(
                   final_path <- file.path(log_dir, plot_filename)
 
                   # Copy the temp file to the log directory
-                  message("Copy ", temp_file_path, " to ", final_path)
                   stopifnot(file.copy(temp_file_path, final_path, overwrite = TRUE))
 
                   # Use relative path for markdown (just the filename)
@@ -352,6 +351,12 @@ ConversationLogger <- R6::R6Class(
 
                 private$append_log(paste0("**Plot ", i, ":**\n\n"))
                 private$append_log(paste0("![Plot ", i, "](", basename(final_path), ")\n\n"))
+              }
+            } else if (!is.null(plots_val$data_urls) && length(plots_val$data_urls) > 0) {
+              # Fallback to data URLs if file paths not available
+              for (i in seq_along(plots_val$data_urls)) {
+                private$append_log(paste0("**Plot ", i, ":**\n\n"))
+                private$append_log(paste0("![Plot ", i, "](", plots_val$data_urls[[i]], ")\n\n"))
               }
             }
           }

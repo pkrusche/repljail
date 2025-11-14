@@ -192,9 +192,8 @@ replr_execute_code <- function(session_id, code, timeout = 30) {
         # This doesn't work because ellmer does not serialize these to JSON
         # plot_files <- append(plot_files, list(ellmer::content_image_file(temp_filename)))  # nolint
         plot_files <- append(plot_files, list(temp_filename))
-        # rm on session exit
-        # TODO: better way would be to keep a list of temp files per session and clean up when session is stopped
-        on.exit(unlink(temp_filename), add = TRUE)
+        # Register temp file with session for cleanup when session stops
+        session$register_temp_file(temp_filename)
       }
 
       # Extract and structure the results
@@ -207,7 +206,6 @@ replr_execute_code <- function(session_id, code, timeout = 30) {
         visible = result$result$visible,
         plots = list(
           count = length(result$result$plots),
-          # data_urls = result$result$plots,  # nolint don't include base64 data URLs in structured output
           file_paths = plot_files
         ),
         execution_time = result$execution_time,
@@ -714,8 +712,8 @@ replr_execute_code_tool <- function() {
       name = "replr_execute_code",
       description = paste0(
         "Execute R code in an isolated REPL session and return structured results.",
-        " When creating plots in the code, they will be converted to data URLs in ",
-        "the structured output for compatibility with vision models."
+        " When creating plots in the code, they will be saved as temporary PNG files ",
+        "and returned as file paths that remain valid for the session's lifetime."
       ),
       arguments = list(
         session_id = ellmer::type_string(
@@ -737,8 +735,8 @@ replr_execute_code_tool <- function() {
       name = "replr_execute_code",
       description = paste0(
         "Execute R code in an isolated REPL session and return structured results.",
-        " When creating plots in the code, they will be converted to data URLs in ",
-        "the structured output for compatibility with vision models."
+        " When creating plots in the code, they will be saved as temporary PNG files ",
+        "and returned as file paths that remain valid for the session's lifetime."
       ),
       parameters = list(
         session_id = list(
@@ -994,8 +992,10 @@ replr_run_r_code_tool <- function() {
         "Execute R code in a temporary isolated REPL session. ",
         "The session is automatically created and cleaned up after execution. ",
         "This is a simple interface for one-off R code execution without manual session management. ",
-        "When creating plots in the code, they will be converted to data URLs in ",
-        "the structured output for compatibility with vision models."
+        "When creating plots in the code, they will be saved as temporary PNG files ",
+        "and returned as file paths. Note: temp files will be deleted when the function returns, ",
+        "so this tool is not suitable for plot generation. Use replr_create_repl_session and ",
+        "replr_execute_code for persistent sessions with plot support."
       ),
       arguments = list(
         code = ellmer::type_string(
@@ -1015,8 +1015,10 @@ replr_run_r_code_tool <- function() {
         "Execute R code in a temporary isolated REPL session. ",
         "The session is automatically created and cleaned up after execution. ",
         "This is a simple interface for one-off R code execution without manual session management. ",
-        "When creating plots in the code, they will be converted to data URLs in ",
-        "the structured output for compatibility with vision models."
+        "When creating plots in the code, they will be saved as temporary PNG files ",
+        "and returned as file paths. Note: temp files will be deleted when the function returns, ",
+        "so this tool is not suitable for plot generation. Use replr_create_repl_session and ",
+        "replr_execute_code for persistent sessions with plot support."
       ),
       parameters = list(
         code = list(
