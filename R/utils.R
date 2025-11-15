@@ -118,8 +118,8 @@ get_worker_script_path <- function() {
 #' Start Worker Process
 #'
 #' Spawn a worker R process using processx that runs the worker script.
-#' Optionally can run the worker inside a Docker container for enhanced isolation.
-#' Docker usage is controlled by the 'replr.use.docker' option.
+#' Can use different isolation strategies: native, Docker, or firejail.
+#' Isolation method is controlled by options: 'replr.use.firejail' or 'replr.use.docker'.
 #'
 #' @param port integer, port number for the worker to listen on
 #' @param timeout numeric, timeout in seconds to wait for worker startup
@@ -146,37 +146,16 @@ start_worker <- function(port = NULL, timeout = 10) {
     worker_args <- c(worker_args, "--debug")
   }
 
-  # Prepare environment for worker process
-  worker_env <- Sys.getenv()
-  # Pass current library paths to worker
-  worker_env[["R_LIBS_USER"]] <- paste(
-    .libPaths(),
-    collapse = .Platform$path.sep
-  )
+  # Create the appropriate worker wrapper based on options
+  wrapper <- create_worker_wrapper()
+  wrapper_metadata <- wrapper$get_metadata()
+  wrapper_type <- wrapper_metadata$type
 
-  # Check if Docker should be used (from option)
-  use_docker <- getOption("replr.use.docker", default = FALSE)
+  debug_log("Using worker wrapper type: ", wrapper_type)
 
-  # Start the worker process (either Docker or native)
-  if (use_docker) {
-    # Check Docker availability
-    if (!is_docker_available()) {
-      stop("Docker is not available. Cannot start worker in Docker container.")
-    }
-
-    proc <- start_docker_worker(port, worker_script, worker_args, timeout)
-  } else {
-    # Start native worker process
-    proc <- processx::process$new(
-      command = file.path(R.home("bin"), "Rscript"),
-      args = worker_args,
-      stdout = "|",
-      stderr = "|",
-      cleanup = TRUE,
-      cleanup_tree = TRUE,
-      env = worker_env
-    )
-  }
+  # Start the worker process using the wrapper
+  wrapper_result <- wrapper$start_process(port, worker_script, worker_args, timeout)
+  proc <- wrapper_result$process
 
   # Wait for worker to start up
   start_time <- Sys.time()
@@ -229,10 +208,10 @@ start_worker <- function(port = NULL, timeout = 10) {
     }
 
     # Special cleanup for Docker containers
-    container_name <- attr(proc, "container_name")
-    gateway_name <- attr(proc, "gateway_name")
-    network_name <- attr(proc, "network_name")
-    if (use_docker && !is.null(container_name)) {
+    container_name <- wrapper_result$container_name
+    gateway_name <- wrapper_result$gateway_name
+    network_name <- wrapper_result$network_name
+    if (wrapper_type == "docker" && !is.null(container_name)) {
       debug_log("Cleaning up failed Docker container: ", container_name)
       tryCatch(
         {
@@ -264,7 +243,7 @@ start_worker <- function(port = NULL, timeout = 10) {
 
     # Wait for graceful shutdown
     start_time <- Sys.time()
-    # Shorter timeout for Docker
+    # Shorter timeout for Docker/firejail
     while (
       proc$is_alive() &&
         difftime(Sys.time(), start_time, units = "secs") < 2
@@ -283,8 +262,8 @@ start_worker <- function(port = NULL, timeout = 10) {
       "Worker process did not become ready within ",
       timeout,
       " seconds\n",
-      if (use_docker) {
-        "\nNote: This was a Docker container startup failure\n"
+      if (wrapper_type %in% c("docker", "firejail")) {
+        paste0("\nNote: This was a ", wrapper_type, " worker startup failure\n")
       } else {
         ""
       },
@@ -295,29 +274,26 @@ start_worker <- function(port = NULL, timeout = 10) {
     )
   }
 
-  # Create worker info with proper Docker tracking
+  # Create worker info with proper tracking
   worker_info <- list(
     process = proc,
     port = port,
     started_at = Sys.time(),
-    is_docker = use_docker
+    wrapper_type = wrapper_type,
+    # Legacy field for backward compatibility
+    is_docker = (wrapper_type == "docker")
   )
 
   # If this is a Docker worker, store the container name in worker_info too
-  if (use_docker) {
-    container_name <- attr(proc, "container_name")
-    if (!is.null(container_name)) {
-      worker_info$container_name <- container_name
+  if (wrapper_type == "docker") {
+    if (!is.null(wrapper_result$container_name)) {
+      worker_info$container_name <- wrapper_result$container_name
     }
-    # Also store network name if present
-    network_name <- attr(proc, "network_name")
-    if (!is.null(network_name)) {
-      worker_info$network_name <- network_name
+    if (!is.null(wrapper_result$network_name)) {
+      worker_info$network_name <- wrapper_result$network_name
     }
-    # Also store gateway name if present
-    gateway_name <- attr(proc, "gateway_name")
-    if (!is.null(gateway_name)) {
-      worker_info$gateway_name <- gateway_name
+    if (!is.null(wrapper_result$gateway_name)) {
+      worker_info$gateway_name <- wrapper_result$gateway_name
     }
   }
 

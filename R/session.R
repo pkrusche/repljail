@@ -153,7 +153,8 @@ RREPLSession <- R6::R6Class(
         started_at = private$.worker_info$started_at,
         is_alive = self$is_alive(),
         stopped = private$.stopped,
-        is_docker = private$.worker_info$is_docker
+        is_docker = private$.worker_info$is_docker,
+        wrapper_type = private$.worker_info$wrapper_type
       )
     },
 
@@ -211,6 +212,15 @@ RREPLSession <- R6::R6Class(
         return(NA)
       }
       private$.worker_info$is_docker
+    },
+
+    #' @field wrapper_type Character, type of worker wrapper (native, docker, firejail)
+    wrapper_type = function() {
+      if (is.null(private$.worker_info)) {
+        return(NA_character_)
+      }
+      wt <- private$.worker_info$wrapper_type
+      if (is.null(wt)) "native" else wt
     }
   ),
   private = list(
