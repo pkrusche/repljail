@@ -156,6 +156,131 @@ options(
 session <- RREPLSession$new()
 ```
 
+## Firejail Sandboxing Support
+
+`replr` also supports running worker processes inside firejail sandboxes for enhanced security without the overhead of Docker containers. Firejail provides lightweight process isolation with strong security features.
+
+For firejail support, you need:
+
+- Firejail installed and accessible (e.g., `sudo apt install firejail` on Ubuntu/Debian)
+- Permission to run `firejail` commands
+- No additional dependencies or image builds
+
+The package automatically:
+
+1. Detects firejail availability
+2. Applies security profiles with network and filesystem isolation
+
+### Example
+
+```r
+library(replr)
+
+# Check if firejail is available
+is_firejail_available()  # TRUE if firejail is present
+
+# Enable firejail mode explicitly
+options(replr.use.firejail = TRUE)
+
+# Create session with firejail worker
+session <- RREPLSession$new()
+result <- session$execute("2 + 2")
+session$stop()
+```
+
+See also `inst/examples/` for more examples.
+
+### Firejail Security Model
+
+Firejail provides lightweight sandboxing with strong security:
+
+| Security Layer          | Native | Firejail    | Docker      |
+| ----------------------- | ------ | ----------- | ----------- |
+| Process isolation       | ✅     | ✅          | ✅          |
+| Memory separation       | ✅     | ✅          | ✅          |
+| Filesystem isolation    | ❌     | ✅          | ✅          |
+| Network isolation       | ❌     | ✅          | ✅          |
+| Capability restrictions | ❌     | ✅          | ✅          |
+| Resource limits         | ❌     | ❌          | ✅          |
+| Automatic cleanup       | ❌     | ✅          | ✅          |
+| Container overhead      | N/A    | Low         | Higher      |
+
+### Firejail Configuration
+
+You can customize firejail worker behavior using global options:
+
+| Option                           | Default | Description                                           |
+| -------------------------------- | ------- | ----------------------------------------------------- |
+| `replr.use.firejail`             | `FALSE` | Enable/disable firejail mode                          |
+| `replr.worker.firejail.profile`  | `NULL`  | Path to custom firejail profile file (optional)       |
+
+**Note:** If both `replr.use.firejail` and `replr.use.docker` are set to `TRUE`, firejail takes priority.
+
+#### Default Security Settings
+
+When no custom profile is specified, firejail workers use these security settings:
+
+- **Network isolation**: `--net=none` (no network access)
+- **Filesystem isolation**: `--private-tmp` (isolated temp directory)
+- **Capability dropping**: `--caps.drop=all` (drop all Linux capabilities)
+- **Seccomp filtering**: `--seccomp` (restrict system calls)
+- **No privilege escalation**: `--nonewprivs`
+- **Additional restrictions**: No sound, video, 3D, DVD, TV access
+
+#### Using Custom Profiles
+
+```r
+# Create a custom firejail profile
+profile_path <- tempfile(fileext = ".profile")
+writeLines(c(
+  "# Custom firejail profile",
+  "net none",              # Network isolation
+  "private-tmp",           # Private temp directory
+  "caps.drop all",         # Drop all capabilities
+  "seccomp"                # Enable seccomp filtering
+), profile_path)
+
+# Configure to use custom profile
+options(replr.use.firejail = TRUE)
+options(replr.worker.firejail.profile = profile_path)
+
+# Start session with custom profile
+session <- RREPLSession$new()
+result <- session$execute("2 + 2")
+session$stop()
+
+# Clean up
+unlink(profile_path)
+```
+
+### Choosing an Isolation Strategy
+
+| Use Case                          | Recommended Strategy |
+| --------------------------------- | -------------------- |
+| Development/testing               | Native               |
+| Running untrusted code (Linux)    | Firejail             |
+| Running untrusted code (any OS)   | Docker               |
+| Maximum security                  | Docker + Network Isolation |
+| Lightweight isolation (Linux)     | Firejail             |
+| Resource limits needed            | Docker               |
+| Cross-platform compatibility      | Docker               |
+
+```r
+# Example: Development workflow
+options(replr.use.firejail = FALSE)
+options(replr.use.docker = FALSE)
+session <- RREPLSession$new()  # Native worker
+
+# Example: Production with untrusted code on Linux
+options(replr.use.firejail = TRUE)
+session <- RREPLSession$new()  # Firejail worker
+
+# Example: Maximum security
+options(replr.use.docker = TRUE)
+options(replr.worker.docker.network.isolation = TRUE)
+session <- RREPLSession$new()  # Docker with network isolation
+```
+
 ## ellmer Tools for LLM Agents
 
 `replr` includes specialized tools designed for the [ellmer](https://ellmer.tidyverse.org/) package, allowing LLM agents to easily create and manage isolated R REPL sessions. These tools provide a standardized interface with structured responses optimized for LLM consumption.
