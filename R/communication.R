@@ -7,11 +7,21 @@
 #'
 #' Create a nanonext REQ socket for sending requests to worker
 #'
-#' @param port integer, port number to connect to
+#' @param port integer, port number to connect to (for TCP mode)
+#' @param socket_path character, socket file path (for IPC mode)
 #' @param timeout numeric, timeout in seconds for socket operations
 #' @return nanonext socket object
-create_req_socket <- function(port, timeout = 5) {
-  socket_url <- paste0("tcp://127.0.0.1:", port)
+create_req_socket <- function(port = NULL, socket_path = NULL, timeout = 5) {
+  # Determine socket URL based on provided parameters
+  if (!is.null(socket_path)) {
+    # IPC mode
+    socket_url <- paste0("ipc://", socket_path)
+  } else if (!is.null(port)) {
+    # TCP mode
+    socket_url <- paste0("tcp://127.0.0.1:", port)
+  } else {
+    stop("Either port or socket_path must be provided")
+  }
 
   tryCatch(
     {
@@ -27,12 +37,12 @@ create_req_socket <- function(port, timeout = 5) {
       # Give the async dial time to establish (critical for gateway forwarding)
       Sys.sleep(1)
 
-      debug_success("REQ socket created successfully for port {port}")
+      debug_success("REQ socket created successfully")
       sock
     },
     error = function(e) {
-      debug_error("Failed to create REQ socket on port {port}: {e$message}")
-      stop("Failed to create REQ socket on port ", port, ": ", e$message)
+      debug_error("Failed to create REQ socket: {e$message}")
+      stop("Failed to create REQ socket: ", e$message)
     }
   )
 }

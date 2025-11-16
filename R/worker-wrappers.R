@@ -59,12 +59,20 @@ NativeWorkerWrapper <- R6::R6Class(
   public = list(
     #' @description
     #' Start a native worker process using processx
-    #' @param port integer, port number for worker to listen on
+    #' @param port integer, port number for worker to listen on (unused, kept for compatibility)
     #' @param worker_script character, path to worker.R script
     #' @param worker_args character vector, arguments for worker
     #' @param timeout numeric, startup timeout in seconds
     start_process = function(port, worker_script, worker_args, timeout) {
-      debug_log("Starting native worker process on port ", port)
+      debug_log("Starting native worker process with IPC")
+
+      # Generate IPC socket path
+      socket_path <- get_ipc_socket_path()
+      debug_log("Using IPC socket path: ", socket_path)
+
+      # Replace the port argument with socket path for IPC mode
+      # worker_args[2] is the port/socket_path argument
+      worker_args[2] <- socket_path
 
       # Prepare environment for worker process
       worker_env <- Sys.getenv()
@@ -85,19 +93,21 @@ NativeWorkerWrapper <- R6::R6Class(
         env = worker_env
       )
 
-      private$.port <- port
+      private$.socket_path <- socket_path
       private$.process <- proc
 
-      debug_success("Native worker process started")
+      debug_success("Native worker process started with IPC")
 
       list(
         process = proc,
-        port = port
+        port = port,  # Keep for compatibility, but not used
+        socket_path = socket_path
       )
     }
   ),
   private = list(
-    .type = "native"
+    .type = "native",
+    .socket_path = NULL
   )
 )
 
@@ -364,17 +374,25 @@ FirejailWorkerWrapper <- R6::R6Class(
   public = list(
     #' @description
     #' Start a worker process inside a firejail sandbox
-    #' @param port integer, port number for worker to listen on
+    #' @param port integer, port number for worker to listen on (unused, kept for compatibility)
     #' @param worker_script character, path to worker.R script
     #' @param worker_args character vector, arguments for worker
     #' @param timeout numeric, startup timeout in seconds
     start_process = function(port, worker_script, worker_args, timeout) {
-      debug_log("Starting firejail worker process on port ", port)
+      debug_log("Starting firejail worker process with IPC")
 
       # Check firejail availability
       if (!is_firejail_available()) {
         stop("Firejail is not available. Cannot start worker in firejail sandbox.")
       }
+
+      # Generate IPC socket path
+      socket_path <- get_ipc_socket_path()
+      debug_log("Using IPC socket path: ", socket_path)
+
+      # Replace the port argument with socket path for IPC mode
+      # worker_args[2] is the port/socket_path argument
+      worker_args[2] <- socket_path
 
       # Get custom profile if specified
       custom_profile <- getOption("replr.worker.firejail.profile", default = NULL)
@@ -452,19 +470,21 @@ FirejailWorkerWrapper <- R6::R6Class(
         env = worker_env
       )
 
-      private$.port <- port
+      private$.socket_path <- socket_path
       private$.process <- proc
 
-      debug_success("Firejail worker process started")
+      debug_success("Firejail worker process started with IPC")
 
       list(
         process = proc,
-        port = port
+        port = port,  # Keep for compatibility, but not used
+        socket_path = socket_path
       )
     }
   ),
   private = list(
-    .type = "firejail"
+    .type = "firejail",
+    .socket_path = NULL
   )
 )
 

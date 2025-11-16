@@ -115,6 +115,19 @@ get_worker_script_path <- function() {
   stop("Worker script not found in expected locations.")
 }
 
+#' Get IPC Socket Path
+#'
+#' Generate a unique IPC socket path for worker communication
+#'
+#' @return character, path to socket file
+#' @keywords internal
+get_ipc_socket_path <- function() {
+  # Create a unique socket path in the temp directory
+  socket_path <- tempfile(pattern = "replr_socket_", tmpdir = tempdir())
+  # Ensure path is absolute and normalized
+  normalizePath(socket_path, mustWork = FALSE)
+}
+
 #' Start Worker Process
 #'
 #' Spawn a worker R process using processx that runs the worker script.
@@ -178,7 +191,14 @@ start_worker <- function(port = NULL, timeout = 10) {
     tryCatch(
       {
         # Use longer timeout for Docker gateway scenarios
-        sock <- create_req_socket(port, timeout = 3)
+        # Support both IPC and TCP connection modes
+        if (!is.null(wrapper_result$socket_path)) {
+          # IPC mode
+          sock <- create_req_socket(socket_path = wrapper_result$socket_path, timeout = 3)
+        } else {
+          # TCP mode
+          sock <- create_req_socket(port = port, timeout = 3)
+        }
         # Simple ping test
         result <- send_request(sock, "1", id = "ping", timeout = 3)
         if (!is.null(result)) {
@@ -284,6 +304,11 @@ start_worker <- function(port = NULL, timeout = 10) {
     is_docker = (wrapper_type == "docker")
   )
 
+  # Add socket path if IPC mode is used
+  if (!is.null(wrapper_result$socket_path)) {
+    worker_info$socket_path <- wrapper_result$socket_path
+  }
+
   # If this is a Docker worker, store the container name in worker_info too
   if (wrapper_type == "docker") {
     if (!is.null(wrapper_result$container_name)) {
@@ -314,8 +339,14 @@ send_command <- function(worker_info, code, timeout = 30) {
     stop("Worker process is not running")
   }
 
-  # Create socket connection
-  sock <- create_req_socket(worker_info$port, timeout = timeout)
+  # Create socket connection - support both IPC and TCP
+  if (!is.null(worker_info$socket_path)) {
+    # IPC mode
+    sock <- create_req_socket(socket_path = worker_info$socket_path, timeout = timeout)
+  } else {
+    # TCP mode (legacy)
+    sock <- create_req_socket(port = worker_info$port, timeout = timeout)
+  }
 
   tryCatch(
     {
@@ -364,14 +395,30 @@ stop_worker <- function(worker_info, timeout = 5) {
   # Try to send shutdown message first (if socket connection exists)
   tryCatch(
     {
-      if (!is.null(worker_info$port)) {
+      if (!is.null(worker_info$socket_path)) {
+        debug_log(
+          "Sending shutdown message to worker on IPC socket ",
+          worker_info$socket_path
+        )
+
+        # Create a temporary socket to send shutdown message (IPC mode)
+        sock <- create_req_socket(socket_path = worker_info$socket_path)
+        if (!is.null(sock)) {
+          send_result <- nanonext::send(sock, "__SHUTDOWN__")
+          close(sock)
+          debug_log("Shutdown message sent, result: ", send_result)
+
+          # Give worker a moment to process shutdown message
+          Sys.sleep(0.2)
+        }
+      } else if (!is.null(worker_info$port)) {
         debug_log(
           "Sending shutdown message to worker on port ",
           worker_info$port
         )
 
-        # Create a temporary socket to send shutdown message
-        sock <- create_req_socket(worker_info$port)
+        # Create a temporary socket to send shutdown message (TCP mode)
+        sock <- create_req_socket(port = worker_info$port)
         if (!is.null(sock)) {
           send_result <- nanonext::send(sock, "__SHUTDOWN__")
           close(sock)
@@ -466,6 +513,20 @@ stop_worker <- function(worker_info, timeout = 5) {
       debug_log("Cleaning up Docker network: ", network_name)
       remove_docker_network(network_name)
     }
+  }
+
+  # Clean up IPC socket file if it exists
+  socket_path <- worker_info$socket_path
+  if (!is.null(socket_path) && file.exists(socket_path)) {
+    debug_log("Cleaning up IPC socket file: ", socket_path)
+    tryCatch(
+      {
+        unlink(socket_path)
+      },
+      error = function(e) {
+        debug_warn("Failed to clean up IPC socket file: ", e$message)
+      }
+    )
   }
 
   !proc$is_alive()
