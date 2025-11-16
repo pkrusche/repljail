@@ -3,9 +3,6 @@ here::i_am("tests/testthat/test-macos-sandbox.R")
 
 # Skip all macOS sandbox tests on non-macOS systems and CI environments
 skip_on_ci_for_macos_sandbox <- function() {
-  if (nzchar(Sys.getenv("GITHUB_ACTIONS"))) {
-    testthat::skip("macOS sandbox tests skipped on CI")
-  }
   if (Sys.info()["sysname"] != "Darwin") {
     testthat::skip("macOS sandbox tests only run on macOS")
   }
@@ -26,6 +23,7 @@ test_that("macOS sandbox availability detection works", {
 })
 
 test_that("macOS sandbox worker wrapper can be created", {
+  skip_on_check()
   skip_on_ci_for_macos_sandbox()
 
   # Skip if macOS sandbox is not available
@@ -50,6 +48,7 @@ test_that("macOS sandbox worker wrapper can be created", {
 })
 
 test_that("macOS sandbox session can be created and execute commands", {
+  skip_on_check()
   skip_on_ci_for_macos_sandbox()
 
   # Skip if macOS sandbox is not available
@@ -87,6 +86,7 @@ test_that("macOS sandbox session can be created and execute commands", {
 })
 
 test_that("macOS sandbox provides network isolation", {
+  skip_on_check()
   skip_on_ci_for_macos_sandbox()
 
   # Skip if macOS sandbox is not available
@@ -178,6 +178,7 @@ test_that("macOS sandbox provides network isolation", {
 })
 
 test_that("macOS sandbox allows writing to temp directory", {
+  skip_on_check()
   skip_on_ci_for_macos_sandbox()
 
   # Skip if macOS sandbox is not available
@@ -210,6 +211,7 @@ test_that("macOS sandbox allows writing to temp directory", {
 })
 
 test_that("macOS sandbox allows temp directory access", {
+  skip_on_check()
   skip_on_ci_for_macos_sandbox()
 
   # Skip if macOS sandbox is not available
@@ -247,6 +249,7 @@ test_that("macOS sandbox allows temp directory access", {
 })
 
 test_that("macOS sandbox custom profile can be used", {
+  skip_on_check()
   skip_on_ci_for_macos_sandbox()
 
   # Skip if macOS sandbox is not available
@@ -298,6 +301,7 @@ test_that("macOS sandbox custom profile can be used", {
 })
 
 test_that("macOS sandbox supports plot generation", {
+  skip_on_check()
   skip_on_ci_for_macos_sandbox()
 
   # Skip if macOS sandbox is not available
@@ -317,9 +321,9 @@ test_that("macOS sandbox supports plot generation", {
 
   # Generate a simple plot
   result <- session$execute(
-    '
+    "
     plot(1:10, 1:10)
-  ',
+  ",
     timeout = 10
   )
 
@@ -330,6 +334,7 @@ test_that("macOS sandbox supports plot generation", {
 })
 
 test_that("Worker wrapper factory creates correct type with macOS sandbox", {
+  skip_on_check()
   skip_on_ci_for_macos_sandbox()
 
   # Save option
@@ -371,6 +376,7 @@ test_that("Worker wrapper factory creates correct type with macOS sandbox", {
 })
 
 test_that("macOS sandbox temporary profile cleanup works", {
+  skip_on_check()
   skip_on_ci_for_macos_sandbox()
 
   # Skip if macOS sandbox is not available

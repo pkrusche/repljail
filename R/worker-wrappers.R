@@ -533,23 +533,31 @@ MacOSSandboxWorkerWrapper <- R6::R6Class(
         private$.temp_profile <- profile_file
 
         # Default macOS sandbox profile using Sandbox Profile Language (SBPL)
-        # Note: macOS sandbox-exec has complex, undocumented restrictions
-        # We use a permissive profile that blocks external network only
-        profile_content <- paste(
+        # Provides network isolation and filesystem write restrictions
+        profile_content <- c(
           "; macOS Sandbox Profile for replr worker",
-          "; Allows most operations but blocks external network access",
+          "; Provides network isolation and home directory write protection",
           "(version 1)",
           "",
-          "; Start with default allow for most operations",
+          "; Allow most operations by default (R needs many system calls)",
           "(allow default)",
           "",
-          "; Block network access except to localhost",
-          "; This provides network isolation while keeping R functional",
+          "; === Network Restrictions ===",
+          "; Block external network access (but allow localhost for IPC)",
           "(deny network-outbound (remote ip))",
-          "(allow network* (remote tcp \"localhost:*\"))",
+          "(allow network* (remote ip \"localhost:*\"))",
           "(allow network* (local ip \"localhost:*\"))",
-          sep = "\n"
+          "",
+          "; === Filesystem Write Restrictions ===",
+          "; Deny writes to home directory (users' files)",
+          sprintf("(deny file-write* (subpath \"%s\"))", path.expand("~")),
+          "; But allow writes to temp directories even if in home",
+          "(allow file-write* (subpath \"/tmp\"))",
+          "(allow file-write* (subpath \"/private/tmp\"))",
+          "(allow file-write* (subpath \"/var/tmp\"))",
+          sprintf("(allow file-write* (regex #\"^%s/\\\\.Rtmp.*\"))", path.expand("~"))
         )
+        profile_content <- paste(profile_content, collapse = "\n")
 
         writeLines(profile_content, profile_file)
         debug_log("Created temporary macOS sandbox profile: ", profile_file)

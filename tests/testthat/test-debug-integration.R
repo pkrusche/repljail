@@ -2,6 +2,7 @@
 here::i_am("tests/testthat/test-debug-integration.R")
 
 test_that("Debug logging works end-to-end", {
+  skip_on_check()
   skip_if_not_installed("nanonext")
   skip_if_not_installed("processx")
 
@@ -44,8 +45,7 @@ test_that("Debug logging can be enabled and disabled", {
 })
 
 test_that("Worker inherits debug setting from parent", {
-  skip_if_not_installed("nanonext")
-  skip_if_not_installed("processx")
+  skip_on_check()
 
   # Enable debug logging
   options(replr.debug = TRUE)

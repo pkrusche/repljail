@@ -45,6 +45,7 @@ test_that("Worker script validates command line arguments", {
 })
 
 test_that("Worker can be started via processx with IPC socket", {
+  skip_on_check()
   library(processx)
 
   # Test that processx can start the worker script with IPC socket
@@ -73,6 +74,8 @@ test_that("Worker can be started via processx with IPC socket", {
 })
 
 test_that("Worker accepts debug flag with IPC socket", {
+  # inside check this fails because we can't capture stderr
+  skip_on_check()
   library(processx)
 
   worker_path <- replr:::get_worker_script_path()

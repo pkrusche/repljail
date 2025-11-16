@@ -2,6 +2,8 @@
 here::i_am("tests/testthat/test-end-to-end.R")
 
 test_that("Complete worker lifecycle works", {
+  skip_on_check()
+
   # Create session
   session <- replr::RREPLSession$new(timeout = 10)
 
@@ -33,6 +35,7 @@ test_that("Complete worker lifecycle works", {
 })
 
 test_that("Worker handles R code execution correctly", {
+  skip_on_check()
   skip_if_not_installed("nanonext")
   skip_if_not_installed("processx")
 
@@ -74,6 +77,7 @@ test_that("Worker handles R code execution correctly", {
 })
 
 test_that("Worker handles errors gracefully", {
+  skip_on_check()
   skip_if_not_installed("nanonext")
   skip_if_not_installed("processx")
 
@@ -106,6 +110,7 @@ test_that("Worker handles errors gracefully", {
 })
 
 test_that("Worker handles warnings correctly", {
+  skip_on_check()
   skip_if_not_installed("nanonext")
   skip_if_not_installed("processx")
 
@@ -134,6 +139,7 @@ test_that("Worker handles warnings correctly", {
 })
 
 test_that("Multiple workers can run simultaneously with different IPC sockets", {
+  skip_on_check()
   skip_if_not_installed("nanonext")
   skip_if_not_installed("processx")
 

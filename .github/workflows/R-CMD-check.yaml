@@ -31,3 +31,9 @@ jobs:
         with:
           upload-snapshots: true
           build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
+
+      - name: Run full test suite
+        run: |
+          Rscript -e 'devtools::test()'
+        env:
+          NOT_CRAN: true

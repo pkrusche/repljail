@@ -19,3 +19,17 @@ tryCatch(
     )
   }
 )
+
+is_checking <- function() {
+  nzchar(Sys.getenv("_R_CHECK_PACKAGE_NAME_")) ||
+    nzchar(Sys.getenv("_R_CHECK_TIMINGS_"))
+}
+
+# Skip tests during R CMD check (but allow them in CI with NOT_CRAN=true)
+# IPC sockets may not work reliably in the restricted check environment
+skip_on_check <- function() {
+  if (is_checking()) {
+    testthat::skip("Skipping long test during R CMD check")
+  }
+  invisible()
+}

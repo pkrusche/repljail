@@ -27,6 +27,7 @@ test_that("Docker image name is defined", {
 })
 
 test_that("Docker session can be created and execute commands", {
+  skip_on_check()
   skip_on_ci_for_docker()
 
   # Skip if Docker is not available
@@ -58,6 +59,7 @@ test_that("Docker session can be created and execute commands", {
 })
 
 test_that("Docker network isolation can be enabled", {
+  skip_on_check()
   skip_on_ci_for_docker()
 
   # Skip if Docker is not available
@@ -94,6 +96,7 @@ test_that("Docker network isolation can be enabled", {
 })
 
 test_that("Docker network cleanup works", {
+  skip_on_check()
   skip_on_ci_for_docker()
 
   # Skip if Docker is not available
@@ -144,6 +147,7 @@ test_that("Docker network cleanup works", {
 })
 
 test_that("Docker network is cleaned up when session stops", {
+  skip_on_check()
   skip_on_ci_for_docker()
 
   # Skip if Docker is not available
@@ -207,6 +211,7 @@ test_that("Docker network is cleaned up when session stops", {
 })
 
 test_that("Network isolation provides inter-container isolation", {
+  skip_on_check()
   skip_on_ci_for_docker()
 
   # Skip if Docker is not available
@@ -296,6 +301,7 @@ test_that("Network isolation provides inter-container isolation", {
 })
 
 test_that("Multiple Docker workers can run simultaneously with different ports", {
+  skip_on_check()
   skip_on_ci_for_docker()
   skip_if_not(replr::is_docker_available(), "Docker not available")
 
@@ -339,6 +345,7 @@ test_that("Multiple Docker workers can run simultaneously with different ports",
 })
 
 test_that("Docker worker startup handles port conflicts", {
+  skip_on_check()
   skip_on_ci_for_docker()
   skip_if_not(replr::is_docker_available(), "Docker not available")
 

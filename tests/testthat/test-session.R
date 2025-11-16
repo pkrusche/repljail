@@ -2,6 +2,7 @@
 here::i_am("tests/testthat/test-session.R")
 
 test_that("RREPLSession can be created and initialized", {
+  skip_on_check()
   session <- RREPLSession$new(timeout = 10)
 
   # Check object structure
@@ -19,6 +20,7 @@ test_that("RREPLSession can be created and initialized", {
 })
 
 test_that("RREPLSession execute method works correctly", {
+  skip_on_check()
   session <- RREPLSession$new(timeout = 10)
 
   tryCatch(
@@ -49,6 +51,7 @@ test_that("RREPLSession execute method works correctly", {
 })
 
 test_that("RREPLSession handles worker death gracefully", {
+  skip_on_check()
   session <- RREPLSession$new(timeout = 10)
 
   tryCatch(
@@ -76,6 +79,7 @@ test_that("RREPLSession handles worker death gracefully", {
 })
 
 test_that("RREPLSession get_info method provides correct information", {
+  skip_on_check()
   session <- RREPLSession$new(timeout = 10)
 
   tryCatch(
@@ -103,6 +107,7 @@ test_that("RREPLSession get_info method provides correct information", {
 })
 
 test_that("RREPLSession active bindings work correctly", {
+  skip_on_check()
   session <- RREPLSession$new(timeout = 10)
 
   tryCatch(
@@ -131,6 +136,7 @@ test_that("RREPLSession active bindings work correctly", {
 })
 
 test_that("RREPLSession handles timeouts correctly", {
+  skip_on_check()
   session <- RREPLSession$new(timeout = 10)
 
   tryCatch(
@@ -148,6 +154,7 @@ test_that("RREPLSession handles timeouts correctly", {
 })
 
 test_that("RREPLSession finalizer works for automatic cleanup", {
+  skip_on_check()
   # Create session in a local scope
   pid <- NULL
   {
@@ -168,8 +175,12 @@ test_that("RREPLSession finalizer works for automatic cleanup", {
 })
 
 test_that("Multiple RREPLSession instances work independently", {
-  session1 <- RREPLSession$new(timeout = 10)
-  session2 <- RREPLSession$new(timeout = 10)
+  skip_on_check()  # IPC sockets may not work reliably in R CMD check
+
+  session1 <- RREPLSession$new(timeout = 20)
+  # Small delay to ensure first session is fully initialized in restricted environments
+  Sys.sleep(0.5)
+  session2 <- RREPLSession$new(timeout = 20)
 
   tryCatch(
     {
@@ -213,6 +224,8 @@ test_that("Multiple RREPLSession instances work independently", {
 })
 
 test_that("RREPLSession handles plot-generating code without errors", {
+  skip_on_check()  # IPC sockets may not work reliably in R CMD check
+
   session <- RREPLSession$new(timeout = 10)
 
   tryCatch(
@@ -246,7 +259,7 @@ test_that("RREPLSession handles plot-generating code without errors", {
       result_summary
     "
 
-      result <- session$execute(multi_plot_code, timeout = 15)
+      result <- session$execute(multi_plot_code, timeout = 30)
       expect_equal(result$status, "success")
       expect_true("plots" %in% names(result$result))
       expect_equal(length(result$result$plots), 3)
@@ -264,6 +277,7 @@ test_that("RREPLSession handles plot-generating code without errors", {
 })
 
 test_that("RREPLSession plot capture structure is correct", {
+  skip_on_check()
   session <- RREPLSession$new(timeout = 10)
 
   tryCatch(
@@ -294,6 +308,7 @@ test_that("RREPLSession plot capture structure is correct", {
 })
 
 test_that("RREPLSession deterministic plot generation and PNG comparison", {
+  skip_on_check()
   session <- RREPLSession$new(timeout = 10)
 
   tryCatch(
