@@ -385,11 +385,27 @@ FirejailWorkerWrapper <- R6::R6Class(
       if (!is.null(custom_profile) && file.exists(custom_profile)) {
         # Use custom profile
         debug_log("Using custom firejail profile: ", custom_profile)
-        firejail_args <- c(firejail_args, "--profile", custom_profile)
+        firejail_args <- c(firejail_args, paste0("--profile=", custom_profile))
       } else {
         # Use default security settings
-        # Network isolation - keep loopback for host communication but block external access
-        firejail_args <- c(firejail_args, "--net=lo")
+        # Check if networking features are available
+        networking_available <- is_firejail_networking_available()
+
+        if (networking_available) {
+          # Network isolation - keep loopback for host communication but block external access
+          firejail_args <- c(firejail_args, "--net=lo")
+          debug_log("Using firejail with network isolation (--net=lo)")
+        } else {
+          # Network isolation not available - log warning
+          warning(
+            "Firejail networking features are disabled in system configuration. ",
+            "Running without network isolation. ",
+            "To enable network isolation, set 'network yes' in /etc/firejail/firejail.config",
+            call. = FALSE,
+            immediate. = TRUE
+          )
+          debug_log("Firejail networking disabled - running without network isolation")
+        }
 
         # Filesystem restrictions - only allow writing to /tmp
         firejail_args <- c(firejail_args, "--private-tmp")
@@ -637,6 +653,46 @@ is_firejail_available <- function() {
       )
       # If no error and got output, firejail is available
       return(length(result) > 0 && !inherits(result, "try-error"))
+    },
+    error = function(e) {
+      return(FALSE) # nolint
+    }
+  )
+}
+
+#' Check if Firejail Networking is Available
+#'
+#' Check if firejail networking features are enabled in the system configuration
+#'
+#' @return logical, TRUE if networking features are available
+#' @keywords internal
+is_firejail_networking_available <- function() {
+  if (!is_firejail_available()) {
+    return(FALSE)
+  }
+
+  # Try to run a simple command with --net=lo
+  tryCatch(
+    {
+      result <- suppressWarnings(
+        system2(
+          "firejail",
+          c("--net=lo", "--", "echo", "test"),
+          stdout = TRUE,
+          stderr = TRUE
+        )
+      )
+
+      # Check if we got an error about networking being disabled
+      if (!is.null(attr(result, "status")) && attr(result, "status") != 0) {
+        # Check for the specific networking disabled error
+        if (any(grepl("networking feature is disabled", result, fixed = TRUE))) {
+          return(FALSE)
+        }
+      }
+
+      # If we got here, networking is available
+      return(TRUE)
     },
     error = function(e) {
       return(FALSE) # nolint
