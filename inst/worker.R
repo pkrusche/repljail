@@ -12,8 +12,14 @@ if (length(args) < 1 || length(args) > 3) {
     "Usage: Rscript worker.R <port|socket_path> [--debug] [--listen-all]\n",
     file = stderr()
   )
-  cat("  port:        Port number to listen on (for TCP mode)\n", file = stderr())
-  cat("  socket_path: Unix socket path to listen on (for IPC mode)\n", file = stderr())
+  cat(
+    "  port:        Port number to listen on (for TCP mode)\n",
+    file = stderr()
+  )
+  cat(
+    "  socket_path: Unix socket path to listen on (for IPC mode)\n",
+    file = stderr()
+  )
   cat("  --debug:     Enable debug logging (optional)\n", file = stderr())
   cat(
     "  --listen-all: Listen on all IPs (optional, for TCP in Docker)\n",

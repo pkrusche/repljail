@@ -294,3 +294,83 @@ test_that("Network isolation provides inter-container isolation", {
   expect_equal(result_gateway$status, "success")
   expect_equal(result_gateway$result$output, "[1] \"GATEWAY_OK\"\n")
 })
+
+test_that("Multiple Docker workers can run simultaneously with different ports", {
+  skip_on_ci_for_docker()
+  skip_if_not(replr::is_docker_available(), "Docker not available")
+
+  # Set worker type to Docker
+  old_worker_type <- getOption("replr.worker.type")
+  on.exit(options(replr.worker.type = old_worker_type))
+  options(replr.worker.type = "docker")
+
+  session1 <- RREPLSession$new(timeout = 20)
+  session2 <- RREPLSession$new(timeout = 20)
+
+  tryCatch(
+    {
+      # Verify both workers started
+      expect_true(session1$is_alive())
+      expect_true(session2$is_alive())
+      expect_false(session1$port == session2$port) # Different ports
+
+      # Test independent execution
+      result1 <- session1$execute("x1 <- 100", timeout = 5)
+      result2 <- session2$execute("x2 <- 200", timeout = 5)
+
+      expect_equal(result1$status, "success")
+      expect_equal(result2$status, "success")
+
+      # Verify isolation - session1 shouldn't see x2
+      result3 <- session1$execute("exists('x2')", timeout = 5)
+      expect_equal(result3$status, "success")
+      expect_true(any(grepl("FALSE", result3$result$output)))
+
+      # Verify isolation - session2 shouldn't see x1
+      result4 <- session2$execute("exists('x1')", timeout = 5)
+      expect_equal(result4$status, "success")
+      expect_true(any(grepl("FALSE", result4$result$output)))
+    },
+    finally = {
+      session1$stop(timeout = 5)
+      session2$stop(timeout = 5)
+    }
+  )
+})
+
+test_that("Docker worker startup handles port conflicts", {
+  skip_on_ci_for_docker()
+  skip_if_not(replr::is_docker_available(), "Docker not available")
+
+  # Set worker type to Docker
+  old_worker_type <- getOption("replr.worker.type")
+  on.exit(options(replr.worker.type = old_worker_type))
+  options(replr.worker.type = "docker")
+
+  # Start first session on specific port
+  port1 <- replr:::get_available_port()
+  session1 <- RREPLSession$new(port = port1, timeout = 20)
+
+  tryCatch(
+    {
+      expect_equal(session1$port, port1)
+      expect_true(session1$is_alive())
+
+      # Start second session without specifying port (should find different port)
+      session2 <- RREPLSession$new(timeout = 20)
+
+      tryCatch(
+        {
+          expect_true(session2$is_alive())
+          expect_false(session1$port == session2$port)
+        },
+        finally = {
+          session2$stop(timeout = 5)
+        }
+      )
+    },
+    finally = {
+      session1$stop(timeout = 5)
+    }
+  )
+})

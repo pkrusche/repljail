@@ -167,7 +167,12 @@ start_worker <- function(port = NULL, timeout = 10) {
   debug_log("Using worker wrapper type: ", wrapper_type)
 
   # Start the worker process using the wrapper
-  wrapper_result <- wrapper$start_process(port, worker_script, worker_args, timeout)
+  wrapper_result <- wrapper$start_process(
+    port,
+    worker_script,
+    worker_args,
+    timeout
+  )
   proc <- wrapper_result$process
 
   # Wait for worker to start up
@@ -194,7 +199,10 @@ start_worker <- function(port = NULL, timeout = 10) {
         # Support both IPC and TCP connection modes
         if (!is.null(wrapper_result$socket_path)) {
           # IPC mode
-          sock <- create_req_socket(socket_path = wrapper_result$socket_path, timeout = 3)
+          sock <- create_req_socket(
+            socket_path = wrapper_result$socket_path,
+            timeout = 3
+          )
         } else {
           # TCP mode
           sock <- create_req_socket(port = port, timeout = 3)
@@ -342,7 +350,10 @@ send_command <- function(worker_info, code, timeout = 30) {
   # Create socket connection - support both IPC and TCP
   if (!is.null(worker_info$socket_path)) {
     # IPC mode
-    sock <- create_req_socket(socket_path = worker_info$socket_path, timeout = timeout)
+    sock <- create_req_socket(
+      socket_path = worker_info$socket_path,
+      timeout = timeout
+    )
   } else {
     # TCP mode (legacy)
     sock <- create_req_socket(port = worker_info$port, timeout = timeout)

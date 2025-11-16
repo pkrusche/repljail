@@ -100,7 +100,7 @@ NativeWorkerWrapper <- R6::R6Class(
 
       list(
         process = proc,
-        port = port,  # Keep for compatibility, but not used
+        port = port, # Keep for compatibility, but not used
         socket_path = socket_path
       )
     }
@@ -221,7 +221,10 @@ DockerWorkerWrapper <- R6::R6Class(
         docker_args <- c(docker_args, "--debug")
       }
 
-      debug_log("Starting Docker container with args: ", paste(docker_args, collapse = " "))
+      debug_log(
+        "Starting Docker container with args: ",
+        paste(docker_args, collapse = " ")
+      )
 
       # Start Docker container
       proc <- processx::process$new(
@@ -383,7 +386,9 @@ FirejailWorkerWrapper <- R6::R6Class(
 
       # Check firejail availability
       if (!is_firejail_available()) {
-        stop("Firejail is not available. Cannot start worker in firejail sandbox.")
+        stop(
+          "Firejail is not available. Cannot start worker in firejail sandbox."
+        )
       }
 
       # Generate IPC socket path
@@ -395,7 +400,10 @@ FirejailWorkerWrapper <- R6::R6Class(
       worker_args[2] <- socket_path
 
       # Get custom profile if specified
-      custom_profile <- getOption("replr.worker.firejail.profile", default = NULL)
+      custom_profile <- getOption(
+        "replr.worker.firejail.profile",
+        default = NULL
+      )
 
       # Build firejail arguments
       firejail_args <- c("--quiet")
@@ -406,40 +414,34 @@ FirejailWorkerWrapper <- R6::R6Class(
         firejail_args <- c(firejail_args, paste0("--profile=", custom_profile))
       } else {
         # Use default security settings
-        # Check if networking features are available
-        networking_available <- is_firejail_networking_available()
+        # Network isolation - completely disable network access
+        # Since we use IPC sockets (not TCP), the worker doesn't need any network access
+        # --net=none works even with restricted_networking yes in firejail.config
+        firejail_args <- c(firejail_args, "--net=none")
+        debug_log("Using firejail with complete network isolation (--net=none)")
 
-        if (networking_available) {
-          # Network isolation - keep loopback for host communication but block external access
-          firejail_args <- c(firejail_args, "--net=lo")
-          debug_log("Using firejail with network isolation (--net=lo)")
-        } else {
-          # Network isolation not available - log warning
-          warning(
-            "Firejail networking features are disabled in system configuration. ",
-            "Running without network isolation. ",
-            "To enable network isolation, set 'network yes' in /etc/firejail/firejail.config",
-            call. = FALSE,
-            immediate. = TRUE
-          )
-          debug_log("Firejail networking disabled - running without network isolation")
-        }
-
-        # Filesystem restrictions - only allow writing to /tmp
-        firejail_args <- c(firejail_args, "--private-tmp")
+        # Filesystem restrictions
+        # Whitelist the socket directory for IPC communication
+        # Note: We cannot use --private-tmp with IPC sockets because --private-tmp
+        # creates a completely isolated /tmp that cannot be shared with the host.
+        # Instead, we use --whitelist to allow access to the socket's parent directory.
+        # This allows the worker to create the socket file and the parent to access it.
+        socket_dir <- dirname(socket_path)
+        firejail_args <- c(firejail_args, paste0("--whitelist=", socket_dir))
+        debug_log("Whitelisting socket directory for IPC: ", socket_dir)
 
         # Additional security options
         firejail_args <- c(
           firejail_args,
-          "--caps.drop=all",       # Drop all capabilities
-          "--seccomp",              # Enable seccomp filtering
-          "--nonewprivs",           # Prevent privilege escalation
-          "--noroot",               # Run as regular user
-          "--nosound",              # Disable sound
-          "--novideo",              # Disable video
-          "--no3d",                 # Disable 3D acceleration
-          "--nodvd",                # Disable DVD
-          "--notv"                  # Disable TV
+          "--caps.drop=all", # Drop all capabilities
+          "--seccomp", # Enable seccomp filtering
+          "--nonewprivs", # Prevent privilege escalation
+          "--noroot", # Run as regular user
+          "--nosound", # Disable sound
+          "--novideo", # Disable video
+          "--no3d", # Disable 3D acceleration
+          "--nodvd", # Disable DVD
+          "--notv" # Disable TV
         )
       }
 
@@ -477,7 +479,7 @@ FirejailWorkerWrapper <- R6::R6Class(
 
       list(
         process = proc,
-        port = port,  # Keep for compatibility, but not used
+        port = port, # Keep for compatibility, but not used
         socket_path = socket_path
       )
     }
@@ -508,11 +510,16 @@ MacOSSandboxWorkerWrapper <- R6::R6Class(
 
       # Check macOS sandbox availability
       if (!is_macos_sandbox_available()) {
-        stop("macOS sandbox-exec is not available. Cannot start worker in macOS sandbox.")
+        stop(
+          "macOS sandbox-exec is not available. Cannot start worker in macOS sandbox."
+        )
       }
 
       # Get custom profile if specified
-      custom_profile <- getOption("replr.worker.macos.sandbox.profile", default = NULL)
+      custom_profile <- getOption(
+        "replr.worker.macos.sandbox.profile",
+        default = NULL
+      )
 
       # Create temporary profile file
       profile_file <- NULL
@@ -594,7 +601,9 @@ MacOSSandboxWorkerWrapper <- R6::R6Class(
 
     # Cleanup method to remove temporary profile
     finalize = function() {
-      if (!is.null(private$.temp_profile) && file.exists(private$.temp_profile)) {
+      if (
+        !is.null(private$.temp_profile) && file.exists(private$.temp_profile)
+      ) {
         unlink(private$.temp_profile)
       }
     }
@@ -680,46 +689,6 @@ is_firejail_available <- function() {
   )
 }
 
-#' Check if Firejail Networking is Available
-#'
-#' Check if firejail networking features are enabled in the system configuration
-#'
-#' @return logical, TRUE if networking features are available
-#' @keywords internal
-is_firejail_networking_available <- function() {
-  if (!is_firejail_available()) {
-    return(FALSE)
-  }
-
-  # Try to run a simple command with --net=lo
-  tryCatch(
-    {
-      result <- suppressWarnings(
-        system2(
-          "firejail",
-          c("--net=lo", "--", "echo", "test"),
-          stdout = TRUE,
-          stderr = TRUE
-        )
-      )
-
-      # Check if we got an error about networking being disabled
-      if (!is.null(attr(result, "status")) && attr(result, "status") != 0) {
-        # Check for the specific networking disabled error
-        if (any(grepl("networking feature is disabled", result, fixed = TRUE))) {
-          return(FALSE)
-        }
-      }
-
-      # If we got here, networking is available
-      return(TRUE)
-    },
-    error = function(e) {
-      return(FALSE) # nolint
-    }
-  )
-}
-
 #' Create Worker Wrapper
 #'
 #' Factory function to create the appropriate worker wrapper based on options
@@ -779,7 +748,9 @@ create_worker_wrapper <- function() {
     {
       # Invalid worker type
       stop(
-        "Invalid worker type: '", worker_type, "'. ",
+        "Invalid worker type: '",
+        worker_type,
+        "'. ",
         "Valid options are: 'native', 'docker', 'firejail', 'macos-sandbox'",
         call. = FALSE
       )

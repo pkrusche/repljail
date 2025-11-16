@@ -82,20 +82,10 @@ test_that("Firejail provides network isolation", {
   old_worker_type <- getOption("replr.worker.type")
   on.exit(options(replr.worker.type = old_worker_type))
   options(replr.worker.type = "firejail")
-  # Set option to use Firejail
+  # Set option to use Firejail (legacy)
   old_option <- getOption("replr.use.firejail")
-  on.exit(options(replr.use.firejail = old_option))
+  on.exit(options(replr.use.firejail = old_option), add = TRUE)
   options(replr.use.firejail = TRUE)
-  # Skip if networking features are not available
-  skip_if_not(
-    replr:::is_firejail_networking_available(),
-    "Firejail networking features disabled in system configuration"
-  )
-
-  # Set options to use only Firejail
-  old_worker_type <- getOption("replr.worker.type")
-  on.exit(options(replr.worker.type = old_worker_type))
-  options(replr.worker.type = "firejail")
 
   # Create a session with firejail
   session <- RREPLSession$new(timeout = 30)
@@ -209,25 +199,31 @@ test_that("Firejail custom profile can be used", {
   profile_file <- tempfile(fileext = ".profile")
   on.exit(unlink(profile_file), add = TRUE)
 
-  # Write a minimal profile that allows localhost communication
-  # Note: We cannot use 'net none' as it blocks localhost, breaking socket communication
-  # Instead, we use filesystem and capability restrictions
-  writeLines(c(
-    "# Custom firejail profile for testing",
-    "# Note: Cannot use 'net none' as it breaks localhost socket communication",
-    "private-tmp",
-    "caps.drop all",
-    "seccomp",
-    "noroot"
-  ), profile_file)
+  # Write a minimal profile for IPC socket communication
+  # Note: We use IPC sockets (not TCP), so we can use complete network isolation
+  # We cannot use 'private-tmp' as it blocks IPC socket access
+  writeLines(
+    c(
+      "# Custom firejail profile for testing",
+      "# Complete network isolation with IPC socket communication",
+      "net none",
+      "caps.drop all",
+      "seccomp",
+      "noroot"
+    ),
+    profile_file
+  )
 
   # Set options to use only Firejail with custom profile
   old_worker_type <- getOption("replr.worker.type")
   old_profile <- getOption("replr.worker.firejail.profile")
-  on.exit({
-    options(replr.worker.type = old_worker_type)
-    options(replr.worker.firejail.profile = old_profile)
-  }, add = TRUE)
+  on.exit(
+    {
+      options(replr.worker.type = old_worker_type)
+      options(replr.worker.firejail.profile = old_profile)
+    },
+    add = TRUE
+  )
 
   options(replr.worker.type = "firejail")
   options(replr.worker.firejail.profile = profile_file)
