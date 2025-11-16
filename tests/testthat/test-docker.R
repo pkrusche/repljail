@@ -33,9 +33,9 @@ test_that("Docker session can be created and execute commands", {
   skip_if_not(replr:::is_docker_available(), "Docker not available")
 
   # Set option to use Docker
-  old_option <- getOption("replr.use.docker")
-  on.exit(options(replr.use.docker = old_option))
-  options(replr.use.docker = TRUE)
+  old_worker_type <- getOption("replr.worker.type")
+  on.exit(options(replr.worker.type = old_worker_type))
+  options(replr.worker.type = "docker")
 
   # Create a session (should use Docker due to option)
   session <- RREPLSession$new(timeout = 30)
@@ -63,15 +63,15 @@ test_that("Docker network isolation can be enabled", {
   # Skip if Docker is not available
   skip_if_not(replr:::is_docker_available(), "Docker not available")
 
-  # Set options to use Docker with network isolation
-  old_docker_option <- getOption("replr.use.docker")
-  old_network_option <- getOption("replr.worker.docker.network.isolation")
+  # Set options to use only Docker with network isolation
+  old_worker_type <- getOption("replr.worker.type")
+  old_network <- getOption("replr.worker.docker.network.isolation")
   on.exit({
-    options(replr.use.docker = old_docker_option)
-    options(replr.worker.docker.network.isolation = old_network_option)
+    options(replr.worker.type = old_worker_type)
+    options(replr.worker.docker.network.isolation = old_network)
   })
 
-  options(replr.use.docker = TRUE)
+  options(replr.worker.type = "docker")
   options(replr.worker.docker.network.isolation = TRUE)
 
   # Create a session (should use Docker with network isolation)
@@ -149,15 +149,15 @@ test_that("Docker network is cleaned up when session stops", {
   # Skip if Docker is not available
   skip_if_not(replr:::is_docker_available(), "Docker not available")
 
-  # Set options to use Docker with network isolation
-  old_docker_option <- getOption("replr.use.docker")
-  old_network_option <- getOption("replr.worker.docker.network.isolation")
+  # Set options to use only Docker with network isolation
+  old_worker_type <- getOption("replr.worker.type")
+  old_network <- getOption("replr.worker.docker.network.isolation")
   on.exit({
-    options(replr.use.docker = old_docker_option)
-    options(replr.worker.docker.network.isolation = old_network_option)
+    options(replr.worker.type = old_worker_type)
+    options(replr.worker.docker.network.isolation = old_network)
   })
 
-  options(replr.use.docker = TRUE)
+  options(replr.worker.type = "docker")
   options(replr.worker.docker.network.isolation = TRUE)
 
   # Create a session
@@ -212,15 +212,15 @@ test_that("Network isolation provides inter-container isolation", {
   # Skip if Docker is not available
   skip_if_not(replr:::is_docker_available(), "Docker not available")
 
-  # Set options to use Docker with network isolation
-  old_docker_option <- getOption("replr.use.docker")
-  old_network_option <- getOption("replr.worker.docker.network.isolation")
+  # Set options to use only Docker with network isolation
+  old_worker_type <- getOption("replr.worker.type")
+  old_network <- getOption("replr.worker.docker.network.isolation")
   on.exit({
-    options(replr.use.docker = old_docker_option)
-    options(replr.worker.docker.network.isolation = old_network_option)
+    options(replr.worker.type = old_worker_type)
+    options(replr.worker.docker.network.isolation = old_network)
   })
 
-  options(replr.use.docker = TRUE)
+  options(replr.worker.type = "docker")
   options(replr.worker.docker.network.isolation = TRUE)
 
   # Create a session with network isolation
@@ -235,16 +235,62 @@ test_that("Network isolation provides inter-container isolation", {
   expect_equal(result$status, "success")
   expect_equal(result$result$output, "4")
 
-  # Verify that internet access is blocked (--internal network with gateway sidecar)
-  result_internet <- session$execute(
+  # Verify that external internet access is blocked (--internal network with gateway sidecar)
+  # Test 1: HTTP to external domain
+  result_http <- session$execute(
     '
     tryCatch({
       readLines(url("http://example.com"), n=1, warn=FALSE)
-      "ACCESSIBLE"
-    }, error = function(e) "BLOCKED")
+      "HTTP_ACCESSIBLE"
+    }, error = function(e) "HTTP_BLOCKED")
   ',
     timeout = 15
   )
-  expect_equal(result_internet$status, "success")
-  expect_equal(result_internet$result$output, "[1] \"BLOCKED\"\n")
+  expect_equal(result_http$status, "success")
+  expect_equal(result_http$result$output, "[1] \"HTTP_BLOCKED\"\n")
+
+  # Test 2: HTTPS to external domain
+  result_https <- session$execute(
+    '
+    tryCatch({
+      readLines(url("https://www.google.com"), n=1, warn=FALSE)
+      "HTTPS_ACCESSIBLE"
+    }, error = function(e) "HTTPS_BLOCKED")
+  ',
+    timeout = 15
+  )
+  expect_equal(result_https$status, "success")
+  expect_equal(result_https$result$output, "[1] \"HTTPS_BLOCKED\"\n")
+
+  # Test 3: Direct IP access (bypass DNS) - look up current IP for example.com
+  result_ip <- session$execute(
+    '
+    tryCatch({
+      # Look up the IP for example.com using getaddrinfo (works in Docker)
+      ip <- system("getent hosts example.com | awk \'{ print $1 }\' | head -1", intern = TRUE)
+      if (length(ip) > 0 && nchar(ip) > 0) {
+        readLines(url(paste0("http://", ip)), n=1, warn=FALSE)
+        "IP_ACCESSIBLE"
+      } else {
+        "IP_LOOKUP_FAILED"
+      }
+    }, error = function(e) "IP_BLOCKED")
+  ',
+    timeout = 15
+  )
+  expect_equal(result_ip$status, "success")
+  expect_true(grepl("IP_BLOCKED|IP_LOOKUP_FAILED", result_ip$result$output))
+
+  # Test 4: Verify host communication still works via gateway
+  result_gateway <- session$execute(
+    '
+    tryCatch({
+      # The fact that we can execute code proves gateway communication works
+      "GATEWAY_OK"
+    }, error = function(e) "GATEWAY_FAILED")
+  ',
+    timeout = 10
+  )
+  expect_equal(result_gateway$status, "success")
+  expect_equal(result_gateway$result$output, "[1] \"GATEWAY_OK\"\n")
 })

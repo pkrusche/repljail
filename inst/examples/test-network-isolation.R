@@ -5,8 +5,8 @@
 library(devtools)
 load_all()
 
-# Enable Docker mode with network isolation
-options(replr.use.docker = TRUE)
+# Enable only Docker mode with network isolation
+options(replr.worker.type = "docker")
 options(replr.worker.docker.network.isolation = TRUE)
 
 cat("Starting worker with network isolation...\n")

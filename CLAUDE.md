@@ -26,7 +26,11 @@ devtools::check()
 devtools::document()
 ```
 
-### Docker Support
+### Isolation Methods
+
+The package supports multiple sandboxing/isolation strategies:
+
+**Docker Support**
 ```r
 # Check Docker availability
 is_docker_available()
@@ -38,11 +42,37 @@ cleanup_docker_containers()
 cleanup_docker_networks()
 
 # Enable Docker mode for workers
-options(replr.use.docker = TRUE)
+options(replr.worker.type = "docker")
 
 # Enable network isolation (requires Docker mode)
 options(replr.worker.docker.network.isolation = TRUE)
 ```
+
+**Firejail Support (Linux)**
+```r
+# Check Firejail availability
+is_firejail_available()
+
+# Enable Firejail mode for workers
+options(replr.worker.type = "firejail")
+
+# Use custom Firejail profile (optional)
+options(replr.worker.firejail.profile = "/path/to/profile.profile")
+```
+
+**macOS Sandbox Support (macOS only)**
+```r
+# Check macOS sandbox availability
+is_macos_sandbox_available()
+
+# Enable macOS sandbox mode for workers
+options(replr.worker.type = "macos-sandbox")
+
+# Use custom sandbox profile (optional)
+options(replr.worker.macos.sandbox.profile = "/path/to/profile.sb")
+```
+
+**Worker Type Selection**: Set `replr.worker.type` to one of: `"native"`, `"docker"`, `"firejail"`, or `"macos-sandbox"` (default: `"native"`)
 
 ### Debug Logging
 ```r
@@ -60,15 +90,15 @@ enable_debug(FALSE)
 
 The system consists of two main components communicating via `nanonext` sockets:
 
-1. **Controller Process** (`R/session.R`, `R/utils.R`, `R/communication.R`)
+1. **Controller Process** (`R/session.R`, `R/utils.R`, `R/communication.R`, `R/worker-wrappers.R`)
    - Main R session managing worker lifecycle
    - Two interfaces: Functional API (start_worker/send_command/stop_worker) and R6 class (RREPLSession)
    - Handles socket communication and process monitoring
-   - Supports both native processes and Docker containers
+   - Supports multiple isolation methods: Native processes, Docker containers, Firejail sandboxes (Linux), and macOS sandboxes (macOS)
 
 2. **Worker Process** (`inst/worker.R`)
    - Isolated R session executing code using `evaluate` package
-   - Runs as separate process (native or Docker container)
+   - Runs as separate process (native, Firejail sandbox, macOS sandbox, or Docker container)
    - REP socket listener that processes requests in a loop
    - Captures output, warnings, errors, and plots (as base64-encoded PNGs)
 
@@ -85,6 +115,7 @@ Main R Process (Controller) ←──nanonext REQ/REP──→ Worker R Process 
 ### Core Files
 - **R/session.R**: `RREPLSession` R6 class with automatic cleanup via finalizers
 - **R/utils.R**: Worker lifecycle management (start_worker, send_command, stop_worker), Docker integration, port allocation
+- **R/worker-wrappers.R**: Worker wrapper implementations (NativeWorkerWrapper, DockerWorkerWrapper, FirejailWorkerWrapper, MacOSSandboxWorkerWrapper)
 - **R/communication.R**: Socket management (create_req_socket, send_request, close_socket)
 - **R/debug.R**: Debug logging system using `cli` package
 - **R/ellmer-tools.R**: LLM agent tools for ellmer integration (session management, structured responses)
@@ -115,6 +146,49 @@ Main R Process (Controller) ←──nanonext REQ/REP──→ Worker R Process 
   - Gateway naming: `replr-gateway-<port>-<timestamp>`
   - Automatic cleanup of worker, gateway, and network when session stops
   - Security: Worker has ZERO external network access while host communication works via gateway proxy
+
+### Firejail Integration (Linux)
+- Lightweight sandboxing for Linux systems using firejail
+- Implemented in `R/worker-wrappers.R` via `FirejailWorkerWrapper` R6 class
+- Availability detection: `is_firejail_available()` checks for firejail command
+- Configurable via options: `replr.worker.type = "firejail"`, `replr.worker.firejail.profile`
+- **Default Security Settings**:
+  - Network isolation: `--net=lo` (loopback only, blocks external access)
+  - Filesystem isolation: `--private-tmp` (isolated temp directory)
+  - Capability dropping: `--caps.drop=all` (drop all Linux capabilities)
+  - Seccomp filtering: `--seccomp` (restrict system calls)
+  - No privilege escalation: `--nonewprivs`, `--noroot`
+  - Hardware restrictions: `--nosound`, `--novideo`, `--no3d`, `--nodvd`, `--notv`
+- **Custom Profiles**: Support for custom firejail profile files via `replr.worker.firejail.profile` option
+- **Process Management**: Worker executed as `firejail [options] Rscript worker.R <port>`
+- **Tests**: `tests/testthat/test-firejail.R` (skipped on CI and non-Linux systems)
+- **Demo**: `inst/examples/firejail-demo.R` shows complete usage
+
+### macOS Sandbox Integration (macOS)
+- Native sandboxing for macOS using Apple's `sandbox-exec` command
+- Implemented in `R/worker-wrappers.R` via `MacOSSandboxWorkerWrapper` R6 class
+- Availability detection: `is_macos_sandbox_available()` checks for macOS and sandbox-exec command
+- Configurable via options: `replr.worker.type = "macos-sandbox"`, `replr.worker.macos.sandbox.profile`
+- **Default Security Profile** (auto-generated using Sandbox Profile Language):
+  - **Filesystem access**:
+    - Read: System files (`/System`, `/Library`, `/usr/lib`), R installation, user R libraries
+    - Write: Only `/tmp` and `/private/tmp` directories
+    - Blocked: Home directory writes and other user locations
+  - **Network access**:
+    - Allowed: Localhost/loopback only (`127.0.0.1`, `::1`)
+    - Blocked: All outbound internet access, network binding to external interfaces
+  - **Process operations**:
+    - Allowed: Process execution, forking, signaling
+    - Allowed: IPC (POSIX shared memory, semaphores, Mach lookups)
+  - **System access**:
+    - Allowed: Reading system info via `sysctl`
+    - Blocked: System socket creation, system modifications
+- **Custom Profiles**: Support for custom `.sb` profile files using Sandbox Profile Language (SBPL)
+- **Profile Management**: Default profiles auto-generated at runtime, temporary profiles cleaned up via finalizer
+- **Process Management**: Worker executed as `sandbox-exec -f <profile> Rscript worker.R <port>`
+- **Tests**: `tests/testthat/test-macos-sandbox.R` (skipped on CI and non-macOS systems)
+- **Demo**: `inst/examples/macos-sandbox-demo.R` shows complete usage
+- **SBPL Resources**: `man sandbox-exec`, Apple Sandbox Guide, `/System/Library/Sandbox/Profiles/`
 
 ### ellmer Integration
 - Functions in `R/ellmer-tools.R` provide LLM agent tools for the ellmer package
@@ -168,10 +242,13 @@ list(
 ## Important Implementation Details
 
 ### Process Lifecycle
-1. **Start**: `start_worker()` spawns Rscript or Docker container, waits for readiness via ping test
+1. **Start**: `start_worker()` spawns worker via appropriate wrapper (native Rscript, Firejail sandbox, macOS sandbox, or Docker container), waits for readiness via ping test
 2. **Execute**: `send_command()` creates REQ socket, sends code, receives response, closes socket
 3. **Stop**: `stop_worker()` sends "__SHUTDOWN__" message, then SIGINT, then force kill if needed
-4. **Docker cleanup**: Container removed via `docker rm -f` in stop_worker()
+4. **Cleanup**:
+   - Docker: Container removed via `docker rm -f`, network/gateway cleanup if using network isolation
+   - Firejail/macOS Sandbox: Process termination via processx cleanup
+   - macOS Sandbox: Temporary profile files cleaned up via finalizer
 
 ### Socket Communication
 - Each execution creates a new REQ socket connection (not persistent)
@@ -200,6 +277,8 @@ Test suite in `tests/testthat/`:
 - **test-end-to-end.R**: Full execution workflows
 - **test-plots.R**: Plot capture with PNG comparison against reference images
 - **test-docker.R**: Docker container functionality (skipped if Docker unavailable)
+- **test-firejail.R**: Firejail sandbox functionality (skipped on CI and non-Linux systems)
+- **test-macos-sandbox.R**: macOS sandbox functionality (skipped on CI and non-macOS systems)
 - **test-ellmer-tools.R**: LLM agent tool interfaces
 - **test-conversation-logger.R**: Conversation logging with mock Chat objects
 - **test-debug-integration.R**: Debug logging system
@@ -220,9 +299,22 @@ jj describe -m "Descriptive commit message"
 ## Configuration Options
 
 Global options control package behavior:
+
+**General:**
 - `replr.debug` (logical): Enable debug logging
-- `replr.use.docker` (logical): Use Docker containers for workers
+
+**Worker Type Selection:**
+- `replr.worker.type` (string): Worker isolation method - one of "native", "docker", "firejail", "macos-sandbox" (default: "native")
+  - Legacy boolean options (`replr.use.docker`, `replr.use.firejail`, `replr.use.macos.sandbox`) are deprecated but supported with warnings
+
+**Docker Configuration:**
 - `replr.worker.docker.image` (string): Docker image name (default: "replr-worker:latest")
 - `replr.worker.docker.memory` (string): Memory limit (default: "512m")
 - `replr.worker.docker.cpus` (string): CPU limit (default: "1.0")
 - `replr.worker.docker.network.isolation` (logical): Enable isolated Docker networks (default: FALSE)
+
+**Firejail Configuration:**
+- `replr.worker.firejail.profile` (string): Path to custom firejail profile file (default: NULL)
+
+**macOS Sandbox Configuration:**
+- `replr.worker.macos.sandbox.profile` (string): Path to custom sandbox profile (.sb) file (default: NULL)

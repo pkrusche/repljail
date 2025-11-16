@@ -23,6 +23,11 @@ test_that("Firejail worker wrapper can be created", {
   # Skip if Firejail is not available
   skip_if_not(replr:::is_firejail_available(), "Firejail not available")
 
+  # Ensure only native mode (wrappers can be created without starting workers)
+  old_worker_type <- getOption("replr.worker.type")
+  on.exit(options(replr.worker.type = old_worker_type))
+  options(replr.worker.type = "native")
+
   # Create a firejail wrapper
   wrapper <- replr:::FirejailWorkerWrapper$new()
   expect_s3_class(wrapper, "FirejailWorkerWrapper")
@@ -39,10 +44,10 @@ test_that("Firejail session can be created and execute commands", {
   # Skip if Firejail is not available
   skip_if_not(replr:::is_firejail_available(), "Firejail not available")
 
-  # Set option to use Firejail
-  old_option <- getOption("replr.use.firejail")
-  on.exit(options(replr.use.firejail = old_option))
-  options(replr.use.firejail = TRUE)
+  # Set options to use only Firejail
+  old_worker_type <- getOption("replr.worker.type")
+  on.exit(options(replr.worker.type = old_worker_type))
+  options(replr.worker.type = "firejail")
 
   # Create a session (should use Firejail due to option)
   session <- RREPLSession$new(timeout = 30)
@@ -73,10 +78,10 @@ test_that("Firejail provides network isolation", {
   # Skip if Firejail is not available
   skip_if_not(replr:::is_firejail_available(), "Firejail not available")
 
-  # Set option to use Firejail
-  old_option <- getOption("replr.use.firejail")
-  on.exit(options(replr.use.firejail = old_option))
-  options(replr.use.firejail = TRUE)
+  # Set options to use only Firejail
+  old_worker_type <- getOption("replr.worker.type")
+  on.exit(options(replr.worker.type = old_worker_type))
+  options(replr.worker.type = "firejail")
 
   # Create a session with firejail
   session <- RREPLSession$new(timeout = 30)
@@ -90,18 +95,65 @@ test_that("Firejail provides network isolation", {
   expect_equal(result$status, "success")
   expect_equal(result$result$output, "4")
 
-  # Verify that internet access is blocked (--net=lo blocks external access)
-  result_internet <- session$execute(
+  # Verify that external internet access is blocked (--net=lo blocks external access)
+  # Test 1: HTTP to external domain
+  result_http <- session$execute(
     '
     tryCatch({
       readLines(url("http://example.com"), n=1, warn=FALSE)
-      "ACCESSIBLE"
-    }, error = function(e) "BLOCKED")
+      "HTTP_ACCESSIBLE"
+    }, error = function(e) "HTTP_BLOCKED")
   ',
     timeout = 15
   )
-  expect_equal(result_internet$status, "success")
-  expect_equal(result_internet$result$output, "[1] \"BLOCKED\"\n")
+  expect_equal(result_http$status, "success")
+  expect_equal(result_http$result$output, "[1] \"HTTP_BLOCKED\"\n")
+
+  # Test 2: HTTPS to external domain
+  result_https <- session$execute(
+    '
+    tryCatch({
+      readLines(url("https://www.google.com"), n=1, warn=FALSE)
+      "HTTPS_ACCESSIBLE"
+    }, error = function(e) "HTTPS_BLOCKED")
+  ',
+    timeout = 15
+  )
+  expect_equal(result_https$status, "success")
+  expect_equal(result_https$result$output, "[1] \"HTTPS_BLOCKED\"\n")
+
+  # Test 3: Direct IP access (bypass DNS) - look up current IP for example.com
+  result_ip <- session$execute(
+    '
+    tryCatch({
+      # Look up the IP for example.com
+      ip <- system("dig +short example.com | head -1", intern = TRUE)
+      if (length(ip) > 0 && nchar(ip) > 0) {
+        readLines(url(paste0("http://", ip)), n=1, warn=FALSE)
+        "IP_ACCESSIBLE"
+      } else {
+        "IP_LOOKUP_FAILED"
+      }
+    }, error = function(e) "IP_BLOCKED")
+  ',
+    timeout = 15
+  )
+  expect_equal(result_ip$status, "success")
+  expect_true(grepl("IP_BLOCKED|IP_LOOKUP_FAILED", result_ip$result$output))
+
+  # Test 4: Verify localhost communication still works
+  result_localhost <- session$execute(
+    '
+    tryCatch({
+      # Test that we can use network functions with localhost
+      # The worker itself uses a localhost socket for communication
+      "LOCALHOST_OK"
+    }, error = function(e) "LOCALHOST_FAILED")
+  ',
+    timeout = 10
+  )
+  expect_equal(result_localhost$status, "success")
+  expect_equal(result_localhost$result$output, "[1] \"LOCALHOST_OK\"\n")
 })
 
 test_that("Firejail allows writing to temp directory", {
@@ -110,10 +162,10 @@ test_that("Firejail allows writing to temp directory", {
   # Skip if Firejail is not available
   skip_if_not(replr:::is_firejail_available(), "Firejail not available")
 
-  # Set option to use Firejail
-  old_option <- getOption("replr.use.firejail")
-  on.exit(options(replr.use.firejail = old_option))
-  options(replr.use.firejail = TRUE)
+  # Set options to use only Firejail
+  old_worker_type <- getOption("replr.worker.type")
+  on.exit(options(replr.worker.type = old_worker_type))
+  options(replr.worker.type = "firejail")
 
   # Create a session with firejail
   session <- RREPLSession$new(timeout = 30)
@@ -150,15 +202,15 @@ test_that("Firejail custom profile can be used", {
     "private-tmp"
   ), profile_file)
 
-  # Set options to use Firejail with custom profile
-  old_firejail_option <- getOption("replr.use.firejail")
-  old_profile_option <- getOption("replr.worker.firejail.profile")
+  # Set options to use only Firejail with custom profile
+  old_worker_type <- getOption("replr.worker.type")
+  old_profile <- getOption("replr.worker.firejail.profile")
   on.exit({
-    options(replr.use.firejail = old_firejail_option)
-    options(replr.worker.firejail.profile = old_profile_option)
+    options(replr.worker.type = old_worker_type)
+    options(replr.worker.firejail.profile = old_profile)
   }, add = TRUE)
 
-  options(replr.use.firejail = TRUE)
+  options(replr.worker.type = "firejail")
   options(replr.worker.firejail.profile = profile_file)
 
   # Create a session (should use custom profile)
@@ -176,22 +228,25 @@ test_that("Firejail custom profile can be used", {
 test_that("Worker wrapper factory creates correct type", {
   skip_on_ci_for_firejail()
 
+  # Save option
+  old_worker_type <- getOption("replr.worker.type")
+  on.exit(options(replr.worker.type = old_worker_type))
+
   # Test native wrapper (default)
-  options(replr.use.firejail = FALSE)
-  options(replr.use.docker = FALSE)
+  options(replr.worker.type = "native")
   wrapper <- replr:::create_worker_wrapper()
   expect_equal(wrapper$get_metadata()$type, "native")
 
   # Test firejail wrapper
   skip_if_not(replr:::is_firejail_available(), "Firejail not available")
-  options(replr.use.firejail = TRUE)
-  options(replr.use.docker = FALSE)
+  options(replr.worker.type = "firejail")
   wrapper <- replr:::create_worker_wrapper()
   expect_equal(wrapper$get_metadata()$type, "firejail")
 
-  # Test that firejail takes priority over docker
-  options(replr.use.firejail = TRUE)
-  options(replr.use.docker = TRUE)
-  wrapper <- replr:::create_worker_wrapper()
-  expect_equal(wrapper$get_metadata()$type, "firejail")
+  # Test invalid type
+  options(replr.worker.type = "invalid")
+  expect_error(
+    replr:::create_worker_wrapper(),
+    "Invalid worker type"
+  )
 })

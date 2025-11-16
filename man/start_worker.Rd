@@ -16,7 +16,7 @@ list with process object and connection info
 }
 \description{
 Spawn a worker R process using processx that runs the worker script.
-Optionally can run the worker inside a Docker container for enhanced isolation.
-Docker usage is controlled by the 'replr.use.docker' option.
+Can use different isolation strategies: native, Docker, or firejail.
+Isolation method is controlled by options: 'replr.use.firejail' or 'replr.use.docker'.
 }
 \keyword{internal}

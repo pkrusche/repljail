@@ -9,7 +9,7 @@ library(replr)
 cat("=== replr Docker Integration Example ===\n")
 
 options(replr.debug = TRUE)
-options(replr.use.docker = TRUE)
+options(replr.worker.type = "docker")
 
 # Check if Docker is available
 cat("\n1. Checking Docker availability...\n")

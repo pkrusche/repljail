@@ -59,6 +59,10 @@ NativeWorkerWrapper <- R6::R6Class(
   public = list(
     #' @description
     #' Start a native worker process using processx
+    #' @param port integer, port number for worker to listen on
+    #' @param worker_script character, path to worker.R script
+    #' @param worker_args character vector, arguments for worker
+    #' @param timeout numeric, startup timeout in seconds
     start_process = function(port, worker_script, worker_args, timeout) {
       debug_log("Starting native worker process on port ", port)
 
@@ -108,6 +112,10 @@ DockerWorkerWrapper <- R6::R6Class(
   public = list(
     #' @description
     #' Start a worker process inside a Docker container
+    #' @param port integer, port number for worker to listen on
+    #' @param worker_script character, path to worker.R script
+    #' @param worker_args character vector, arguments for worker
+    #' @param timeout numeric, startup timeout in seconds
     start_process = function(port, worker_script, worker_args, timeout) {
       debug_log("Starting Docker worker process on port ", port)
 
@@ -356,6 +364,10 @@ FirejailWorkerWrapper <- R6::R6Class(
   public = list(
     #' @description
     #' Start a worker process inside a firejail sandbox
+    #' @param port integer, port number for worker to listen on
+    #' @param worker_script character, path to worker.R script
+    #' @param worker_args character vector, arguments for worker
+    #' @param timeout numeric, startup timeout in seconds
     start_process = function(port, worker_script, worker_args, timeout) {
       debug_log("Starting firejail worker process on port ", port)
 
@@ -440,6 +452,167 @@ FirejailWorkerWrapper <- R6::R6Class(
   )
 )
 
+#' macOS Sandbox Worker Wrapper
+#'
+#' Worker wrapper for macOS sandbox-exec isolation
+#'
+#' @keywords internal
+MacOSSandboxWorkerWrapper <- R6::R6Class(
+  "MacOSSandboxWorkerWrapper",
+  inherit = WorkerWrapper,
+  public = list(
+    #' @description
+    #' Start a worker process inside a macOS sandbox
+    #' @param port integer, port number for worker to listen on
+    #' @param worker_script character, path to worker.R script
+    #' @param worker_args character vector, arguments for worker
+    #' @param timeout numeric, startup timeout in seconds
+    start_process = function(port, worker_script, worker_args, timeout) {
+      debug_log("Starting macOS sandbox worker process on port ", port)
+
+      # Check macOS sandbox availability
+      if (!is_macos_sandbox_available()) {
+        stop("macOS sandbox-exec is not available. Cannot start worker in macOS sandbox.")
+      }
+
+      # Get custom profile if specified
+      custom_profile <- getOption("replr.worker.macos.sandbox.profile", default = NULL)
+
+      # Create temporary profile file
+      profile_file <- NULL
+      if (!is.null(custom_profile) && file.exists(custom_profile)) {
+        # Use custom profile
+        debug_log("Using custom macOS sandbox profile: ", custom_profile)
+        profile_file <- custom_profile
+      } else {
+        # Create default security profile
+        profile_file <- tempfile(fileext = ".sb")
+        private$.temp_profile <- profile_file
+
+        # Default macOS sandbox profile using Sandbox Profile Language (SBPL)
+        # Note: macOS sandbox-exec has complex, undocumented restrictions
+        # We use a permissive profile that blocks external network only
+        profile_content <- paste(
+          "; macOS Sandbox Profile for replr worker",
+          "; Allows most operations but blocks external network access",
+          "(version 1)",
+          "",
+          "; Start with default allow for most operations",
+          "(allow default)",
+          "",
+          "; Block network access except to localhost",
+          "; This provides network isolation while keeping R functional",
+          "(deny network-outbound (remote ip))",
+          "(allow network* (remote tcp \"localhost:*\"))",
+          "(allow network* (local ip \"localhost:*\"))",
+          sep = "\n"
+        )
+
+        writeLines(profile_content, profile_file)
+        debug_log("Created temporary macOS sandbox profile: ", profile_file)
+      }
+
+      # Build sandbox-exec arguments
+      sandbox_args <- c(
+        "-f",
+        profile_file,
+        file.path(R.home("bin"), "Rscript"),
+        worker_args
+      )
+
+      debug_log("Sandbox-exec args: ", paste(sandbox_args, collapse = " "))
+
+      # Prepare environment for worker process
+      worker_env <- Sys.getenv()
+      worker_env[["R_LIBS_USER"]] <- paste(
+        .libPaths(),
+        collapse = .Platform$path.sep
+      )
+
+      # Start sandbox-exec process
+      proc <- processx::process$new(
+        command = "sandbox-exec",
+        args = sandbox_args,
+        stdout = "|",
+        stderr = "|",
+        cleanup = TRUE,
+        cleanup_tree = TRUE,
+        env = worker_env
+      )
+
+      private$.port <- port
+      private$.process <- proc
+
+      debug_success("macOS sandbox worker process started")
+
+      list(
+        process = proc,
+        port = port,
+        profile_file = profile_file
+      )
+    }
+  ),
+  private = list(
+    .type = "macos_sandbox",
+    .temp_profile = NULL,
+
+    # Cleanup method to remove temporary profile
+    finalize = function() {
+      if (!is.null(private$.temp_profile) && file.exists(private$.temp_profile)) {
+        unlink(private$.temp_profile)
+      }
+    }
+  )
+)
+
+#' Check macOS Sandbox Availability
+#'
+#' Check if macOS sandbox-exec is available and accessible on the system
+#'
+#' @return logical, TRUE if macOS sandbox-exec is available and on macOS
+#' @export
+is_macos_sandbox_available <- function() {
+  # Check if running on macOS
+  if (Sys.info()["sysname"] != "Darwin") {
+    return(FALSE)
+  }
+
+  # Check if sandbox-exec command exists
+  sandbox_path <- Sys.which("sandbox-exec")
+  if (sandbox_path == "") {
+    return(FALSE)
+  }
+
+  # Test if sandbox-exec is accessible (try with a simple test)
+  tryCatch(
+    {
+      # Create a minimal test profile
+      test_profile <- tempfile(fileext = ".sb")
+      on.exit(unlink(test_profile), add = TRUE)
+
+      writeLines(
+        c(
+          "(version 1)",
+          "(allow default)"
+        ),
+        test_profile
+      )
+
+      result <- system2(
+        "sandbox-exec",
+        c("-f", test_profile, "echo", "test"),
+        stdout = TRUE,
+        stderr = TRUE
+      )
+      # If no error and got output "test", sandbox-exec is available
+      return(length(result) > 0 && any(grepl("test", result, fixed = TRUE)))
+    },
+    error = function(e) {
+      return(FALSE) # nolint
+    }
+  )
+}
+
 #' Check Firejail Availability
 #'
 #' Check if firejail is available and accessible on the system
@@ -475,21 +648,67 @@ is_firejail_available <- function() {
 #'
 #' Factory function to create the appropriate worker wrapper based on options
 #'
-#' @return WorkerWrapper object (NativeWorkerWrapper, DockerWorkerWrapper, or FirejailWorkerWrapper)
+#' @return WorkerWrapper object (NativeWorkerWrapper, DockerWorkerWrapper, FirejailWorkerWrapper, or MacOSSandboxWorkerWrapper)
 #' @keywords internal
 create_worker_wrapper <- function() {
-  # Check options in priority order: firejail > docker > native
-  use_firejail <- getOption("replr.use.firejail", default = FALSE)
-  use_docker <- getOption("replr.use.docker", default = FALSE)
+  # Get the worker type from the new unified option
+  worker_type <- getOption("replr.worker.type", default = "native")
 
-  if (use_firejail) {
-    debug_log("Creating firejail worker wrapper")
-    return(FirejailWorkerWrapper$new())
-  } else if (use_docker) {
-    debug_log("Creating Docker worker wrapper")
-    return(DockerWorkerWrapper$new())
-  } else {
-    debug_log("Creating native worker wrapper")
-    return(NativeWorkerWrapper$new())
+  # For backward compatibility, check old boolean options if new option not set
+  if (worker_type == "native" && is.null(getOption("replr.worker.type"))) {
+    # Check legacy options in priority order: macos_sandbox > firejail > docker > native
+    if (isTRUE(getOption("replr.use.macos.sandbox"))) {
+      worker_type <- "macos-sandbox"
+      warning(
+        "Option 'replr.use.macos.sandbox' is deprecated. ",
+        "Please use options(replr.worker.type = \"macos-sandbox\") instead.",
+        call. = FALSE
+      )
+    } else if (isTRUE(getOption("replr.use.firejail"))) {
+      worker_type <- "firejail"
+      warning(
+        "Option 'replr.use.firejail' is deprecated. ",
+        "Please use options(replr.worker.type = \"firejail\") instead.",
+        call. = FALSE
+      )
+    } else if (isTRUE(getOption("replr.use.docker"))) {
+      worker_type <- "docker"
+      warning(
+        "Option 'replr.use.docker' is deprecated. ",
+        "Please use options(replr.worker.type = \"docker\") instead.",
+        call. = FALSE
+      )
+    }
   }
+
+  # Validate and create the appropriate wrapper
+  wrapper <- switch(
+    worker_type,
+    "native" = {
+      debug_log("Creating native worker wrapper")
+      NativeWorkerWrapper$new()
+    },
+    "docker" = {
+      debug_log("Creating Docker worker wrapper")
+      DockerWorkerWrapper$new()
+    },
+    "firejail" = {
+      debug_log("Creating firejail worker wrapper")
+      FirejailWorkerWrapper$new()
+    },
+    "macos-sandbox" = {
+      debug_log("Creating macOS sandbox worker wrapper")
+      MacOSSandboxWorkerWrapper$new()
+    },
+    {
+      # Invalid worker type
+      stop(
+        "Invalid worker type: '", worker_type, "'. ",
+        "Valid options are: 'native', 'docker', 'firejail', 'macos-sandbox'",
+        call. = FALSE
+      )
+    }
+  )
+
+  wrapper
 }
