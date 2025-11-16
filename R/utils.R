@@ -68,9 +68,14 @@ check_process_requirements <- function() {
   TRUE
 }
 
+# Package environment to track allocated ports (prevents race conditions)
+.allocated_ports <- new.env(parent = emptyenv())
+
 #' Get Available Port
 #'
-#' Find an available TCP port for nanonext communication
+#' Find an available TCP port for nanonext communication.
+#' Tracks allocated ports to prevent race conditions when multiple workers
+#' are started simultaneously.
 #'
 #' @param start_port integer, starting port number to check
 #' @param max_attempts integer, maximum number of ports to try
@@ -78,6 +83,16 @@ check_process_requirements <- function() {
 get_available_port <- function(start_port = 5555, max_attempts = 100) {
   for (i in seq_len(max_attempts)) {
     port <- start_port + i - 1
+
+    # Skip if port was recently allocated
+    port_key <- as.character(port)
+    if (exists(port_key, envir = .allocated_ports)) {
+      # Check if allocation is stale (> 30 seconds old)
+      alloc_time <- get(port_key, envir = .allocated_ports)
+      if (difftime(Sys.time(), alloc_time, units = "secs") < 30) {
+        next # Port still considered allocated
+      }
+    }
 
     # Try to bind to the port
     tryCatch(
@@ -87,6 +102,10 @@ get_available_port <- function(start_port = 5555, max_attempts = 100) {
           listen = paste0("tcp://127.0.0.1:", port)
         )
         close(sock)
+
+        # Mark port as allocated
+        assign(port_key, Sys.time(), envir = .allocated_ports)
+
         return(port)
       },
       error = function(e) {
@@ -96,6 +115,18 @@ get_available_port <- function(start_port = 5555, max_attempts = 100) {
   }
 
   stop("Could not find available port after ", max_attempts, " attempts")
+}
+
+#' Release a previously allocated port
+#'
+#' @param port integer, port number to release
+#' @keywords internal
+release_port <- function(port) {
+  port_key <- as.character(port)
+  if (exists(port_key, envir = .allocated_ports)) {
+    rm(list = port_key, envir = .allocated_ports)
+  }
+  invisible(NULL)
 }
 
 #' Get Worker Script Path
@@ -538,6 +569,11 @@ stop_worker <- function(worker_info, timeout = 5) {
         debug_warn("Failed to clean up IPC socket file: ", e$message)
       }
     )
+  }
+
+  # Release the port from allocation tracking (for TCP mode workers like Docker)
+  if (!is.null(worker_info$port)) {
+    release_port(worker_info$port)
   }
 
   !proc$is_alive()

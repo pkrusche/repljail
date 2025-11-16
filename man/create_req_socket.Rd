@@ -4,10 +4,12 @@
 \alias{create_req_socket}
 \title{Communication Helpers for nanonext REQ-REP}
 \usage{
-create_req_socket(port, timeout = 5)
+create_req_socket(port = NULL, socket_path = NULL, timeout = 5)
 }
 \arguments{
-\item{port}{integer, port number to connect to}
+\item{port}{integer, port number to connect to (for TCP mode)}
+
+\item{socket_path}{character, socket file path (for IPC mode)}
 
 \item{timeout}{numeric, timeout in seconds for socket operations}
 }
