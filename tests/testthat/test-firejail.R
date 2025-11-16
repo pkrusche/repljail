@@ -82,6 +82,20 @@ test_that("Firejail provides network isolation", {
   old_worker_type <- getOption("replr.worker.type")
   on.exit(options(replr.worker.type = old_worker_type))
   options(replr.worker.type = "firejail")
+  # Set option to use Firejail
+  old_option <- getOption("replr.use.firejail")
+  on.exit(options(replr.use.firejail = old_option))
+  options(replr.use.firejail = TRUE)
+  # Skip if networking features are not available
+  skip_if_not(
+    replr:::is_firejail_networking_available(),
+    "Firejail networking features disabled in system configuration"
+  )
+
+  # Set options to use only Firejail
+  old_worker_type <- getOption("replr.worker.type")
+  on.exit(options(replr.worker.type = old_worker_type))
+  options(replr.worker.type = "firejail")
 
   # Create a session with firejail
   session <- RREPLSession$new(timeout = 30)
@@ -195,11 +209,16 @@ test_that("Firejail custom profile can be used", {
   profile_file <- tempfile(fileext = ".profile")
   on.exit(unlink(profile_file), add = TRUE)
 
-  # Write a minimal profile (just network isolation for simplicity)
+  # Write a minimal profile that allows localhost communication
+  # Note: We cannot use 'net none' as it blocks localhost, breaking socket communication
+  # Instead, we use filesystem and capability restrictions
   writeLines(c(
     "# Custom firejail profile for testing",
-    "net none",
-    "private-tmp"
+    "# Note: Cannot use 'net none' as it breaks localhost socket communication",
+    "private-tmp",
+    "caps.drop all",
+    "seccomp",
+    "noroot"
   ), profile_file)
 
   # Set options to use only Firejail with custom profile
