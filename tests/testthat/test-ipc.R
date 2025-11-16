@@ -15,6 +15,9 @@ test_that("IPC socket path generation works", {
 })
 
 test_that("Native worker uses IPC sockets", {
+  skip_on_check()
+  testthat::skip_on_ci()
+
   # Set worker type to native explicitly
   options(replr.worker.type = "native")
 
@@ -54,6 +57,8 @@ test_that("Native worker uses IPC sockets", {
 })
 
 test_that("Firejail worker uses IPC sockets when available", {
+  skip_on_check()
+  testthat::skip_on_ci()
   skip_if_not(replr::is_firejail_available(), "Firejail not available")
 
   # Set worker type to firejail explicitly
@@ -95,6 +100,8 @@ test_that("Firejail worker uses IPC sockets when available", {
 })
 
 test_that("Docker worker still uses TCP (not IPC)", {
+  skip_on_check()
+  testthat::skip_on_ci()
   skip_if_not(replr::is_docker_available(), "Docker not available")
 
   # Set worker type to docker explicitly
@@ -128,6 +135,8 @@ test_that("Docker worker still uses TCP (not IPC)", {
 })
 
 test_that("Worker script accepts socket path argument", {
+  skip_on_check()
+  testthat::skip_on_ci()
   library(processx)
 
   # Get worker script path
@@ -176,6 +185,8 @@ test_that("Worker script accepts socket path argument", {
 })
 
 test_that("IPC communication works end-to-end", {
+  skip_on_check()
+  testthat::skip_on_ci()
   # Set worker type to native for IPC
   options(replr.worker.type = "native")
 

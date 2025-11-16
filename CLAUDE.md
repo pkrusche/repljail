@@ -171,18 +171,14 @@ Main R Process (Controller) ←──nanonext REQ/REP──→ Worker R Process 
 - Configurable via options: `replr.worker.type = "macos-sandbox"`, `replr.worker.macos.sandbox.profile`
 - **Default Security Profile** (auto-generated using Sandbox Profile Language):
   - **Filesystem access**:
-    - Read: System files (`/System`, `/Library`, `/usr/lib`), R installation, user R libraries
-    - Write: Only `/tmp` and `/private/tmp` directories
-    - Blocked: Home directory writes and other user locations
+    - Read: All files (allows R to read system files, libraries, data)
+    - Write: Only `/tmp`, `/private/tmp`, `/var/tmp` and `.Rtmp*` directories
+    - Blocked: Home directory writes (except temp directories)
   - **Network access**:
-    - Allowed: Localhost/loopback only (`127.0.0.1`, `::1`)
-    - Blocked: All outbound internet access, network binding to external interfaces
-  - **Process operations**:
-    - Allowed: Process execution, forking, signaling
-    - Allowed: IPC (POSIX shared memory, semaphores, Mach lookups)
-  - **System access**:
-    - Allowed: Reading system info via `sysctl`
-    - Blocked: System socket creation, system modifications
+    - Allowed: Localhost only (for IPC with host process)
+    - Blocked: All outbound external network access
+  - **Other operations**: Allows process execution, IPC, and system calls needed for R to function
+  - **Implementation**: Uses `(allow default)` with specific denials for network-outbound and home directory writes
 - **Custom Profiles**: Support for custom `.sb` profile files using Sandbox Profile Language (SBPL)
 - **Profile Management**: Default profiles auto-generated at runtime, temporary profiles cleaned up via finalizer
 - **Process Management**: Worker executed as `sandbox-exec -f <profile> Rscript worker.R <port>`
@@ -318,3 +314,4 @@ Global options control package behavior:
 
 **macOS Sandbox Configuration:**
 - `replr.worker.macos.sandbox.profile` (string): Path to custom sandbox profile (.sb) file (default: NULL)
+- to memorize : when testing scripts and examples, always use devtools::load_all() and source from within an R session instead of using Rscript

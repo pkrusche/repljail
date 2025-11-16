@@ -1,15 +1,9 @@
 # Tests for Firejail functionality
 here::i_am("tests/testthat/test-firejail.R")
 
-# Skip all Firejail tests on CI environments
-skip_on_ci_for_firejail <- function() {
-  if (nzchar(Sys.getenv("GITHUB_ACTIONS"))) {
-    testthat::skip("Firejail tests skipped on CI")
-  }
-}
-
 test_that("Firejail availability detection works", {
-  skip_on_ci_for_firejail()
+  skip_on_check()
+  testthat::skip_on_ci()
 
   # Should return logical value
   result <- replr:::is_firejail_available()
@@ -18,7 +12,8 @@ test_that("Firejail availability detection works", {
 })
 
 test_that("Firejail worker wrapper can be created", {
-  skip_on_ci_for_firejail()
+  skip_on_check()
+  testthat::skip_on_ci()
 
   # Skip if Firejail is not available
   skip_if_not(replr:::is_firejail_available(), "Firejail not available")
@@ -39,7 +34,8 @@ test_that("Firejail worker wrapper can be created", {
 })
 
 test_that("Firejail session can be created and execute commands", {
-  skip_on_ci_for_firejail()
+  skip_on_check()
+  testthat::skip_on_ci()
 
   # Skip if Firejail is not available
   skip_if_not(replr:::is_firejail_available(), "Firejail not available")
@@ -73,7 +69,8 @@ test_that("Firejail session can be created and execute commands", {
 })
 
 test_that("Firejail provides network isolation", {
-  skip_on_ci_for_firejail()
+  skip_on_check()
+  testthat::skip_on_ci()
 
   # Skip if Firejail is not available
   skip_if_not(replr:::is_firejail_available(), "Firejail not available")
@@ -161,7 +158,8 @@ test_that("Firejail provides network isolation", {
 })
 
 test_that("Firejail allows writing to temp directory", {
-  skip_on_ci_for_firejail()
+  skip_on_check()
+  testthat::skip_on_ci()
 
   # Skip if Firejail is not available
   skip_if_not(replr:::is_firejail_available(), "Firejail not available")
@@ -190,7 +188,8 @@ test_that("Firejail allows writing to temp directory", {
 })
 
 test_that("Firejail custom profile can be used", {
-  skip_on_ci_for_firejail()
+  skip_on_check()
+  testthat::skip_on_ci()
 
   # Skip if Firejail is not available
   skip_if_not(replr:::is_firejail_available(), "Firejail not available")
@@ -241,7 +240,8 @@ test_that("Firejail custom profile can be used", {
 })
 
 test_that("Worker wrapper factory creates correct type", {
-  skip_on_ci_for_firejail()
+  skip_on_check()
+  testthat::skip_on_ci()
 
   # Save option
   old_worker_type <- getOption("replr.worker.type")

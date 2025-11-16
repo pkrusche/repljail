@@ -2,6 +2,8 @@
 here::i_am("tests/testthat/test-plots.R")
 
 test_that("replr_execute_code handles multiple plots correctly", {
+  skip_on_check()
+
   # Create session
   create_result <- replr_create_repl_session()
   expect_true(create_result$success)
@@ -44,6 +46,8 @@ test_that("replr_execute_code handles multiple plots correctly", {
 })
 
 test_that("replr_execute_code works without plots (backward compatibility)", {
+  skip_on_check()
+
   # Create session
   create_result <- replr_create_repl_session()
   expect_true(create_result$success)

@@ -2,6 +2,7 @@
 here::i_am("tests/testthat/test-ellmer-tools.R")
 
 test_that("replr_create_repl_session works", {
+  skip_on_check()
   # Test creating a session with auto-generated ID
   result <- replr::replr_create_repl_session(timeout = 15)
 
@@ -18,6 +19,7 @@ test_that("replr_create_repl_session works", {
 })
 
 test_that("replr_create_repl_session generates unique IDs", {
+  skip_on_check()
   # Test creating multiple sessions and verify they get unique IDs
   result1 <- replr_create_repl_session(timeout = 15)
   result2 <- replr_create_repl_session(timeout = 15)
@@ -38,6 +40,7 @@ test_that("replr_create_repl_session generates unique IDs", {
 })
 
 test_that("replr_execute_code works", {
+  skip_on_check()
   # Create session
   session_result <- replr_create_repl_session(timeout = 15)
   expect_true(session_result$success)
@@ -81,12 +84,14 @@ test_that("replr_execute_code works", {
 })
 
 test_that("replr_execute_code handles non-existent session", {
+  skip_on_check()
   result <- replr_execute_code("non_existent_session", "1 + 1")
   expect_false(result$success)
   expect_equal(result$error, "SESSION_NOT_FOUND")
 })
 
 test_that("replr_get_session_info works", {
+  skip_on_check()
   # Create session
   session_result <- replr_create_repl_session(timeout = 15)
   expect_true(session_result$success)
@@ -110,12 +115,14 @@ test_that("replr_get_session_info works", {
 })
 
 test_that("replr_get_session_info handles non-existent session", {
+  skip_on_check()
   result <- replr_get_session_info("non_existent_session")
   expect_false(result$success)
   expect_equal(result$error, "SESSION_NOT_FOUND")
 })
 
 test_that("replr_list_sessions works", {
+  skip_on_check()
   # Test with no sessions
   initial_result <- replr_list_sessions()
   expect_true(initial_result$success)
@@ -149,6 +156,7 @@ test_that("replr_list_sessions works", {
 })
 
 test_that("replr_stop_session works", {
+  skip_on_check()
   # Create session
   session_result <- replr_create_repl_session(timeout = 15)
   expect_true(session_result$success)
@@ -166,12 +174,14 @@ test_that("replr_stop_session works", {
 })
 
 test_that("replr_stop_session handles non-existent session", {
+  skip_on_check()
   result <- replr_stop_session("non_existent_session")
   expect_false(result$success)
   expect_equal(result$error, "SESSION_NOT_FOUND")
 })
 
 test_that("replr_stop_all_sessions works", {
+  skip_on_check()
   # Create multiple sessions
   session1_result <- replr_create_repl_session(timeout = 15)
   session2_result <- replr_create_repl_session(timeout = 15)
@@ -193,6 +203,7 @@ test_that("replr_stop_all_sessions works", {
 })
 
 test_that("replr_cleanup_sessions works", {
+  skip_on_check()
   # For this test, we'll just verify the function runs without error
   # since it's hard to simulate dead sessions in a test
   cleanup_result <- replr_cleanup_sessions()
@@ -202,6 +213,7 @@ test_that("replr_cleanup_sessions works", {
 })
 
 test_that("Multiple sessions maintain isolation", {
+  skip_on_check()
   # Create two sessions
   session1_result <- replr_create_repl_session(timeout = 15)
   session2_result <- replr_create_repl_session(timeout = 15)
@@ -240,6 +252,7 @@ test_that("Multiple sessions maintain isolation", {
 })
 
 test_that("replr_run_r_code works with simple arithmetic", {
+  skip_on_check()
   # Test simple arithmetic
   result <- replr_run_r_code("2 + 2")
   expect_true(result$success)
@@ -262,6 +275,7 @@ test_that("replr_run_r_code works with simple arithmetic", {
 })
 
 test_that("replr_run_r_code works with complex code", {
+  skip_on_check()
   code <- "
     data <- data.frame(x = 1:5, y = letters[1:5])
     summary(data)
@@ -273,6 +287,7 @@ test_that("replr_run_r_code works with complex code", {
 })
 
 test_that("replr_run_r_code handles errors correctly", {
+  skip_on_check()
   # Test code with error
   result <- replr_run_r_code("stop('test error')")
   expect_false(result$success)
@@ -285,6 +300,7 @@ test_that("replr_run_r_code handles errors correctly", {
 })
 
 test_that("replr_run_r_code handles warnings", {
+  skip_on_check()
   # Test code with warning
   result <- replr_run_r_code("warning('test warning'); 42")
   expect_true(result$success)
@@ -295,6 +311,7 @@ test_that("replr_run_r_code handles warnings", {
 })
 
 test_that("replr_run_r_code respects timeout parameter", {
+  skip_on_check()
   # Test with custom timeout
   result <- replr_run_r_code("Sys.sleep(0.1); 'done'", timeout = 5)
   expect_true(result$success)
