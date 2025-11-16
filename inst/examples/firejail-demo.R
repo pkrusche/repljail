@@ -110,7 +110,7 @@ cat("9. Testing custom firejail profile...\n")
 profile_path <- tempfile(fileext = ".profile")
 writeLines(c(
   "# Custom firejail profile for replr demo",
-  "net none",
+  "net lo",
   "private-tmp",
   "caps.drop all",
   "seccomp"
@@ -151,7 +151,7 @@ cat("=== Demo Complete ===\n\n")
 
 cat("Summary:\n")
 cat("  - Firejail provides lightweight sandboxing for R workers\n")
-cat("  - Network isolation prevents external connections\n")
+cat("  - Network isolation blocks external connections (loopback retained for host communication)\n")
 cat("  - Filesystem is restricted (only temp directory writable)\n")
 cat("  - Linux capabilities are dropped for security\n")
 cat("  - Custom profiles allow fine-grained control\n")

@@ -220,7 +220,7 @@ You can customize firejail worker behavior using global options:
 
 When no custom profile is specified, firejail workers use these security settings:
 
-- **Network isolation**: `--net=none` (no network access)
+- **Network isolation**: `--net=lo` (loopback only for host communication, blocks external access)
 - **Filesystem isolation**: `--private-tmp` (isolated temp directory)
 - **Capability dropping**: `--caps.drop=all` (drop all Linux capabilities)
 - **Seccomp filtering**: `--seccomp` (restrict system calls)
@@ -234,7 +234,7 @@ When no custom profile is specified, firejail workers use these security setting
 profile_path <- tempfile(fileext = ".profile")
 writeLines(c(
   "# Custom firejail profile",
-  "net none",              # Network isolation
+  "net lo",                # Network isolation (loopback only)
   "private-tmp",           # Private temp directory
   "caps.drop all",         # Drop all capabilities
   "seccomp"                # Enable seccomp filtering
