@@ -133,7 +133,7 @@ test_that("Worker handles warnings correctly", {
   )
 })
 
-test_that("Multiple workers can run simultaneously", {
+test_that("Multiple workers can run simultaneously with different IPC sockets", {
   skip_if_not_installed("nanonext")
   skip_if_not_installed("processx")
 
@@ -145,7 +145,19 @@ test_that("Multiple workers can run simultaneously", {
       # Verify both workers started
       expect_true(session1$is_alive())
       expect_true(session2$is_alive())
-      expect_false(session1$port == session2$port) # Different ports
+
+      # For IPC mode (native/firejail/macos), check socket paths are different
+      # For TCP mode (docker), check ports are different
+      info1 <- session1$get_info()
+      info2 <- session2$get_info()
+
+      if (!is.null(info1$socket_path) && !is.null(info2$socket_path)) {
+        # IPC mode - verify different socket paths
+        expect_false(info1$socket_path == info2$socket_path)
+      } else {
+        # TCP mode - verify different ports
+        expect_false(session1$port == session2$port)
+      }
 
       # Test independent execution
       result1 <- session1$execute("x1 <- 100", timeout = 5)
@@ -167,38 +179,6 @@ test_that("Multiple workers can run simultaneously", {
     finally = {
       session1$stop(timeout = 5)
       session2$stop(timeout = 5)
-    }
-  )
-})
-
-test_that("Worker startup handles port conflicts", {
-  skip_if_not_installed("nanonext")
-  skip_if_not_installed("processx")
-
-  # Start first session on specific port
-  port1 <- replr:::get_available_port()
-  session1 <- RREPLSession$new(port = port1, timeout = 10)
-
-  tryCatch(
-    {
-      expect_equal(session1$port, port1)
-      expect_true(session1$is_alive())
-
-      # Start second session without specifying port (should find different port)
-      session2 <- RREPLSession$new(timeout = 10)
-
-      tryCatch(
-        {
-          expect_true(session2$is_alive())
-          expect_false(session1$port == session2$port)
-        },
-        finally = {
-          session2$stop(timeout = 5)
-        }
-      )
-    },
-    finally = {
-      session1$stop(timeout = 5)
     }
   )
 })

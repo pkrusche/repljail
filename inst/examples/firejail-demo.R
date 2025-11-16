@@ -50,7 +50,8 @@ cat("   Status:", result$status, "\n\n")
 
 # Test network isolation
 cat("5. Testing network isolation (should fail)...\n")
-network_test <- session$execute('
+network_test <- session$execute(
+  '
   tryCatch({
     con <- url("http://example.com")
     close(con)
@@ -58,26 +59,32 @@ network_test <- session$execute('
   }, error = function(e) {
     paste("NETWORK_BLOCKED:", e$message)
   })
-', timeout = 15)
+',
+  timeout = 15
+)
 cat("   Network test result:\n")
 cat("   ", network_test$result$output, "\n\n")
 
 # Test filesystem isolation (temp directory should work)
 cat("6. Testing filesystem access (temp directory)...\n")
-fs_test <- session$execute('
+fs_test <- session$execute(
+  '
   tmpfile <- tempfile()
   writeLines("test content", tmpfile)
   exists <- file.exists(tmpfile)
   content <- if(exists) readLines(tmpfile) else "FAILED"
   unlink(tmpfile)
   list(exists = exists, content = content)
-', timeout = 10)
+',
+  timeout = 10
+)
 cat("   Filesystem test result:\n")
 cat("   ", fs_test$result$output, "\n\n")
 
 # Test capability restrictions by trying privileged operations
 cat("7. Testing capability restrictions...\n")
-cap_test <- session$execute('
+cap_test <- session$execute(
+  '
   tryCatch({
     # Try to change system time (requires CAP_SYS_TIME)
     system("date -s \\"2020-01-01 00:00:00\\"", intern = TRUE)
@@ -85,21 +92,30 @@ cap_test <- session$execute('
   }, error = function(e) {
     "PRIVILEGED_OP_BLOCKED"
   })
-', timeout = 10)
+',
+  timeout = 10
+)
 cat("   Capability test result:\n")
 cat("   ", cap_test$result$output, "\n\n")
 
 # Execute code with a plot
 cat("8. Testing plot generation in firejail...\n")
-plot_result <- session$execute('
+plot_result <- session$execute(
+  '
   plot(1:10, 1:10, main = "Test Plot in Firejail")
   "Plot generated"
-', timeout = 10)
+',
+  timeout = 10
+)
 cat("   Plot result:\n")
 cat("     Output:", plot_result$result$output, "\n")
 cat("     Plots generated:", length(plot_result$result$plots), "\n")
 if (length(plot_result$result$plots) > 0) {
-  cat("     Plot 1 (data URL):", substr(plot_result$result$plots[[1]], 1, 50), "...\n")
+  cat(
+    "     Plot 1 (data URL):",
+    substr(plot_result$result$plots[[1]], 1, 50),
+    "...\n"
+  )
 }
 cat("\n")
 
@@ -108,13 +124,16 @@ cat("9. Testing custom firejail profile...\n")
 
 # Create a temporary custom profile
 profile_path <- tempfile(fileext = ".profile")
-writeLines(c(
-  "# Custom firejail profile for replr demo",
-  "net lo",
-  "private-tmp",
-  "caps.drop all",
-  "seccomp"
-), profile_path)
+writeLines(
+  c(
+    "# Custom firejail profile for replr demo",
+    "net lo",
+    "private-tmp",
+    "caps.drop all",
+    "seccomp"
+  ),
+  profile_path
+)
 
 cat("   Created custom profile at:", profile_path, "\n")
 
@@ -151,7 +170,9 @@ cat("=== Demo Complete ===\n\n")
 
 cat("Summary:\n")
 cat("  - Firejail provides lightweight sandboxing for R workers\n")
-cat("  - Network isolation blocks external connections (loopback retained for host communication)\n")
+cat(
+  "  - Network isolation blocks external connections (loopback retained for host communication)\n"
+)
 cat("  - Filesystem is restricted (only temp directory writable)\n")
 cat("  - Linux capabilities are dropped for security\n")
 cat("  - Custom profiles allow fine-grained control\n")

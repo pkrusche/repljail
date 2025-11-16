@@ -57,7 +57,9 @@ ConversationLogger <- R6::R6Class(
       # Add header
       private$append_log(paste0("# Conversation Log\n\n"))
       private$append_log(paste0(
-        "**Started:** ", format(private$session_start, "%Y-%m-%d %H:%M:%S"), "\n\n"
+        "**Started:** ",
+        format(private$session_start, "%Y-%m-%d %H:%M:%S"),
+        "\n\n"
       ))
       private$append_log("---\n\n")
     },
@@ -116,7 +118,9 @@ ConversationLogger <- R6::R6Class(
       file_path <- file %||% self$log_file
 
       if (is.null(file_path)) {
-        stop("No file path provided. Specify file parameter or set log_file in constructor.")
+        stop(
+          "No file path provided. Specify file parameter or set log_file in constructor."
+        )
       }
 
       # Ensure directory exists
@@ -141,7 +145,9 @@ ConversationLogger <- R6::R6Class(
       # Re-add header
       private$append_log(paste0("# Conversation Log\n\n"))
       private$append_log(paste0(
-        "**Started:** ", format(private$session_start, "%Y-%m-%d %H:%M:%S"), "\n\n"
+        "**Started:** ",
+        format(private$session_start, "%Y-%m-%d %H:%M:%S"),
+        "\n\n"
       ))
       private$append_log("---\n\n")
 
@@ -170,7 +176,9 @@ ConversationLogger <- R6::R6Class(
           if (is.character(prompt)) {
             private$append_log(paste0("## Turn ", private$turn_count, "\n\n"))
             private$append_log(paste0(
-              "**Time:** ", format(Sys.time(), "%H:%M:%S"), "\n\n"
+              "**Time:** ",
+              format(Sys.time(), "%H:%M:%S"),
+              "\n\n"
             ))
             private$append_log("### User\n\n")
             private$append_log(paste0(prompt, "\n\n"))
@@ -313,7 +321,11 @@ ConversationLogger <- R6::R6Class(
 
           # Plots
           plots_val <- data$plots
-          if (!is.null(plots_val) && !is.null(plots_val$count) && plots_val$count > 0) {
+          if (
+            !is.null(plots_val) &&
+              !is.null(plots_val$count) &&
+              plots_val$count > 0
+          ) {
             private$append_log(paste0(
               "**Plots:** ",
               plots_val$count,
@@ -321,7 +333,9 @@ ConversationLogger <- R6::R6Class(
             ))
 
             # Embed plot images using file_paths if available, otherwise fall back to data_urls
-            if (!is.null(plots_val$file_paths) && length(plots_val$file_paths) > 0) {
+            if (
+              !is.null(plots_val$file_paths) && length(plots_val$file_paths) > 0
+            ) {
               for (i in seq_along(plots_val$file_paths)) {
                 temp_file_path <- plots_val$file_paths[[i]]
 
@@ -329,7 +343,9 @@ ConversationLogger <- R6::R6Class(
                 final_path <- temp_file_path
                 if (!is.null(self$log_file)) {
                   log_dir <- normalizePath(dirname(self$log_file))
-                  log_basename <- tools::file_path_sans_ext(basename(self$log_file))
+                  log_basename <- tools::file_path_sans_ext(basename(
+                    self$log_file
+                  ))
 
                   # Create a unique filename for the plot
                   plot_filename <- paste0(
@@ -343,20 +359,38 @@ ConversationLogger <- R6::R6Class(
                   final_path <- file.path(log_dir, plot_filename)
 
                   # Copy the temp file to the log directory
-                  stopifnot(file.copy(temp_file_path, final_path, overwrite = TRUE))
+                  stopifnot(file.copy(
+                    temp_file_path,
+                    final_path,
+                    overwrite = TRUE
+                  ))
 
                   # Use relative path for markdown (just the filename)
                   final_path <- plot_filename
                 }
 
                 private$append_log(paste0("**Plot ", i, ":**\n\n"))
-                private$append_log(paste0("![Plot ", i, "](", basename(final_path), ")\n\n"))
+                private$append_log(paste0(
+                  "![Plot ",
+                  i,
+                  "](",
+                  basename(final_path),
+                  ")\n\n"
+                ))
               }
-            } else if (!is.null(plots_val$data_urls) && length(plots_val$data_urls) > 0) {
+            } else if (
+              !is.null(plots_val$data_urls) && length(plots_val$data_urls) > 0
+            ) {
               # Fallback to data URLs if file paths not available
               for (i in seq_along(plots_val$data_urls)) {
                 private$append_log(paste0("**Plot ", i, ":**\n\n"))
-                private$append_log(paste0("![Plot ", i, "](", plots_val$data_urls[[i]], ")\n\n"))
+                private$append_log(paste0(
+                  "![Plot ",
+                  i,
+                  "](",
+                  plots_val$data_urls[[i]],
+                  ")\n\n"
+                ))
               }
             }
           }
@@ -387,7 +421,9 @@ ConversationLogger <- R6::R6Class(
           tryCatch(
             {
               # Try to get all slot names and values
-              list(result = paste(capture.output(print(result)), collapse = "\n"))
+              list(
+                result = paste(capture.output(print(result)), collapse = "\n")
+              )
             },
             error = function(e) {
               list(result = "S7 object (cannot serialize)")
@@ -397,7 +433,11 @@ ConversationLogger <- R6::R6Class(
           result
         }
         private$append_log("```json\n")
-        private$append_log(toJSON(result_for_json, pretty = TRUE, auto_unbox = TRUE))
+        private$append_log(toJSON(
+          result_for_json,
+          pretty = TRUE,
+          auto_unbox = TRUE
+        ))
         private$append_log("\n```\n\n")
       }
 

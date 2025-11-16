@@ -80,14 +80,17 @@ test_that("ConversationLogger can clear log", {
 
 test_that("ConversationLogger validates chat object on attach", {
   logger <- ConversationLogger$new()
-  expect_error(logger$attach("not a chat object"), "Must provide an ellmer Chat object")
+  expect_error(
+    logger$attach("not a chat object"),
+    "Must provide an ellmer Chat object"
+  )
 })
 
 # Mock Chat object for testing without ellmer dependency
 create_mock_chat <- function() {
   mock_chat <- R6::R6Class(
     "Chat",
-    lock_objects = FALSE,  # Allow modification of bindings
+    lock_objects = FALSE, # Allow modification of bindings
     public = list(
       chat = function(...) {
         private$chat_history <- c(private$chat_history, list(list(...)))
@@ -295,7 +298,10 @@ test_that("ConversationLogger logs tool results with plots", {
       execution_time = 0.45,
       plots = list(
         count = 2,
-        data_urls = c("data:image/png;base64,abc123", "data:image/png;base64,def456")
+        data_urls = c(
+          "data:image/png;base64,abc123",
+          "data:image/png;base64,def456"
+        )
       )
     )
   )

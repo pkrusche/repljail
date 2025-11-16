@@ -176,7 +176,19 @@ test_that("Multiple RREPLSession instances work independently", {
       # Verify both sessions are alive and independent
       expect_true(session1$is_alive())
       expect_true(session2$is_alive())
-      expect_true(session1$port != session2$port)
+
+      # Verify sessions are independent - check socket paths for IPC or ports for TCP
+      info1 <- session1$get_info()
+      info2 <- session2$get_info()
+
+      if (!is.null(info1$socket_path) && !is.null(info2$socket_path)) {
+        # IPC mode - verify different socket paths
+        expect_true(info1$socket_path != info2$socket_path)
+      } else {
+        # TCP mode - verify different ports
+        expect_true(session1$port != session2$port)
+      }
+
       expect_true(session1$pid != session2$pid)
 
       # Set different variables in each session

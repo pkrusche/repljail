@@ -21,10 +21,12 @@ test_that("Worker script validates command line arguments", {
   ))
   expect_true(attr(result1, "status") == 1)
 
-  # Test with invalid port
+  # Test with invalid port number (out of range)
+  # Note: Strings are now accepted as IPC socket paths, so we need to test
+  # an actual invalid port number (out of valid range 1-65535)
   result2 <- suppressWarnings(system2(
     "Rscript",
-    c(worker_path, "invalid"),
+    c(worker_path, "999999"),
     stdout = TRUE,
     stderr = TRUE,
     timeout = 10
@@ -42,14 +44,17 @@ test_that("Worker script validates command line arguments", {
   expect_true(attr(result3, "status") == 1)
 })
 
-test_that("Worker can be started via processx", {
+test_that("Worker can be started via processx with IPC socket", {
   library(processx)
 
-  # Test that processx can start the worker script
+  # Test that processx can start the worker script with IPC socket
   worker_path <- replr:::get_worker_script_path()
+  socket_path <- tempfile(pattern = "test_worker_socket_")
+  on.exit(unlink(socket_path), add = TRUE)
+
   proc <- process$new(
     file.path(R.home("bin"), "Rscript"),
-    c(worker_path, "8888"),
+    c(worker_path, socket_path),
     stdout = "|",
     stderr = "|"
   )
@@ -60,20 +65,24 @@ test_that("Worker can be started via processx", {
   stderr_output <- proc$read_error_lines()
   expect_true(any(grepl("Worker starting", stderr_output)))
   expect_true(any(grepl("Worker ready", stderr_output)))
+  expect_true(any(grepl("ipc://", stderr_output)))
 
   proc$kill()
+  Sys.sleep(0.5)
   expect_false(proc$is_alive())
 })
 
-test_that("Worker accepts debug flag", {
+test_that("Worker accepts debug flag with IPC socket", {
   library(processx)
 
   worker_path <- replr:::get_worker_script_path()
+  socket_path <- tempfile(pattern = "test_worker_socket_debug_")
+  on.exit(unlink(socket_path), add = TRUE)
 
   # Test worker with debug flag
   proc <- process$new(
     file.path(R.home("bin"), "Rscript"),
-    c(worker_path, "8889", "--debug"),
+    c(worker_path, socket_path, "--debug"),
     stdout = "|",
     stderr = "|"
   )
@@ -83,8 +92,10 @@ test_that("Worker accepts debug flag", {
   # Check that debug mode message appears in stderr
   stderr_output <- proc$read_error_lines()
   expect_true(any(grepl("Debug mode enabled", stderr_output)))
+  expect_true(any(grepl("ipc://", stderr_output)))
 
   proc$kill()
+  Sys.sleep(0.5)
   expect_false(proc$is_alive())
 })
 

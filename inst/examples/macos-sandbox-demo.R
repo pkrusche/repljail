@@ -53,7 +53,8 @@ cat("   Status:", result$status, "\n\n")
 
 # Test network isolation
 cat("5. Testing network isolation (should fail)...\n")
-network_test <- session$execute('
+network_test <- session$execute(
+  '
   tryCatch({
     con <- url("http://example.com")
     close(con)
@@ -61,13 +62,16 @@ network_test <- session$execute('
   }, error = function(e) {
     paste("NETWORK_BLOCKED:", e$message)
   })
-', timeout = 15)
+',
+  timeout = 15
+)
 cat("   Network test result:\n")
 cat("   ", network_test$result$output, "\n\n")
 
 # Test localhost network access (should work for host communication)
 cat("6. Testing localhost network access (should work)...\n")
-localhost_test <- session$execute('
+localhost_test <- session$execute(
+  '
   tryCatch({
     # Test if we can create a local socket
     # This should work because the sandbox allows localhost
@@ -75,26 +79,34 @@ localhost_test <- session$execute('
   }, error = function(e) {
     paste("LOCALHOST_FAILED:", e$message)
   })
-', timeout = 10)
+',
+  timeout = 10
+)
 cat("   Localhost test result:\n")
 cat("   ", localhost_test$result$output, "\n\n")
 
 # Test filesystem isolation (temp directory should work)
 cat("7. Testing filesystem access (temp directory - should work)...\n")
-fs_test_temp <- session$execute('
+fs_test_temp <- session$execute(
+  '
   tmpfile <- tempfile()
   writeLines("test content", tmpfile)
   exists <- file.exists(tmpfile)
   content <- if(exists) readLines(tmpfile) else "FAILED"
   unlink(tmpfile)
   list(exists = exists, content = content)
-', timeout = 10)
+',
+  timeout = 10
+)
 cat("   Temp directory test result:\n")
 cat("   ", fs_test_temp$result$output, "\n\n")
 
 # Test restricted filesystem access (home directory - should fail)
-cat("8. Testing filesystem restrictions (home directory write - should fail)...\n")
-fs_test_home <- session$execute('
+cat(
+  "8. Testing filesystem restrictions (home directory write - should fail)...\n"
+)
+fs_test_home <- session$execute(
+  '
   tryCatch({
     test_file <- file.path(path.expand("~"), ".replr_test_write")
     writeLines("test", test_file)
@@ -103,27 +115,37 @@ fs_test_home <- session$execute('
   }, error = function(e) {
     "HOME_RESTRICTED"
   })
-', timeout = 10)
+',
+  timeout = 10
+)
 cat("   Home directory write test result:\n")
 cat("   ", fs_test_home$result$output, "\n\n")
 
 # Execute code with a plot
 cat("9. Testing plot generation in macOS sandbox...\n")
-plot_result <- session$execute('
+plot_result <- session$execute(
+  '
   plot(1:10, 1:10, main = "Test Plot in macOS Sandbox")
   "Plot generated"
-', timeout = 10)
+',
+  timeout = 10
+)
 cat("   Plot result:\n")
 cat("     Output:", plot_result$result$output, "\n")
 cat("     Plots generated:", length(plot_result$result$plots), "\n")
 if (length(plot_result$result$plots) > 0) {
-  cat("     Plot 1 (data URL):", substr(plot_result$result$plots[[1]], 1, 50), "...\n")
+  cat(
+    "     Plot 1 (data URL):",
+    substr(plot_result$result$plots[[1]], 1, 50),
+    "...\n"
+  )
 }
 cat("\n")
 
 # Test reading system files (should be allowed)
 cat("10. Testing system file reading (should work)...\n")
-sys_read_test <- session$execute('
+sys_read_test <- session$execute(
+  '
   tryCatch({
     # Try to read a system file
     lines <- readLines("/usr/share/dict/words", n = 1, warn = FALSE)
@@ -131,7 +153,9 @@ sys_read_test <- session$execute('
   }, error = function(e) {
     paste("SYSTEM_READ_ERROR:", e$message)
   })
-', timeout = 10)
+',
+  timeout = 10
+)
 cat("   System file read test result:\n")
 cat("   ", sys_read_test$result$output, "\n\n")
 
@@ -140,33 +164,36 @@ cat("11. Testing custom macOS sandbox profile...\n")
 
 # Create a temporary custom profile
 profile_path <- tempfile(fileext = ".sb")
-writeLines(c(
-  "; Custom macOS sandbox profile for replr demo",
-  "(version 1)",
-  "(allow default)",
-  "(deny default)",
-  "",
-  "; Allow file operations on temp directories",
-  "(allow file* (subpath \"/tmp\"))",
-  "(allow file* (subpath \"/private/tmp\"))",
-  "",
-  "; Allow network access to localhost only",
-  "(allow network* (remote ip \"127.0.0.1:*\"))",
-  "(allow network* (remote ip \"localhost:*\"))",
-  "",
-  "; Allow process operations",
-  "(allow process-exec)",
-  "(allow process-fork)",
-  "(allow signal)",
-  "",
-  "; Allow IPC",
-  "(allow ipc-posix-shm)",
-  "(allow ipc-posix-sem)",
-  "(allow mach-lookup)",
-  "",
-  "; Allow sysctl reads",
-  "(allow sysctl-read)"
-), profile_path)
+writeLines(
+  c(
+    "; Custom macOS sandbox profile for replr demo",
+    "(version 1)",
+    "(allow default)",
+    "(deny default)",
+    "",
+    "; Allow file operations on temp directories",
+    "(allow file* (subpath \"/tmp\"))",
+    "(allow file* (subpath \"/private/tmp\"))",
+    "",
+    "; Allow network access to localhost only",
+    "(allow network* (remote ip \"127.0.0.1:*\"))",
+    "(allow network* (remote ip \"localhost:*\"))",
+    "",
+    "; Allow process operations",
+    "(allow process-exec)",
+    "(allow process-fork)",
+    "(allow signal)",
+    "",
+    "; Allow IPC",
+    "(allow ipc-posix-shm)",
+    "(allow ipc-posix-sem)",
+    "(allow mach-lookup)",
+    "",
+    "; Allow sysctl reads",
+    "(allow sysctl-read)"
+  ),
+  profile_path
+)
 
 cat("   Created custom profile at:", profile_path, "\n")
 
@@ -188,16 +215,23 @@ cat("   Custom profile test result:", custom_result$result$output, "\n\n")
 
 # Test data frame operations
 cat("12. Testing complex R operations in sandbox...\n")
-complex_result <- session2$execute('
+complex_result <- session2$execute(
+  '
   df <- data.frame(
     x = 1:10,
     y = rnorm(10)
   )
   summary(df)
-', timeout = 10)
+',
+  timeout = 10
+)
 cat("   Complex operations test:\n")
 cat("     Status:", complex_result$status, "\n")
-cat("     Output preview:", substr(complex_result$result$output, 1, 100), "...\n\n")
+cat(
+  "     Output preview:",
+  substr(complex_result$result$output, 1, 100),
+  "...\n\n"
+)
 
 # Clean up
 cat("13. Cleaning up...\n")
@@ -218,8 +252,12 @@ enable_debug(FALSE)
 cat("=== Demo Complete ===\n\n")
 
 cat("Summary:\n")
-cat("  - macOS sandbox-exec provides native sandboxing for R workers on macOS\n")
-cat("  - Network isolation blocks external connections (localhost retained for host communication)\n")
+cat(
+  "  - macOS sandbox-exec provides native sandboxing for R workers on macOS\n"
+)
+cat(
+  "  - Network isolation blocks external connections (localhost retained for host communication)\n"
+)
 cat("  - Filesystem access is controlled via Sandbox Profile Language (SBPL)\n")
 cat("  - Temp directories remain writable for working storage\n")
 cat("  - System files can be read but not modified\n")
@@ -238,4 +276,6 @@ cat("  - ?is_macos_sandbox_available\n")
 cat("  - ?RREPLSession\n")
 cat("  - README.md (macOS Sandbox section)\n")
 cat("  - man sandbox-exec (macOS man page)\n")
-cat("  - https://reverse.put.as/wp-content/uploads/2011/09/Apple-Sandbox-Guide-v1.0.pdf\n\n")
+cat(
+  "  - https://reverse.put.as/wp-content/uploads/2011/09/Apple-Sandbox-Guide-v1.0.pdf\n\n"
+)
