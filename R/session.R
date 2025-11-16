@@ -145,6 +145,7 @@ RREPLSession <- R6::R6Class(
 
       list(
         port = private$.worker_info$port,
+        socket_path = private$.worker_info$socket_path,
         pid = if (self$is_alive()) {
           private$.worker_info$process$get_pid()
         } else {
