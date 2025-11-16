@@ -27,8 +27,8 @@ enable_debug(TRUE)
 
 # Configure to use firejail
 cat("2. Configuring replr to use firejail...\n")
-options(replr.use.firejail = TRUE)
-cat("   Option 'replr.use.firejail' set to TRUE\n\n")
+options(replr.worker.type = "firejail")
+cat("   Option 'replr.worker.type' set to 'firejail'\n\n")
 
 # Create a session with firejail
 cat("3. Creating a firejail-isolated R session...\n")
@@ -143,7 +143,7 @@ unlink(profile_path)
 cat("    Custom profile deleted\n")
 
 # Reset options
-options(replr.use.firejail = NULL)
+options(replr.worker.type = NULL)
 options(replr.worker.firejail.profile = NULL)
 cat("    Options reset\n\n")
 

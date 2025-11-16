@@ -64,6 +64,8 @@ session$stop()
 \item{\code{started_at}}{Timestamp when worker was started}
 
 \item{\code{is_docker}}{Logical, TRUE if worker is running inside Docker}
+
+\item{\code{wrapper_type}}{Character, type of worker wrapper (native, docker, firejail)}
 }
 \if{html}{\out{</div>}}
 }
