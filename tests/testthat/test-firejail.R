@@ -90,7 +90,7 @@ test_that("Firejail provides network isolation", {
   expect_equal(result$status, "success")
   expect_equal(result$result$output, "4")
 
-  # Verify that internet access is blocked (--net=none)
+  # Verify that internet access is blocked (--net=lo blocks external access)
   result_internet <- session$execute(
     '
     tryCatch({

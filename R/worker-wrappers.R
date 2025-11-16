@@ -376,8 +376,8 @@ FirejailWorkerWrapper <- R6::R6Class(
         firejail_args <- c(firejail_args, "--profile", custom_profile)
       } else {
         # Use default security settings
-        # Network isolation
-        firejail_args <- c(firejail_args, "--net=none")
+        # Network isolation - keep loopback for host communication but block external access
+        firejail_args <- c(firejail_args, "--net=lo")
 
         # Filesystem restrictions - only allow writing to /tmp
         firejail_args <- c(firejail_args, "--private-tmp")
