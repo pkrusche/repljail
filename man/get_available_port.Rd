@@ -15,5 +15,7 @@ get_available_port(start_port = 5555, max_attempts = 100)
 integer, available port number
 }
 \description{
-Find an available TCP port for nanonext communication
+Find an available TCP port for nanonext communication.
+Tracks allocated ports to prevent race conditions when multiple workers
+are started simultaneously.
 }

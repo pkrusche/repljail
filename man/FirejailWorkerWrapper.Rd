@@ -43,7 +43,7 @@ Start a worker process inside a firejail sandbox
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{port}}{integer, port number for worker to listen on}
+\item{\code{port}}{integer, port number for worker to listen on (unused, kept for compatibility)}
 
 \item{\code{worker_script}}{character, path to worker.R script}
 
