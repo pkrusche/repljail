@@ -9,23 +9,34 @@ args <- commandArgs(trailingOnly = TRUE)
 
 if (length(args) < 1 || length(args) > 3) {
   cat(
-    "Usage: Rscript worker.R <port> [--debug] [--listen-all]\n",
+    "Usage: Rscript worker.R <port|socket_path> [--debug] [--listen-all]\n",
     file = stderr()
   )
-  cat("  port:   Port number to listen on\n", file = stderr())
-  cat("  --debug: Enable debug logging (optional)\n", file = stderr())
+  cat("  port:        Port number to listen on (for TCP mode)\n", file = stderr())
+  cat("  socket_path: Unix socket path to listen on (for IPC mode)\n", file = stderr())
+  cat("  --debug:     Enable debug logging (optional)\n", file = stderr())
   cat(
-    "  --listen-all: Listen on all IPs (optional, e.g. when running inside Docker)\n",
+    "  --listen-all: Listen on all IPs (optional, for TCP in Docker)\n",
     file = stderr()
   )
   quit(status = 1)
 }
 
-port <- as.integer(args[1])
+# Determine if we're using TCP (port number) or IPC (socket path)
+port_or_path <- args[1]
+use_ipc <- FALSE
+port <- suppressWarnings(as.integer(port_or_path))
 
-if (is.na(port) || port <= 0 || port > 65535) {
-  cat("Error: Invalid port number:", args[1], "\n", file = stderr())
-  quit(status = 1)
+if (is.na(port)) {
+  # Not a valid port number, treat as socket path for IPC
+  use_ipc <- TRUE
+  socket_path <- port_or_path
+} else {
+  # Valid port number, use TCP
+  if (port <= 0 || port > 65535) {
+    cat("Error: Invalid port number:", port_or_path, "\n", file = stderr())
+    quit(status = 1)
+  }
 }
 
 # Check for debug and listen flag
@@ -114,10 +125,16 @@ worker_debug_error <- function(...) {
 shutdown_requested <- FALSE
 
 # Set up nanonext REP socket
-if (listen_enabled) {
-  socket_url <- paste0("tcp://*:", port)
+if (use_ipc) {
+  # IPC mode: use Unix domain socket
+  socket_url <- paste0("ipc://", socket_path)
 } else {
-  socket_url <- paste0("tcp://127.0.0.1:", port)
+  # TCP mode: use network socket
+  if (listen_enabled) {
+    socket_url <- paste0("tcp://*:", port)
+  } else {
+    socket_url <- paste0("tcp://127.0.0.1:", port)
+  }
 }
 worker_debug_log("Worker starting on ", socket_url)
 # Always show startup message
@@ -317,6 +334,21 @@ tryCatch(
           worker_debug_warn("Error closing socket: ", e$message)
         }
       )
+    }
+
+    # Clean up IPC socket file if it exists
+    if (use_ipc && exists("socket_path")) {
+      if (file.exists(socket_path)) {
+        worker_debug_log("Removing IPC socket file: ", socket_path)
+        tryCatch(
+          {
+            unlink(socket_path)
+          },
+          error = function(e) {
+            worker_debug_warn("Error removing socket file: ", e$message)
+          }
+        )
+      }
     }
 
     # Final shutdown message
