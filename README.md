@@ -4,6 +4,14 @@
 
 `replr` provides a robust system for executing R code in isolated worker processes, offering complete separation between the main R session and code execution environments. Useful for applications that need to run untrusted or potentially problematic R code without affecting the parent process.
 
+## ⚠️ Security Disclaimer
+
+**IMPORTANT:** While `replr` provides various isolation mechanisms (process isolation, Docker containers, Firejail sandboxes, macOS sandboxes) to help contain untrusted code execution, **no security solution is 100% foolproof**. These isolation methods can reduce risk but cannot guarantee complete protection against all attack vectors.
+
+**You are solely responsible for any consequences of running malicious or untrusted code.** The maintainers of this package accept no liability for damages, data loss, security breaches, or other issues arising from the execution of code in isolated environments.
+
+Always exercise caution when executing untrusted code, even in isolated environments. Consider additional security measures appropriate for your use case and threat model.
+
 ## Installation
 
 You can install the development version of replr like this:
