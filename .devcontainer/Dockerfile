@@ -27,7 +27,7 @@ RUN apt-get update -y && apt-get install -y \
 # Set CRAN repository to improve package installation reliability
 RUN echo 'options(repos = c(CRAN = "https://cran.rstudio.com/"))' >> /usr/local/lib/R/etc/Rprofile.site
 
-# Install required R packages for replr in order of dependency complexity
+# Install required R packages for repljail in order of dependency complexity
 RUN Rscript -e "install.packages('R6', repos='https://cran.rstudio.com/', dependencies=TRUE)"
 RUN Rscript -e "install.packages('uuid', repos='https://cran.rstudio.com/', dependencies=TRUE)"
 RUN Rscript -e "install.packages('processx', repos='https://cran.rstudio.com/', dependencies=TRUE)"
@@ -41,7 +41,7 @@ RUN Rscript -e "install.packages(c('pryr', 'testthat'), repos='https://cran.rstu
 RUN Rscript -e "install.packages(c('devtools', 'roxygen2', 'pkgdown', 'lintr', 'remotes', 'here', 'languageserver', 'httpgd', 'png', 'pak', 'ellmer', 'covr', 'knitr', 'rmarkdown', 'DT', 'htmltools'), repos='https://cran.rstudio.com/', dependencies=TRUE)"
 
 # Set working directory
-WORKDIR /workspaces/replr
+WORKDIR /workspaces/repljail
 
 # Add health check
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \

@@ -4,11 +4,11 @@
 #' to perform a complete data analysis workflow using isolated REPL sessions.
 #' The script will:
 #'
-#' 1. Create an agent with access to the ellmer::tool() implementations from {replr}
+#' 1. Create an agent with access to the ellmer::tool() implementations from {repljail}
 #' 2. Ask the agent to create a histogram of 100 random normal values.
 #' 3. Check if the computation ran successfully
 
-library(replr)
+library(repljail)
 library(ellmer)
 
 # Initialize chat with OpenAI (requires API key)
@@ -39,21 +39,21 @@ tryCatch(
 
 plain_chat <- chat$clone()
 
-# Register replr tools with the chat
-cat("Registering replr tools...\n")
+# Register repljail tools with the chat
+cat("Registering repljail tools...\n")
 
 # Run in Docker for isolation
-options(replr.use.docker = TRUE)
+options(repljail.use.docker = TRUE)
 
-# Get all replr tool functions
+# Get all repljail tool functions
 tools <- list(
-  replr_create_repl_session_tool(),
-  replr_execute_code_tool(),
-  replr_get_session_info_tool(),
-  replr_list_sessions_tool(),
-  replr_stop_session_tool(),
-  replr_cleanup_sessions_tool(),
-  replr_stop_all_sessions_tool()
+  repljail_create_repl_session_tool(),
+  repljail_execute_code_tool(),
+  repljail_get_session_info_tool(),
+  repljail_list_sessions_tool(),
+  repljail_stop_session_tool(),
+  repljail_cleanup_sessions_tool(),
+  repljail_stop_all_sessions_tool()
 )
 
 # Register each tool with the chat
@@ -102,7 +102,7 @@ if (grepl("__IMAGE_RETURNED__:", response)) {
 
 # Show current sessions (should be empty if cleanup worked)
 cat("\n=== Final Session Check ===\n")
-final_sessions <- replr_list_sessions()
+final_sessions <- repljail_list_sessions()
 if (final_sessions$success && final_sessions$data$count == 0) {
   cat("✓ All sessions cleaned up successfully\n")
 } else {
@@ -111,7 +111,7 @@ if (final_sessions$success && final_sessions$data$count == 0) {
 
   # Clean up any remaining sessions
   cat("Cleaning up remaining sessions...\n")
-  cleanup_result <- replr_stop_all_sessions()
+  cleanup_result <- repljail_stop_all_sessions()
   if (cleanup_result$success) {
     cat("✓ All sessions stopped\n")
   } else {

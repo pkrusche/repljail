@@ -134,7 +134,7 @@ release_port <- function(port) {
 get_worker_script_path <- function() {
   possible_paths <- c(
     here::here("inst", "worker.R"),
-    file.path(system.file(package = "replr"), "worker.R")
+    file.path(system.file(package = "repljail"), "worker.R")
   )
 
   for (path in possible_paths) {
@@ -154,7 +154,7 @@ get_worker_script_path <- function() {
 #' @keywords internal
 get_ipc_socket_path <- function() {
   # Create a unique socket path in the temp directory
-  socket_path <- tempfile(pattern = "replr_socket_", tmpdir = tempdir())
+  socket_path <- tempfile(pattern = "repljail_socket_", tmpdir = tempdir())
   # Ensure path is absolute and normalized
   normalizePath(socket_path, mustWork = FALSE)
 }
@@ -163,7 +163,7 @@ get_ipc_socket_path <- function() {
 #'
 #' Spawn a worker R process using processx that runs the worker script.
 #' Can use different isolation strategies: native, Docker, or firejail.
-#' Isolation method is controlled by options: 'replr.use.firejail' or 'replr.use.docker'.
+#' Isolation method is controlled by options: 'repljail.use.firejail' or 'repljail.use.docker'.
 #'
 #' @param port integer, port number for the worker to listen on
 #' @param timeout numeric, timeout in seconds to wait for worker startup
@@ -646,11 +646,11 @@ is_docker_available <- function() {
 #' Get Docker Image Name for Worker
 #'
 #' Get the Docker image name to use for worker containers.
-#' Reads from option 'replr.worker.docker.image' if set, otherwise uses default.
+#' Reads from option 'repljail.worker.docker.image' if set, otherwise uses default.
 #'
 #' @return character, Docker image name
 get_worker_docker_image <- function() {
-  getOption("replr.worker.docker.image", default = "replr-worker:latest")
+  getOption("repljail.worker.docker.image", default = "repljail-worker:latest")
 }
 
 #' Start Docker Worker Process
@@ -671,12 +671,12 @@ start_docker_worker <- function(port, worker_script, worker_args, timeout) {
   }
 
   # Get configurable resource limits
-  memory_limit <- getOption("replr.worker.docker.memory", default = "512m")
-  cpu_limit <- getOption("replr.worker.docker.cpus", default = "1.0")
+  memory_limit <- getOption("repljail.worker.docker.memory", default = "512m")
+  cpu_limit <- getOption("repljail.worker.docker.cpus", default = "1.0")
 
   # Generate a unique container name for cleanup tracking
   container_name <- paste0(
-    "replr-worker-",
+    "repljail-worker-",
     port,
     "-",
     format(Sys.time(), "%Y%m%d-%H%M%S")
@@ -684,7 +684,7 @@ start_docker_worker <- function(port, worker_script, worker_args, timeout) {
 
   # Check if network isolation is enabled
   use_network_isolation <- getOption(
-    "replr.worker.docker.network.isolation",
+    "repljail.worker.docker.network.isolation",
     default = FALSE
   )
   network_name <- NULL
@@ -692,7 +692,7 @@ start_docker_worker <- function(port, worker_script, worker_args, timeout) {
   # Create isolated network if enabled
   if (use_network_isolation) {
     network_name <- paste0(
-      "replr-network-",
+      "repljail-network-",
       port,
       "-",
       format(Sys.time(), "%Y%m%d-%H%M%S")
@@ -713,7 +713,7 @@ start_docker_worker <- function(port, worker_script, worker_args, timeout) {
     container_name, # Name for cleanup
     "--rm", # Remove container when done
     "--user",
-    "replr", # Run as non-root user
+    "repljail", # Run as non-root user
     "--memory",
     memory_limit, # Memory limit (configurable)
     "--cpus",
@@ -784,7 +784,7 @@ start_docker_worker <- function(port, worker_script, worker_args, timeout) {
 
     # Start gateway container with socat for port forwarding
     gateway_name <- paste0(
-      "replr-gateway-",
+      "repljail-gateway-",
       port,
       "-",
       format(Sys.time(), "%Y%m%d-%H%M%S")
@@ -1031,7 +1031,7 @@ build_worker_docker_image <- function(image_name) {
   }
 
   # Fall back to building from local Dockerfile
-  dockerfile_path <- file.path(system.file(package = "replr"), "Dockerfile")
+  dockerfile_path <- file.path(system.file(package = "repljail"), "Dockerfile")
 
   # during development, also check inst/Dockerfile and working dir
   if (!file.exists(dockerfile_path)) {
@@ -1082,9 +1082,9 @@ build_worker_docker_image <- function(image_name) {
   debug_success("Docker image built successfully:", image_name)
 }
 
-#' Clean up orphaned replr Docker containers
+#' Clean up orphaned repljail Docker containers
 #'
-#' Remove any leftover replr worker containers that may be running
+#' Remove any leftover repljail worker containers that may be running
 #'
 #' @return logical, TRUE if cleanup was successful
 #' @export
@@ -1096,16 +1096,16 @@ cleanup_docker_containers <- function() {
 
   tryCatch(
     {
-      debug_log("Cleaning up orphaned replr Docker containers")
+      debug_log("Cleaning up orphaned repljail Docker containers")
 
-      # Find all replr worker containers
+      # Find all repljail worker containers
       worker_containers <- system2(
         "docker",
         c(
           "ps",
           "-a",
           "--filter",
-          "name=replr-worker-",
+          "name=repljail-worker-",
           "--format",
           "{{.Names}}"
         ),
@@ -1113,14 +1113,14 @@ cleanup_docker_containers <- function() {
         stderr = FALSE
       )
 
-      # Find all replr gateway containers
+      # Find all repljail gateway containers
       gateway_containers <- system2(
         "docker",
         c(
           "ps",
           "-a",
           "--filter",
-          "name=replr-gateway-",
+          "name=repljail-gateway-",
           "--format",
           "{{.Names}}"
         ),
@@ -1133,7 +1133,7 @@ cleanup_docker_containers <- function() {
       all_containers <- all_containers[nchar(all_containers) > 0]
 
       if (length(all_containers) == 0) {
-        debug_log("No orphaned replr containers found")
+        debug_log("No orphaned repljail containers found")
         return(TRUE)
       }
 
@@ -1267,7 +1267,7 @@ remove_docker_network <- function(network_name) {
 
 #' Cleanup Orphaned Docker Networks
 #'
-#' Remove orphaned replr Docker networks that may have been left behind
+#' Remove orphaned repljail Docker networks that may have been left behind
 #'
 #' @return logical, TRUE if cleanup was successful
 #' @export
@@ -1279,16 +1279,16 @@ cleanup_docker_networks <- function() {
 
   tryCatch(
     {
-      debug_log("Cleaning up orphaned replr Docker networks")
+      debug_log("Cleaning up orphaned repljail Docker networks")
 
-      # Find all replr worker networks
+      # Find all repljail worker networks
       networks <- system2(
         "docker",
         c(
           "network",
           "ls",
           "--filter",
-          "name=replr-network-",
+          "name=repljail-network-",
           "--format",
           "{{.Name}}"
         ),
@@ -1302,7 +1302,7 @@ cleanup_docker_networks <- function() {
           attr(networks, "status") == 0
       ) {
         # No networks found or command failed
-        debug_log("No orphaned replr networks found")
+        debug_log("No orphaned repljail networks found")
         return(TRUE)
       }
 
@@ -1326,7 +1326,7 @@ cleanup_docker_networks <- function() {
         )
         return(TRUE)
       } else {
-        debug_log("No orphaned replr networks found")
+        debug_log("No orphaned repljail networks found")
         return(TRUE)
       }
     },

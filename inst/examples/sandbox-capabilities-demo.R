@@ -1,13 +1,13 @@
 #!/usr/bin/env Rscript
 
-# Unified Sandbox Capabilities Demo for replr Package
+# Unified Sandbox Capabilities Demo for repljail Package
 # This script checks all available sandboxing methods and tests their features
 
-library(replr)
+library(repljail)
 
 cat("\n")
 cat("================================================================================\n")
-cat("                    replr Sandbox Capabilities Demo\n")
+cat("                    repljail Sandbox Capabilities Demo\n")
 cat("================================================================================\n")
 cat("\n")
 
@@ -87,13 +87,13 @@ test_sandbox_features <- function(wrapper_type) {
   cat(sprintf("\n--- Testing %s ---\n", toupper(wrapper_type)))
 
   # Configure worker type
-  options(replr.worker.type = wrapper_type)
+  options(repljail.worker.type = wrapper_type)
 
   # Handle network isolation for Docker
   if (wrapper_type == "docker") {
     # Test both with and without network isolation
     for (net_iso in c(FALSE, TRUE)) {
-      options(replr.worker.docker.network.isolation = net_iso)
+      options(repljail.worker.docker.network.isolation = net_iso)
       mode_name <- if (net_iso) "docker-isolated" else "docker-standard"
 
       cat(sprintf("\nMode: %s (network.isolation=%s)\n", mode_name, net_iso))
@@ -105,8 +105,8 @@ test_sandbox_features <- function(wrapper_type) {
   }
 
   # Reset options
-  options(replr.worker.type = NULL)
-  options(replr.worker.docker.network.isolation = NULL)
+  options(repljail.worker.type = NULL)
+  options(repljail.worker.docker.network.isolation = NULL)
 }
 
 #' Implementation of feature testing
@@ -179,7 +179,7 @@ test_sandbox_features_impl <- function(mode_name) {
     )
 
     # Test 4: Temp directory isolation (writes inside sandbox should not affect host)
-    temp_test_file <- tempfile(pattern = "replr_isolation_test_", fileext = ".txt")
+    temp_test_file <- tempfile(pattern = "repljail_isolation_test_", fileext = ".txt")
     temp_result <- test_feature(
       session,
       "Temp directory isolation (host should not see sandbox writes)",
@@ -214,7 +214,7 @@ test_sandbox_features_impl <- function(mode_name) {
     mode_results$features$fs_temp_isolation <- temp_result
 
     # Test 5: Home directory isolation (writes inside sandbox should not affect host)
-    home_test_file <- file.path(path.expand("~"), paste0(".replr_test_", format(Sys.time(), "%Y%m%d%H%M%S"), "_", sample(1000:9999, 1)))
+    home_test_file <- file.path(path.expand("~"), paste0(".repljail_test_", format(Sys.time(), "%Y%m%d%H%M%S"), "_", sample(1000:9999, 1)))
     home_result <- test_feature(
       session,
       "Home directory isolation (host should not see sandbox writes)",
@@ -507,17 +507,17 @@ cat("\n")
 cat("Recommendations:\n")
 cat("--------------------------------------------------------------------------------\n")
 cat("• For maximum security:\n")
-cat("  - Use Docker with network isolation: options(replr.worker.type = \"docker\",\n")
-cat("                                                replr.worker.docker.network.isolation = TRUE)\n")
+cat("  - Use Docker with network isolation: options(repljail.worker.type = \"docker\",\n")
+cat("                                                repljail.worker.docker.network.isolation = TRUE)\n")
 cat("\n")
 cat("• For lightweight Linux sandboxing:\n")
-cat("  - Use Firejail: options(replr.worker.type = \"firejail\")\n")
+cat("  - Use Firejail: options(repljail.worker.type = \"firejail\")\n")
 cat("\n")
 cat("• For native macOS sandboxing:\n")
-cat("  - Use macOS Sandbox: options(replr.worker.type = \"macos-sandbox\")\n")
+cat("  - Use macOS Sandbox: options(repljail.worker.type = \"macos-sandbox\")\n")
 cat("\n")
 cat("• For development/testing (no isolation):\n")
-cat("  - Use Native: options(replr.worker.type = \"native\")\n")
+cat("  - Use Native: options(repljail.worker.type = \"native\")\n")
 
 cat("\n")
 cat("================================================================================\n")

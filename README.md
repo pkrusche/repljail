@@ -1,8 +1,8 @@
-# replr
+# repljail
 
 **Isolated REPL functionality for R**
 
-`replr` provides a robust system for executing R code in isolated worker processes, offering complete separation between the main R session and code execution environments. Useful for applications that need to run untrusted or potentially problematic R code without affecting the parent process.
+`repljail` provides a robust system for executing R code in isolated worker processes, offering complete separation between the main R session and code execution environments. Useful for applications that need to run untrusted or potentially problematic R code without affecting the parent process.
 
 ## ⚠️ Security Disclaimer
 
@@ -14,14 +14,14 @@ Always exercise caution when executing untrusted code, even in isolated environm
 
 ## Installation
 
-You can install the development version of replr like this:
+You can install the development version of repljail like this:
 
 ```r
 install.packages("pak")
-pak::pak("pkrusche/replr")
+pak::pak("pkrusche/repljail")
 # Or using devtools:
 # install.packages("devtools")
-# devtools::install_github("pkrusche/replr")
+# devtools::install_github("pkrusche/repljail")
 ```
 
 ## How It Works
@@ -46,7 +46,7 @@ pak::pak("pkrusche/replr")
 ## Quick Start
 
 ```r
-library(replr)
+library(repljail)
 
 # Create a new isolated R session
 session <- RREPLSession$new()
@@ -67,7 +67,7 @@ For detailed examples including error handling, debug logging, multiple sessions
 
 ## Docker Container Support
 
-`replr` supports running worker processes inside Docker containers for enhanced security and isolation. When Docker is available, it automatically builds a minimal container image and runs workers with stricter security constraints.
+`repljail` supports running worker processes inside Docker containers for enhanced security and isolation. When Docker is available, it automatically builds a minimal container image and runs workers with stricter security constraints.
 
 For Docker support, you need:
 
@@ -83,13 +83,13 @@ The package automatically:
 ### Example
 
 ```r
-library(replr)
+library(repljail)
 
 # Check if Docker is available
 is_docker_available()  # TRUE if Docker is present
 
 # Enable Docker mode explicitly
-options(replr.worker.type = "docker")
+options(repljail.worker.type = "docker")
 
 # Create session with Docker worker
 session <- RREPLSession$new(timeout = 15)  # Longer timeout for Docker startup
@@ -124,40 +124,40 @@ You can customize Docker worker behavior using global options:
 
 | Option                                  | Default                 | Description                                             |
 | --------------------------------------- | ----------------------- | ------------------------------------------------------- |
-| `replr.worker.type`                     | `"native"`              | Worker type: "native", "docker", "firejail", "macos-sandbox" |
-| `replr.worker.docker.image`             | `"replr-worker:latest"` | Docker image name for worker containers                 |
-| `replr.worker.docker.memory`            | `"512m"`                | Memory limit for Docker containers (e.g., "1g", "256m") |
-| `replr.worker.docker.cpus`              | `"1.0"`                 | CPU limit for Docker containers (e.g., "2.0", "0.5")    |
-| `replr.worker.docker.network.isolation` | `FALSE`                 | Enable isolated Docker networks with no external access |
+| `repljail.worker.type`                     | `"native"`              | Worker type: "native", "docker", "firejail", "macos-sandbox" |
+| `repljail.worker.docker.image`             | `"repljail-worker:latest"` | Docker image name for worker containers                 |
+| `repljail.worker.docker.memory`            | `"512m"`                | Memory limit for Docker containers (e.g., "1g", "256m") |
+| `repljail.worker.docker.cpus`              | `"1.0"`                 | CPU limit for Docker containers (e.g., "2.0", "0.5")    |
+| `repljail.worker.docker.network.isolation` | `FALSE`                 | Enable isolated Docker networks with no external access |
 
 These options apply to all Docker workers started after they are set. Changes take effect immediately for new worker processes.
 
 ```r
-# Configure Docker image name (default: "replr-worker:latest")
-options(replr.worker.docker.image = "my-custom-r-image:v1.0")
+# Configure Docker image name (default: "repljail-worker:latest")
+options(repljail.worker.docker.image = "my-custom-r-image:v1.0")
 
 # Configure memory limit (default: "512m")
-options(replr.worker.docker.memory = "1g")      # 1GB memory
-options(replr.worker.docker.memory = "256m")    # 256MB memory
+options(repljail.worker.docker.memory = "1g")      # 1GB memory
+options(repljail.worker.docker.memory = "256m")    # 256MB memory
 
 # Configure CPU limit (default: "1.0")
-options(replr.worker.docker.cpus = "2.0")       # 2 CPU cores
-options(replr.worker.docker.cpus = "0.5")       # Half a CPU core
+options(repljail.worker.docker.cpus = "2.0")       # 2 CPU cores
+options(repljail.worker.docker.cpus = "0.5")       # Half a CPU core
 
 # Reset to defaults
-options(replr.worker.docker.image = NULL)
-options(replr.worker.docker.memory = NULL)
-options(replr.worker.docker.cpus = NULL)
+options(repljail.worker.docker.image = NULL)
+options(repljail.worker.docker.memory = NULL)
+options(repljail.worker.docker.cpus = NULL)
 
 # Example: Configure for high-performance workloads
 options(
-  replr.worker.docker.memory = "2g",
-  replr.worker.docker.cpus = "4.0"
+  repljail.worker.docker.memory = "2g",
+  repljail.worker.docker.cpus = "4.0"
 )
 
 # Enable network isolation
 options(
-  replr.worker.docker.network.isolation = TRUE
+  repljail.worker.docker.network.isolation = TRUE
 )
 
 # Start session with custom settings
@@ -171,7 +171,7 @@ Lightweight process isolation using firejail for Linux systems. Requires `fireja
 ```r
 # Check availability and enable
 is_firejail_available()
-options(replr.worker.type = "firejail")
+options(repljail.worker.type = "firejail")
 
 # Create sandboxed session
 session <- RREPLSession$new()
@@ -181,7 +181,7 @@ session$stop()
 
 **Default Security**: Network isolation (`--net=lo`), private temp directory, capability dropping, seccomp filtering, no privilege escalation.
 
-**Custom Profiles**: Set `replr.worker.firejail.profile` to path of custom `.profile` file. See `inst/examples/` for demonstrations.
+**Custom Profiles**: Set `repljail.worker.firejail.profile` to path of custom `.profile` file. See `inst/examples/` for demonstrations.
 
 ## macOS Sandbox Support
 
@@ -190,7 +190,7 @@ Native sandboxing using `sandbox-exec` (pre-installed on macOS). Uses Sandbox Pr
 ```r
 # Check availability and enable
 is_macos_sandbox_available()
-options(replr.worker.type = "macos-sandbox")
+options(repljail.worker.type = "macos-sandbox")
 
 # Create sandboxed session
 session <- RREPLSession$new()
@@ -200,7 +200,7 @@ session$stop()
 
 **Default Security**: Filesystem isolation (read-only system, write to `/tmp` only), network restricted to localhost, IPC restrictions, system call filtering.
 
-**Custom Profiles**: Set `replr.worker.macos.sandbox.profile` to path of custom `.sb` file. See `man sandbox-exec` and `inst/examples/macos-sandbox-demo.R`.
+**Custom Profiles**: Set `repljail.worker.macos.sandbox.profile` to path of custom `.sb` file. See `man sandbox-exec` and `inst/examples/macos-sandbox-demo.R`.
 
 ## Security Comparison
 
@@ -227,22 +227,22 @@ session$stop()
 
 ```r
 # Development
-options(replr.worker.type = "native")
+options(repljail.worker.type = "native")
 
 # Platform-specific sandboxing
-options(replr.worker.type = "macos-sandbox")  # macOS
-options(replr.worker.type = "firejail")       # Linux
+options(repljail.worker.type = "macos-sandbox")  # macOS
+options(repljail.worker.type = "firejail")       # Linux
 
 # Maximum security (any platform)
-options(replr.worker.type = "docker")
-options(replr.worker.docker.network.isolation = TRUE)
+options(repljail.worker.type = "docker")
+options(repljail.worker.docker.network.isolation = TRUE)
 
 session <- RREPLSession$new()
 ```
 
 ## ellmer Tools for LLM Agents
 
-`replr` includes specialized tools designed for the [ellmer](https://ellmer.tidyverse.org/) package, allowing LLM agents to easily create and manage isolated R REPL sessions. These tools provide a standardized interface with structured responses optimized for LLM consumption.
+`repljail` includes specialized tools designed for the [ellmer](https://ellmer.tidyverse.org/) package, allowing LLM agents to easily create and manage isolated R REPL sessions. These tools provide a standardized interface with structured responses optimized for LLM consumption.
 
 ### Available Tools
 
@@ -252,49 +252,49 @@ The package includes several demonstration scripts in `inst/examples/` for this.
 
 #### Simple One-Off Execution & R Syntax Checking
 
-- **replr_check_syntax()** - Check R code syntax without execution (safe validation)
-- **replr_run_r_code()** - One-off code execution with automatic cleanup
-- **replr_lint_code()** - Analyze code for style issues without executing it
+- **repljail_check_syntax()** - Check R code syntax without execution (safe validation)
+- **repljail_run_r_code()** - One-off code execution with automatic cleanup
+- **repljail_lint_code()** - Analyze code for style issues without executing it
 
 #### Full Session Management
 
-- **replr_create_repl_session()** - Create isolated R sessions
-- **replr_execute_code()** - Execute R code in a session
-- **replr_get_session_info()** - Get session status and details
-- **replr_list_sessions()** - List all active sessions
-- **replr_stop_session()** - Stop a specific session
-- **replr_cleanup_sessions()** - Remove dead sessions
-- **replr_stop_all_sessions()** - Stop all active sessions
+- **repljail_create_repl_session()** - Create isolated R sessions
+- **repljail_execute_code()** - Execute R code in a session
+- **repljail_get_session_info()** - Get session status and details
+- **repljail_list_sessions()** - List all active sessions
+- **repljail_stop_session()** - Stop a specific session
+- **repljail_cleanup_sessions()** - Remove dead sessions
+- **repljail_stop_all_sessions()** - Stop all active sessions
 
 ### LLM Agent Demo (`llm-agent-demo.R`)
 
-Complete demonstration of an LLM agent performing data analysis using replr tools.
+Complete demonstration of an LLM agent performing data analysis using repljail tools.
 
 ```r
 # Install requirements
-install.packages(c("replr", "ellmer"))
+install.packages(c("repljail", "ellmer"))
 
 # Set your API key (required)
 Sys.setenv(OPENAI_API_KEY = "your-api-key-here")
 
 # Run the demo
-source(system.file("examples", "llm-agent-demo.R", package = "replr"))
+source(system.file("examples", "llm-agent-demo.R", package = "repljail"))
 ```
 
 The demo shows:
 
-1. Initializing an OpenAI chat session with replr tools
-2. Registering all replr tools with the LLM agent
+1. Initializing an OpenAI chat session with repljail tools
+2. Registering all repljail tools with the LLM agent
 3. Sending a data analysis task to the agent
 4. Watching the agent automatically create sessions, execute code, and clean up
 5. Displaying the complete analysis results and tool usage
 
 ### Agentic Coding Evaluation (`agentic-coding.R`)
 
-Compares LLM performance with and without replr tool access:
+Compares LLM performance with and without repljail tool access:
 
 ```r
-source(system.file("examples", "agentic-coding.R", package = "replr"))
+source(system.file("examples", "agentic-coding.R", package = "repljail"))
 ```
 
 Features:

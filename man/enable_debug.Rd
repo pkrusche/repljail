@@ -10,5 +10,5 @@ enable_debug(enable = TRUE)
 \item{enable}{logical, TRUE to enable debug logging, FALSE to disable}
 }
 \description{
-Convenience function to enable debug logging for the replr package
+Convenience function to enable debug logging for the repljail package
 }

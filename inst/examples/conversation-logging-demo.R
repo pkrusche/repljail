@@ -1,7 +1,7 @@
 #' Conversation Logging Demo
 #'
 #' This example demonstrates how to use the ConversationLogger to log
-#' ellmer chat sessions with replr tools in markdown format.
+#' ellmer chat sessions with repljail tools in markdown format.
 #'
 #' The logger captures:
 #' - User prompts
@@ -11,7 +11,7 @@
 #'
 #' All logs are formatted in readable markdown with code blocks for R code.
 
-library(replr)
+library(repljail)
 library(ellmer)
 
 # Create a log file path
@@ -51,21 +51,21 @@ cat("Attaching logger to chat...\n")
 logger$attach(chat)
 cat("✓ Logger attached\n\n")
 
-# Register replr tools with the chat
-cat("Registering replr tools...\n")
+# Register repljail tools with the chat
+cat("Registering repljail tools...\n")
 
 # Run in Docker for isolation
-options(replr.use.docker = TRUE)
+options(repljail.use.docker = TRUE)
 
-# Get all replr tool functions
+# Get all repljail tool functions
 tools <- list(
-  replr_create_repl_session_tool(),
-  replr_execute_code_tool(),
-  replr_get_session_info_tool(),
-  replr_list_sessions_tool(),
-  replr_stop_session_tool(),
-  replr_cleanup_sessions_tool(),
-  replr_stop_all_sessions_tool()
+  repljail_create_repl_session_tool(),
+  repljail_execute_code_tool(),
+  repljail_get_session_info_tool(),
+  repljail_list_sessions_tool(),
+  repljail_stop_session_tool(),
+  repljail_cleanup_sessions_tool(),
+  repljail_stop_all_sessions_tool()
 )
 
 # Register each tool with the chat
@@ -116,12 +116,12 @@ cat("Log file size:", file_size, "bytes\n\n")
 
 # Clean up any remaining sessions
 cat("=== Final Cleanup ===\n")
-final_sessions <- replr_list_sessions()
+final_sessions <- repljail_list_sessions()
 if (final_sessions$success && final_sessions$data$count == 0) {
   cat("✓ All sessions cleaned up successfully\n")
 } else {
   cat("Cleaning up remaining sessions...\n")
-  cleanup_result <- replr_stop_all_sessions()
+  cleanup_result <- repljail_stop_all_sessions()
   if (cleanup_result$success) {
     cat("✓ All sessions stopped\n")
   }

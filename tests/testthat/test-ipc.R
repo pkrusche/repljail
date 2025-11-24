@@ -2,7 +2,7 @@
 here::i_am("tests/testthat/test-ipc.R")
 
 test_that("IPC socket path generation works", {
-  socket_path <- replr:::get_ipc_socket_path()
+  socket_path <- repljail:::get_ipc_socket_path()
 
   # Check that path is a character string
   expect_type(socket_path, "character")
@@ -10,8 +10,8 @@ test_that("IPC socket path generation works", {
   # Check that path starts with temp directory
   expect_true(grepl(tempdir(), socket_path, fixed = TRUE))
 
-  # Check that path contains replr_socket pattern
-  expect_true(grepl("replr_socket_", socket_path))
+  # Check that path contains repljail_socket pattern
+  expect_true(grepl("repljail_socket_", socket_path))
 })
 
 test_that("Native worker uses IPC sockets", {
@@ -19,7 +19,7 @@ test_that("Native worker uses IPC sockets", {
   testthat::skip_on_ci()
 
   # Set worker type to native explicitly
-  options(replr.worker.type = "native")
+  options(repljail.worker.type = "native")
 
   # Create a session
   session <- RREPLSession$new(timeout = 10)
@@ -59,10 +59,10 @@ test_that("Native worker uses IPC sockets", {
 test_that("Firejail worker uses IPC sockets when available", {
   skip_on_check()
   testthat::skip_on_ci()
-  skip_if_not(replr::is_firejail_available(), "Firejail not available")
+  skip_if_not(repljail::is_firejail_available(), "Firejail not available")
 
   # Set worker type to firejail explicitly
-  options(replr.worker.type = "firejail")
+  options(repljail.worker.type = "firejail")
 
   # Create a session
   session <- RREPLSession$new(timeout = 15)
@@ -102,10 +102,10 @@ test_that("Firejail worker uses IPC sockets when available", {
 test_that("Docker worker still uses TCP (not IPC)", {
   skip_on_check()
   testthat::skip_on_ci()
-  skip_if_not(replr::is_docker_available(), "Docker not available")
+  skip_if_not(repljail::is_docker_available(), "Docker not available")
 
   # Set worker type to docker explicitly
-  options(replr.worker.type = "docker")
+  options(repljail.worker.type = "docker")
 
   # Create a session
   session <- RREPLSession$new(timeout = 20)
@@ -140,7 +140,7 @@ test_that("Worker script accepts socket path argument", {
   library(processx)
 
   # Get worker script path
-  worker_path <- replr:::get_worker_script_path()
+  worker_path <- repljail:::get_worker_script_path()
 
   # Create a temporary socket path
   socket_path <- tempfile(pattern = "test_socket_", tmpdir = tempdir())
@@ -188,7 +188,7 @@ test_that("IPC communication works end-to-end", {
   skip_on_check()
   testthat::skip_on_ci()
   # Set worker type to native for IPC
-  options(replr.worker.type = "native")
+  options(repljail.worker.type = "native")
 
   # Create session
   session <- RREPLSession$new(timeout = 10)

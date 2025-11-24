@@ -1,8 +1,8 @@
 ---
-title: "Getting Started with replr"
+title: "Getting Started with repljail"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Getting Started with replr}
+  %\VignetteIndexEntry{Getting Started with repljail}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -16,14 +16,14 @@ knitr::opts_chunk$set(
 
 ## Introduction
 
-`replr` provides isolated REPL (Read-Eval-Print Loop) functionality for R, allowing you to execute R code in separate worker processes. This vignette demonstrates the core features and usage patterns.
+`repljail` provides isolated REPL (Read-Eval-Print Loop) functionality for R, allowing you to execute R code in separate worker processes. This vignette demonstrates the core features and usage patterns.
 
 ## R6 Class Interface
 
-The primary interface for `replr` is the `RREPLSession` R6 class:
+The primary interface for `repljail` is the `RREPLSession` R6 class:
 
 ```{r basic-usage, eval = FALSE}
-library(replr)
+library(repljail)
 
 # Create a new isolated R session
 session <- RREPLSession$new()
@@ -46,7 +46,7 @@ session$stop()
 Workers are resilient and continue processing after errors:
 
 ```{r error-handling, eval = FALSE}
-library(replr)
+library(repljail)
 
 session <- RREPLSession$new()
 
@@ -82,7 +82,7 @@ session$stop()
 Enable debug logging to see detailed information about worker processes:
 
 ```{r debug-logging, eval = FALSE}
-library(replr)
+library(repljail)
 
 # Enable debug logging
 enable_debug(TRUE)
@@ -110,7 +110,7 @@ debug_status()
 You can run multiple isolated sessions simultaneously:
 
 ```{r multiple-sessions, eval = FALSE}
-library(replr)
+library(repljail)
 
 # Start multiple isolated sessions
 session1 <- RREPLSession$new()
@@ -141,7 +141,7 @@ session2$stop()
 Control execution timeouts for long-running operations:
 
 ```{r timeouts, eval = FALSE}
-library(replr)
+library(repljail)
 
 session <- RREPLSession$new()
 
@@ -160,6 +160,6 @@ session$stop()
 
 ## Next Steps
 
-- Learn about [Docker container support](https://github.com/pkrusche/replr#docker-container-support) for enhanced security
-- Explore [ellmer integration](https://github.com/pkrusche/replr#ellmer-tools-for-llm-agents) for LLM agent capabilities
+- Learn about [Docker container support](https://github.com/pkrusche/repljail#docker-container-support) for enhanced security
+- Explore [ellmer integration](https://github.com/pkrusche/repljail#ellmer-tools-for-llm-agents) for LLM agent capabilities
 - Check out example scripts in `inst/examples/`

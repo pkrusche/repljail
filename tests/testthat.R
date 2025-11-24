@@ -1,3 +1,3 @@
 library(testthat)
-library(replr)
-test_check("replr")
+library(repljail)
+test_check("repljail")

@@ -1,11 +1,11 @@
 #!/usr/bin/env Rscript
-# Example demonstrating the replr_lint_code MCP tool
+# Example demonstrating the repljail_lint_code MCP tool
 # This script shows how to use the lintr functionality without executing code
 
-library(replr)
+library(repljail)
 
 cat("========================================\n")
-cat("replr_lint_code MCP Tool Demo\n")
+cat("repljail_lint_code MCP Tool Demo\n")
 cat("========================================\n\n")
 
 # Example 1: Clean code (no issues)
@@ -18,7 +18,7 @@ z <- x + y
 print(z)
 "
 
-result1 <- replr_lint_code(clean_code)
+result1 <- repljail_lint_code(clean_code)
 cat("Code to lint:\n", clean_code, "\n")
 cat("Success:", result1$success, "\n")
 cat("Message:", result1$message, "\n")
@@ -33,7 +33,7 @@ y=2
 z <- x + y
 "
 
-result2 <- replr_lint_code(bad_code)
+result2 <- repljail_lint_code(bad_code)
 cat("Code to lint:\n", bad_code, "\n")
 cat("Success:", result2$success, "\n")
 cat("Message:", result2$message, "\n")
@@ -57,7 +57,7 @@ cat("\n")
 # Example 3: Using the tool definition
 cat("Example 3: Tool definition structure\n")
 cat("-------------------------------------\n")
-tool <- replr_lint_code_tool()
+tool <- repljail_lint_code_tool()
 cat("Tool name:", tool$name, "\n")
 cat("Description:", substr(tool$description, 1, 80), "...\n")
 cat("Parameters:", paste(names(tool$parameters), collapse = ", "), "\n\n")

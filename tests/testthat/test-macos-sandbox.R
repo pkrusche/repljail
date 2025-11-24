@@ -12,7 +12,7 @@ test_that("macOS sandbox availability detection works", {
   skip_on_ci_for_macos_sandbox()
 
   # Should return logical value
-  result <- replr:::is_macos_sandbox_available()
+  result <- repljail:::is_macos_sandbox_available()
   expect_type(result, "logical")
   expect_length(result, 1)
 
@@ -28,17 +28,17 @@ test_that("macOS sandbox worker wrapper can be created", {
 
   # Skip if macOS sandbox is not available
   skip_if_not(
-    replr:::is_macos_sandbox_available(),
+    repljail:::is_macos_sandbox_available(),
     "macOS sandbox not available"
   )
 
   # Ensure only native mode (wrappers can be created without starting workers)
-  old_worker_type <- getOption("replr.worker.type")
-  on.exit(options(replr.worker.type = old_worker_type))
-  options(replr.worker.type = "native")
+  old_worker_type <- getOption("repljail.worker.type")
+  on.exit(options(repljail.worker.type = old_worker_type))
+  options(repljail.worker.type = "native")
 
   # Create a macOS sandbox wrapper
-  wrapper <- replr:::MacOSSandboxWorkerWrapper$new()
+  wrapper <- repljail:::MacOSSandboxWorkerWrapper$new()
   expect_s3_class(wrapper, "MacOSSandboxWorkerWrapper")
   expect_s3_class(wrapper, "WorkerWrapper")
 
@@ -53,14 +53,14 @@ test_that("macOS sandbox session can be created and execute commands", {
 
   # Skip if macOS sandbox is not available
   skip_if_not(
-    replr:::is_macos_sandbox_available(),
+    repljail:::is_macos_sandbox_available(),
     "macOS sandbox not available"
   )
 
   # Set options to use only macOS sandbox
-  old_worker_type <- getOption("replr.worker.type")
-  on.exit(options(replr.worker.type = old_worker_type))
-  options(replr.worker.type = "macos-sandbox")
+  old_worker_type <- getOption("repljail.worker.type")
+  on.exit(options(repljail.worker.type = old_worker_type))
+  options(repljail.worker.type = "macos-sandbox")
 
   # Create a session (should use macOS sandbox due to option)
   session <- RREPLSession$new(timeout = 30)
@@ -91,14 +91,14 @@ test_that("macOS sandbox provides network isolation", {
 
   # Skip if macOS sandbox is not available
   skip_if_not(
-    replr:::is_macos_sandbox_available(),
+    repljail:::is_macos_sandbox_available(),
     "macOS sandbox not available"
   )
 
   # Set options to use only macOS sandbox
-  old_worker_type <- getOption("replr.worker.type")
-  on.exit(options(replr.worker.type = old_worker_type))
-  options(replr.worker.type = "macos-sandbox")
+  old_worker_type <- getOption("repljail.worker.type")
+  on.exit(options(repljail.worker.type = old_worker_type))
+  options(repljail.worker.type = "macos-sandbox")
 
   # Create a session with macOS sandbox
   session <- RREPLSession$new(timeout = 30)
@@ -183,14 +183,14 @@ test_that("macOS sandbox allows writing to temp directory", {
 
   # Skip if macOS sandbox is not available
   skip_if_not(
-    replr:::is_macos_sandbox_available(),
+    repljail:::is_macos_sandbox_available(),
     "macOS sandbox not available"
   )
 
   # Set options to use only macOS sandbox
-  old_worker_type <- getOption("replr.worker.type")
-  on.exit(options(replr.worker.type = old_worker_type))
-  options(replr.worker.type = "macos-sandbox")
+  old_worker_type <- getOption("repljail.worker.type")
+  on.exit(options(repljail.worker.type = old_worker_type))
+  options(repljail.worker.type = "macos-sandbox")
 
   # Create a session with macOS sandbox
   session <- RREPLSession$new(timeout = 30)
@@ -216,14 +216,14 @@ test_that("macOS sandbox allows temp directory access", {
 
   # Skip if macOS sandbox is not available
   skip_if_not(
-    replr:::is_macos_sandbox_available(),
+    repljail:::is_macos_sandbox_available(),
     "macOS sandbox not available"
   )
 
   # Set options to use only macOS sandbox
-  old_worker_type <- getOption("replr.worker.type")
-  on.exit(options(replr.worker.type = old_worker_type))
-  options(replr.worker.type = "macos-sandbox")
+  old_worker_type <- getOption("repljail.worker.type")
+  on.exit(options(repljail.worker.type = old_worker_type))
+  options(repljail.worker.type = "macos-sandbox")
 
   # Create a session with macOS sandbox
   session <- RREPLSession$new(timeout = 30)
@@ -254,7 +254,7 @@ test_that("macOS sandbox custom profile can be used", {
 
   # Skip if macOS sandbox is not available
   skip_if_not(
-    replr:::is_macos_sandbox_available(),
+    repljail:::is_macos_sandbox_available(),
     "macOS sandbox not available"
   )
 
@@ -275,18 +275,18 @@ test_that("macOS sandbox custom profile can be used", {
   )
 
   # Set options to use macOS sandbox with custom profile
-  old_worker_type <- getOption("replr.worker.type")
-  old_profile <- getOption("replr.worker.macos.sandbox.profile")
+  old_worker_type <- getOption("repljail.worker.type")
+  old_profile <- getOption("repljail.worker.macos.sandbox.profile")
   on.exit(
     {
-      options(replr.worker.type = old_worker_type)
-      options(replr.worker.macos.sandbox.profile = old_profile)
+      options(repljail.worker.type = old_worker_type)
+      options(repljail.worker.macos.sandbox.profile = old_profile)
     },
     add = TRUE
   )
 
-  options(replr.worker.type = "macos-sandbox")
-  options(replr.worker.macos.sandbox.profile = profile_file)
+  options(repljail.worker.type = "macos-sandbox")
+  options(repljail.worker.macos.sandbox.profile = profile_file)
 
   # Create a session (should use custom profile)
   session <- RREPLSession$new(timeout = 30)
@@ -306,14 +306,14 @@ test_that("macOS sandbox supports plot generation", {
 
   # Skip if macOS sandbox is not available
   skip_if_not(
-    replr:::is_macos_sandbox_available(),
+    repljail:::is_macos_sandbox_available(),
     "macOS sandbox not available"
   )
 
   # Set options to use only macOS sandbox
-  old_worker_type <- getOption("replr.worker.type")
-  on.exit(options(replr.worker.type = old_worker_type))
-  options(replr.worker.type = "macos-sandbox")
+  old_worker_type <- getOption("repljail.worker.type")
+  on.exit(options(repljail.worker.type = old_worker_type))
+  options(repljail.worker.type = "macos-sandbox")
 
   # Create a session with macOS sandbox
   session <- RREPLSession$new(timeout = 30)
@@ -338,39 +338,39 @@ test_that("Worker wrapper factory creates correct type with macOS sandbox", {
   skip_on_ci_for_macos_sandbox()
 
   # Save option
-  old_worker_type <- getOption("replr.worker.type")
-  on.exit(options(replr.worker.type = old_worker_type))
+  old_worker_type <- getOption("repljail.worker.type")
+  on.exit(options(repljail.worker.type = old_worker_type))
 
   # Test native wrapper (default)
-  options(replr.worker.type = "native")
-  wrapper <- replr:::create_worker_wrapper()
+  options(repljail.worker.type = "native")
+  wrapper <- repljail:::create_worker_wrapper()
   expect_equal(wrapper$get_metadata()$type, "native")
 
   # Test macOS sandbox wrapper
   skip_if_not(
-    replr:::is_macos_sandbox_available(),
+    repljail:::is_macos_sandbox_available(),
     "macOS sandbox not available"
   )
-  options(replr.worker.type = "macos-sandbox")
-  wrapper <- replr:::create_worker_wrapper()
+  options(repljail.worker.type = "macos-sandbox")
+  wrapper <- repljail:::create_worker_wrapper()
   expect_equal(wrapper$get_metadata()$type, "macos_sandbox")
 
   # Test docker wrapper
-  options(replr.worker.type = "docker")
-  wrapper <- replr:::create_worker_wrapper()
+  options(repljail.worker.type = "docker")
+  wrapper <- repljail:::create_worker_wrapper()
   expect_equal(wrapper$get_metadata()$type, "docker")
 
   # Test firejail wrapper (if available)
-  if (replr:::is_firejail_available()) {
-    options(replr.worker.type = "firejail")
-    wrapper <- replr:::create_worker_wrapper()
+  if (repljail:::is_firejail_available()) {
+    options(repljail.worker.type = "firejail")
+    wrapper <- repljail:::create_worker_wrapper()
     expect_equal(wrapper$get_metadata()$type, "firejail")
   }
 
   # Test invalid type
-  options(replr.worker.type = "invalid")
+  options(repljail.worker.type = "invalid")
   expect_error(
-    replr:::create_worker_wrapper(),
+    repljail:::create_worker_wrapper(),
     "Invalid worker type"
   )
 })
@@ -381,14 +381,14 @@ test_that("macOS sandbox temporary profile cleanup works", {
 
   # Skip if macOS sandbox is not available
   skip_if_not(
-    replr:::is_macos_sandbox_available(),
+    repljail:::is_macos_sandbox_available(),
     "macOS sandbox not available"
   )
 
   # Set options to use only macOS sandbox
-  old_worker_type <- getOption("replr.worker.type")
-  on.exit(options(replr.worker.type = old_worker_type))
-  options(replr.worker.type = "macos-sandbox")
+  old_worker_type <- getOption("repljail.worker.type")
+  on.exit(options(repljail.worker.type = old_worker_type))
+  options(repljail.worker.type = "macos-sandbox")
 
   # Create a session
   session <- RREPLSession$new(timeout = 30)

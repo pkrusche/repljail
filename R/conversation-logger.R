@@ -8,7 +8,7 @@
 #' Create a logger and attach it to an ellmer Chat object:
 #' \preformatted{
 #' library(ellmer)
-#' library(replr)
+#' library(repljail)
 #'
 #' # Create a chat
 #' chat <- chat_openai()
@@ -225,7 +225,7 @@ ConversationLogger <- R6::R6Class(
       }
 
       # Special handling for R code execution
-      if (tool_name == "replr_execute_code") {
+      if (tool_name == "repljail_execute_code") {
         if (!is.null(args$code)) {
           private$append_log("**Code:**\n\n")
           private$append_log("```r\n")
@@ -235,7 +235,7 @@ ConversationLogger <- R6::R6Class(
         if (!is.null(args$session_id)) {
           private$append_log(paste0("**Session:** ", args$session_id, "\n\n"))
         }
-      } else if (tool_name == "replr_run_r_code") {
+      } else if (tool_name == "repljail_run_r_code") {
         if (!is.null(args$code)) {
           private$append_log("**Code:**\n\n")
           private$append_log("```r\n")
@@ -275,7 +275,7 @@ ConversationLogger <- R6::R6Class(
         }
       }
 
-      # Check if this is a replr tool result (standard format)
+      # Check if this is a repljail tool result (standard format)
       success_val <- get_prop(result, "success")
       if (!is.null(success_val)) {
         private$append_log(paste0(

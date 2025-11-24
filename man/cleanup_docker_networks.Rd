@@ -10,5 +10,5 @@ cleanup_docker_networks()
 logical, TRUE if cleanup was successful
 }
 \description{
-Remove orphaned replr Docker networks that may have been left behind
+Remove orphaned repljail Docker networks that may have been left behind
 }

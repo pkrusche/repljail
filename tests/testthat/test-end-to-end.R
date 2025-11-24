@@ -5,7 +5,7 @@ test_that("Complete worker lifecycle works", {
   skip_on_check()
 
   # Create session
-  session <- replr::RREPLSession$new(timeout = 10)
+  session <- repljail::RREPLSession$new(timeout = 10)
 
   # Verify session started successfully
   expect_true(session$is_alive())

@@ -1,5 +1,5 @@
 {
-  "name": "R Environment for replr",
+  "name": "R Environment for repljail",
   "build": {
     "dockerfile": "Dockerfile",
     "context": ".."

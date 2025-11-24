@@ -1,6 +1,6 @@
-# Custom GitHub Copilot Environment for replr
+# Custom GitHub Copilot Environment for repljail
 
-This directory contains configuration files to set up a custom development environment for GitHub Copilot agents working with the `replr` R package.
+This directory contains configuration files to set up a custom development environment for GitHub Copilot agents working with the `repljail` R package.
 
 ## Overview
 
@@ -53,7 +53,7 @@ This pre-configured environment allows GitHub Copilot to:
 - Understand package dependencies and suggest appropriate code
 - Work with R-specific syntax and idioms effectively
 - Access documentation and examples for installed packages
-- Provide contextually relevant suggestions for the replr package
+- Provide contextually relevant suggestions for the repljail package
 
 ## Verification
 
@@ -69,8 +69,8 @@ R --version
 # Verify required packages
 Rscript -e "required <- c('nanonext', 'processx', 'evaluate', 'R6', 'uuid'); sapply(required, function(x) cat(x, ':', as.character(packageVersion(x)), '\n'))"
 
-# Load the replr package in development mode
-Rscript -e "devtools::load_all(); replr::check_dependencies()"
+# Load the repljail package in development mode
+Rscript -e "devtools::load_all(); repljail::check_dependencies()"
 ```
 
 ## Troubleshooting

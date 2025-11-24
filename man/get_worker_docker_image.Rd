@@ -11,5 +11,5 @@ character, Docker image name
 }
 \description{
 Get the Docker image name to use for worker containers.
-Reads from option 'replr.worker.docker.image' if set, otherwise uses default.
+Reads from option 'repljail.worker.docker.image' if set, otherwise uses default.
 }

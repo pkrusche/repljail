@@ -10,6 +10,6 @@ is_debug_enabled()
 logical, TRUE if debug logging is enabled
 }
 \description{
-Configurable debug logging using the cli package and the replr.debug option
+Configurable debug logging using the cli package and the repljail.debug option
 Check if debug logging is enabled
 }
