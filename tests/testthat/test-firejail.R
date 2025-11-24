@@ -6,7 +6,7 @@ test_that("Firejail availability detection works", {
   testthat::skip_on_ci()
 
   # Should return logical value
-  result <- replr:::is_firejail_available()
+  result <- repljail:::is_firejail_available()
   expect_type(result, "logical")
   expect_length(result, 1)
 })
@@ -16,15 +16,15 @@ test_that("Firejail worker wrapper can be created", {
   testthat::skip_on_ci()
 
   # Skip if Firejail is not available
-  skip_if_not(replr:::is_firejail_available(), "Firejail not available")
+  skip_if_not(repljail:::is_firejail_available(), "Firejail not available")
 
   # Ensure only native mode (wrappers can be created without starting workers)
-  old_worker_type <- getOption("replr.worker.type")
-  on.exit(options(replr.worker.type = old_worker_type))
-  options(replr.worker.type = "native")
+  old_worker_type <- getOption("repljail.worker.type")
+  on.exit(options(repljail.worker.type = old_worker_type))
+  options(repljail.worker.type = "native")
 
   # Create a firejail wrapper
-  wrapper <- replr:::FirejailWorkerWrapper$new()
+  wrapper <- repljail:::FirejailWorkerWrapper$new()
   expect_s3_class(wrapper, "FirejailWorkerWrapper")
   expect_s3_class(wrapper, "WorkerWrapper")
 
@@ -38,12 +38,12 @@ test_that("Firejail session can be created and execute commands", {
   testthat::skip_on_ci()
 
   # Skip if Firejail is not available
-  skip_if_not(replr:::is_firejail_available(), "Firejail not available")
+  skip_if_not(repljail:::is_firejail_available(), "Firejail not available")
 
   # Set options to use only Firejail
-  old_worker_type <- getOption("replr.worker.type")
-  on.exit(options(replr.worker.type = old_worker_type))
-  options(replr.worker.type = "firejail")
+  old_worker_type <- getOption("repljail.worker.type")
+  on.exit(options(repljail.worker.type = old_worker_type))
+  options(repljail.worker.type = "firejail")
 
   # Create a session (should use Firejail due to option)
   session <- RREPLSession$new(timeout = 30)
@@ -73,16 +73,16 @@ test_that("Firejail provides network isolation", {
   testthat::skip_on_ci()
 
   # Skip if Firejail is not available
-  skip_if_not(replr:::is_firejail_available(), "Firejail not available")
+  skip_if_not(repljail:::is_firejail_available(), "Firejail not available")
 
   # Set options to use only Firejail
-  old_worker_type <- getOption("replr.worker.type")
-  on.exit(options(replr.worker.type = old_worker_type))
-  options(replr.worker.type = "firejail")
+  old_worker_type <- getOption("repljail.worker.type")
+  on.exit(options(repljail.worker.type = old_worker_type))
+  options(repljail.worker.type = "firejail")
   # Set option to use Firejail (legacy)
-  old_option <- getOption("replr.use.firejail")
-  on.exit(options(replr.use.firejail = old_option), add = TRUE)
-  options(replr.use.firejail = TRUE)
+  old_option <- getOption("repljail.use.firejail")
+  on.exit(options(repljail.use.firejail = old_option), add = TRUE)
+  options(repljail.use.firejail = TRUE)
 
   # Create a session with firejail
   session <- RREPLSession$new(timeout = 30)
@@ -162,12 +162,12 @@ test_that("Firejail allows writing to temp directory", {
   testthat::skip_on_ci()
 
   # Skip if Firejail is not available
-  skip_if_not(replr:::is_firejail_available(), "Firejail not available")
+  skip_if_not(repljail:::is_firejail_available(), "Firejail not available")
 
   # Set options to use only Firejail
-  old_worker_type <- getOption("replr.worker.type")
-  on.exit(options(replr.worker.type = old_worker_type))
-  options(replr.worker.type = "firejail")
+  old_worker_type <- getOption("repljail.worker.type")
+  on.exit(options(repljail.worker.type = old_worker_type))
+  options(repljail.worker.type = "firejail")
 
   # Create a session with firejail
   session <- RREPLSession$new(timeout = 30)
@@ -192,7 +192,7 @@ test_that("Firejail custom profile can be used", {
   testthat::skip_on_ci()
 
   # Skip if Firejail is not available
-  skip_if_not(replr:::is_firejail_available(), "Firejail not available")
+  skip_if_not(repljail:::is_firejail_available(), "Firejail not available")
 
   # Create a temporary profile file
   profile_file <- tempfile(fileext = ".profile")
@@ -214,18 +214,18 @@ test_that("Firejail custom profile can be used", {
   )
 
   # Set options to use only Firejail with custom profile
-  old_worker_type <- getOption("replr.worker.type")
-  old_profile <- getOption("replr.worker.firejail.profile")
+  old_worker_type <- getOption("repljail.worker.type")
+  old_profile <- getOption("repljail.worker.firejail.profile")
   on.exit(
     {
-      options(replr.worker.type = old_worker_type)
-      options(replr.worker.firejail.profile = old_profile)
+      options(repljail.worker.type = old_worker_type)
+      options(repljail.worker.firejail.profile = old_profile)
     },
     add = TRUE
   )
 
-  options(replr.worker.type = "firejail")
-  options(replr.worker.firejail.profile = profile_file)
+  options(repljail.worker.type = "firejail")
+  options(repljail.worker.firejail.profile = profile_file)
 
   # Create a session (should use custom profile)
   session <- RREPLSession$new(timeout = 30)
@@ -244,24 +244,24 @@ test_that("Worker wrapper factory creates correct type", {
   testthat::skip_on_ci()
 
   # Save option
-  old_worker_type <- getOption("replr.worker.type")
-  on.exit(options(replr.worker.type = old_worker_type))
+  old_worker_type <- getOption("repljail.worker.type")
+  on.exit(options(repljail.worker.type = old_worker_type))
 
   # Test native wrapper (default)
-  options(replr.worker.type = "native")
-  wrapper <- replr:::create_worker_wrapper()
+  options(repljail.worker.type = "native")
+  wrapper <- repljail:::create_worker_wrapper()
   expect_equal(wrapper$get_metadata()$type, "native")
 
   # Test firejail wrapper
-  skip_if_not(replr:::is_firejail_available(), "Firejail not available")
-  options(replr.worker.type = "firejail")
-  wrapper <- replr:::create_worker_wrapper()
+  skip_if_not(repljail:::is_firejail_available(), "Firejail not available")
+  options(repljail.worker.type = "firejail")
+  wrapper <- repljail:::create_worker_wrapper()
   expect_equal(wrapper$get_metadata()$type, "firejail")
 
   # Test invalid type
-  options(replr.worker.type = "invalid")
+  options(repljail.worker.type = "invalid")
   expect_error(
-    replr:::create_worker_wrapper(),
+    repljail:::create_worker_wrapper(),
     "Invalid worker type"
   )
 })

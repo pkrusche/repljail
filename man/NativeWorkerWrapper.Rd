@@ -13,7 +13,7 @@ Worker wrapper for native R processes (no sandboxing)
 }
 \keyword{internal}
 \section{Super class}{
-\code{\link[replr:WorkerWrapper]{replr::WorkerWrapper}} -> \code{NativeWorkerWrapper}
+\code{\link[repljail:WorkerWrapper]{repljail::WorkerWrapper}} -> \code{NativeWorkerWrapper}
 }
 \section{Methods}{
 \subsection{Public methods}{
@@ -25,9 +25,9 @@ Worker wrapper for native R processes (no sandboxing)
 \if{html}{\out{
 <details open><summary>Inherited methods</summary>
 <ul>
-<li><span class="pkg-link" data-pkg="replr" data-topic="WorkerWrapper" data-id="get_metadata"><a href='../../replr/html/WorkerWrapper.html#method-WorkerWrapper-get_metadata'><code>replr::WorkerWrapper$get_metadata()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="replr" data-topic="WorkerWrapper" data-id="get_port"><a href='../../replr/html/WorkerWrapper.html#method-WorkerWrapper-get_port'><code>replr::WorkerWrapper$get_port()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="replr" data-topic="WorkerWrapper" data-id="get_process"><a href='../../replr/html/WorkerWrapper.html#method-WorkerWrapper-get_process'><code>replr::WorkerWrapper$get_process()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="repljail" data-topic="WorkerWrapper" data-id="get_metadata"><a href='../../repljail/html/WorkerWrapper.html#method-WorkerWrapper-get_metadata'><code>repljail::WorkerWrapper$get_metadata()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="repljail" data-topic="WorkerWrapper" data-id="get_port"><a href='../../repljail/html/WorkerWrapper.html#method-WorkerWrapper-get_port'><code>repljail::WorkerWrapper$get_port()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="repljail" data-topic="WorkerWrapper" data-id="get_process"><a href='../../repljail/html/WorkerWrapper.html#method-WorkerWrapper-get_process'><code>repljail::WorkerWrapper$get_process()</code></a></span></li>
 </ul>
 </details>
 }}

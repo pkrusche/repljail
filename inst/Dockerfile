@@ -1,4 +1,4 @@
-# Minimal Dockerfile for replr worker containers
+# Minimal Dockerfile for repljail worker containers
 # Based on R 4.4 with security hardening
 FROM rocker/r-ver:4.4
 
@@ -29,16 +29,16 @@ RUN Rscript -e \
     "install.packages(c('nanonext', 'evaluate', 'cli'), repos='https://cran.rstudio.com/', dependencies=TRUE)"
 
 # Security hardening: create non-root user
-RUN groupadd -r replr && useradd -r -g replr -m -d /home/replr replr
+RUN groupadd -r repljail && useradd -r -g repljail -m -d /home/repljail repljail
 
 # Create working directory and set ownership
-RUN mkdir -p /app && chown replr:replr /app
+RUN mkdir -p /app && chown repljail:repljail /app
 WORKDIR /app
 
 # The actual worker.R will be mounted as a volume
 
 # Switch to non-root user
-USER replr
+USER repljail
 
 # Set default command (will be overridden)
 CMD ["Rscript", "--version"]

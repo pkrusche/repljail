@@ -2,7 +2,7 @@
 % Please edit documentation in R/utils.R
 \name{cleanup_docker_containers}
 \alias{cleanup_docker_containers}
-\title{Clean up orphaned replr Docker containers}
+\title{Clean up orphaned repljail Docker containers}
 \usage{
 cleanup_docker_containers()
 }
@@ -10,5 +10,5 @@ cleanup_docker_containers()
 logical, TRUE if cleanup was successful
 }
 \description{
-Remove any leftover replr worker containers that may be running
+Remove any leftover repljail worker containers that may be running
 }

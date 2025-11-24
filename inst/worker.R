@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 
-# Worker process script for replr package
+# Worker process script for repljail package
 # This script runs in an isolated R process and executes code via evaluate package
 # Communication with parent process via nanonext REP socket
 

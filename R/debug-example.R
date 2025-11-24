@@ -1,17 +1,17 @@
 #' Enable Debug Logging
 #'
-#' Convenience function to enable debug logging for the replr package
+#' Convenience function to enable debug logging for the repljail package
 #'
 #' @param enable logical, TRUE to enable debug logging, FALSE to disable
 #' @export
 enable_debug <- function(enable = TRUE) {
-  options(replr.debug = enable)
+  options(repljail.debug = enable)
 
   if (enable) {
-    cli::cli_alert_success("Debug logging enabled for replr package")
-    cli::cli_alert_info("Use options(replr.debug = FALSE) to disable")
+    cli::cli_alert_success("Debug logging enabled for repljail package")
+    cli::cli_alert_info("Use options(repljail.debug = FALSE) to disable")
   } else {
-    cli::cli_alert_info("Debug logging disabled for replr package")
+    cli::cli_alert_info("Debug logging disabled for repljail package")
   }
 
   invisible(enable)
@@ -23,7 +23,7 @@ enable_debug <- function(enable = TRUE) {
 #'
 #' @export
 debug_status <- function() {
-  status <- getOption("replr.debug", default = FALSE)
+  status <- getOption("repljail.debug", default = FALSE)
 
   if (status) {
     cli::cli_alert_success("Debug logging is currently ENABLED")

@@ -3,7 +3,7 @@
 here::i_am("tests/testthat/test-worker.R")
 
 test_that("Worker script exists and is executable", {
-  worker_path <- replr:::get_worker_script_path()
+  worker_path <- repljail:::get_worker_script_path()
   expect_false(worker_path == "")
   expect_true(file.exists(worker_path))
   expect_true(file.access(worker_path, mode = 1) == 0)
@@ -11,7 +11,7 @@ test_that("Worker script exists and is executable", {
 
 test_that("Worker script validates command line arguments", {
   # Test with no arguments
-  worker_path <- replr:::get_worker_script_path()
+  worker_path <- repljail:::get_worker_script_path()
   result1 <- suppressWarnings(system2(
     "Rscript",
     c(worker_path),
@@ -49,7 +49,7 @@ test_that("Worker can be started via processx with IPC socket", {
   library(processx)
 
   # Test that processx can start the worker script with IPC socket
-  worker_path <- replr:::get_worker_script_path()
+  worker_path <- repljail:::get_worker_script_path()
   socket_path <- tempfile(pattern = "test_worker_socket_")
   on.exit(unlink(socket_path), add = TRUE)
 
@@ -78,7 +78,7 @@ test_that("Worker accepts debug flag with IPC socket", {
   skip_on_check()
   library(processx)
 
-  worker_path <- replr:::get_worker_script_path()
+  worker_path <- repljail:::get_worker_script_path()
   socket_path <- tempfile(pattern = "test_worker_socket_debug_")
   on.exit(unlink(socket_path), add = TRUE)
 

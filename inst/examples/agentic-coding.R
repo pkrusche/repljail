@@ -1,7 +1,7 @@
 library(ellmer)
 library(tibble)
 library(dplyr)
-library(replr)
+library(repljail)
 
 # Simple task in the format of {vitals}
 # Vitals cannot visualize traces with tools yet, so we just evaluate directly.
@@ -36,7 +36,7 @@ vanilla_chat <- chat_anthropic(
   )
 )
 
-replr_augmented_chat <- chat_anthropic(
+repljail_augmented_chat <- chat_anthropic(
   model = "claude-sonnet-4-20250514",
   system_prompt = paste(
     "You are an expert R programmer and data analyst.",
@@ -49,24 +49,24 @@ replr_augmented_chat <- chat_anthropic(
     "Be concise and give a minimal answer that is correct. "
   )
 )
-# Register replr tools with the chat
-cat("Registering replr tools...\n")
+# Register repljail tools with the chat
+cat("Registering repljail tools...\n")
 # Run in Docker for isolation
-options(replr.use.docker = TRUE)
-# Get all replr tool functions
+options(repljail.use.docker = TRUE)
+# Get all repljail tool functions
 tools <- list(
-  replr_create_repl_session_tool(),
-  replr_execute_code_tool(),
-  replr_get_session_info_tool(),
-  replr_list_sessions_tool(),
-  replr_stop_session_tool(),
-  replr_cleanup_sessions_tool(),
-  replr_stop_all_sessions_tool()
+  repljail_create_repl_session_tool(),
+  repljail_execute_code_tool(),
+  repljail_get_session_info_tool(),
+  repljail_list_sessions_tool(),
+  repljail_stop_session_tool(),
+  repljail_cleanup_sessions_tool(),
+  repljail_stop_all_sessions_tool()
 )
 
 # Register each tool with the chat
 for (tool in tools) {
-  replr_augmented_chat$register_tool(tool)
+  repljail_augmented_chat$register_tool(tool)
   cat("  ✓ Registered:", tool@name, "\n")
 }
 
@@ -85,9 +85,9 @@ for (i in seq_len(nrow(tasks))) {
   cat("Getting vanilla response...\n")
   vanilla_response <- vanilla_chat$clone()$chat(tasks$input[i], echo = FALSE)
 
-  # Evaluate with replr-augmented chat
-  cat("Getting replr-augmented response...\n")
-  replr_response <- replr_augmented_chat$clone()$chat(
+  # Evaluate with repljail-augmented chat
+  cat("Getting repljail-augmented response...\n")
+  repljail_response <- repljail_augmented_chat$clone()$chat(
     tasks$input[i],
     echo = FALSE
   )
@@ -105,15 +105,15 @@ for (i in seq_len(nrow(tasks))) {
     echo = FALSE
   )
 
-  # Judge replr response
-  judge_replr <- judge_chat$clone()$chat(
+  # Judge repljail response
+  judge_repljail <- judge_chat$clone()$chat(
     paste(
       "Question:",
       tasks$input[i],
       "Target Answer:",
       tasks$target[i],
       "Response:",
-      replr_response
+      repljail_response
     ),
     echo = FALSE
   )
@@ -126,9 +126,9 @@ for (i in seq_len(nrow(tasks))) {
       input = tasks$input[i],
       target = tasks$target[i],
       vanilla_response = vanilla_response,
-      replr_response = replr_response,
+      repljail_response = repljail_response,
       vanilla_correct = grepl("Correct", judge_vanilla, ignore.case = TRUE),
-      replr_correct = grepl("Correct", judge_replr, ignore.case = TRUE)
+      repljail_correct = grepl("Correct", judge_repljail, ignore.case = TRUE)
     )
   )
 
@@ -140,10 +140,10 @@ for (i in seq_len(nrow(tasks))) {
     "...\n"
   )
   cat(
-    "Replr response (",
-    judge_replr,
+    "repljail response (",
+    judge_repljail,
     "):",
-    substr(replr_response, 1, 100),
+    substr(repljail_response, 1, 100),
     "...\n"
   )
   cat("---\n\n")

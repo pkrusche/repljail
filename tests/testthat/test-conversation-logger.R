@@ -157,7 +157,7 @@ test_that("ConversationLogger logs tool requests for R code", {
 
   # Simulate a tool request
   tool_request <- list(
-    name = "replr_execute_code",
+    name = "repljail_execute_code",
     arguments = list(
       session_id = "test-session",
       code = "x <- 1 + 1\nprint(x)"
@@ -169,21 +169,21 @@ test_that("ConversationLogger logs tool requests for R code", {
   # Check log contains tool call
   log <- logger$get_log()
   expect_true(grepl("### Tool Call", log))
-  expect_true(grepl("\\*\\*Tool:\\*\\* `replr_execute_code`", log))
+  expect_true(grepl("\\*\\*Tool:\\*\\* `repljail_execute_code`", log))
   expect_true(grepl("\\*\\*Code:\\*\\*", log))
   expect_true(grepl("```r", log))
   expect_true(grepl("x <- 1 \\+ 1", log))
   expect_true(grepl("\\*\\*Session:\\*\\* test-session", log))
 })
 
-test_that("ConversationLogger logs tool requests for replr_run_r_code", {
+test_that("ConversationLogger logs tool requests for repljail_run_r_code", {
   logger <- ConversationLogger$new()
   mock_chat <- create_mock_chat()
   logger$attach(mock_chat)
 
   # Simulate a tool request
   tool_request <- list(
-    name = "replr_run_r_code",
+    name = "repljail_run_r_code",
     arguments = list(
       code = "mean(1:10)"
     )
@@ -194,7 +194,7 @@ test_that("ConversationLogger logs tool requests for replr_run_r_code", {
   # Check log contains tool call with code block
   log <- logger$get_log()
   expect_true(grepl("### Tool Call", log))
-  expect_true(grepl("\\*\\*Tool:\\*\\* `replr_run_r_code`", log))
+  expect_true(grepl("\\*\\*Tool:\\*\\* `repljail_run_r_code`", log))
   expect_true(grepl("```r", log))
   expect_true(grepl("mean\\(1:10\\)", log))
 })
@@ -223,12 +223,12 @@ test_that("ConversationLogger logs generic tool requests", {
   expect_true(grepl("```json", log))
 })
 
-test_that("ConversationLogger logs tool results with replr format", {
+test_that("ConversationLogger logs tool results with repljail format", {
   logger <- ConversationLogger$new()
   mock_chat <- create_mock_chat()
   logger$attach(mock_chat)
 
-  # Simulate a tool result in replr format
+  # Simulate a tool result in repljail format
   tool_result <- list(
     success = TRUE,
     message = "Code executed successfully",
@@ -322,7 +322,7 @@ test_that("ConversationLogger logs generic tool results", {
   mock_chat <- create_mock_chat()
   logger$attach(mock_chat)
 
-  # Simulate a generic tool result (not replr format)
+  # Simulate a generic tool result (not repljail format)
   tool_result <- list(
     result = "some generic result",
     status = "ok"

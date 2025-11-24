@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-# replr - Isolated R REPL
+# repljail - Isolated R REPL
 
 Process-based isolated R REPL implementation that provides secure, sandboxed R code execution using separate worker processes. Designed for running untrusted or potentially problematic R code without affecting the parent process.
 
@@ -42,10 +42,10 @@ cleanup_docker_containers()
 cleanup_docker_networks()
 
 # Enable Docker mode for workers
-options(replr.worker.type = "docker")
+options(repljail.worker.type = "docker")
 
 # Enable network isolation (requires Docker mode)
-options(replr.worker.docker.network.isolation = TRUE)
+options(repljail.worker.docker.network.isolation = TRUE)
 ```
 
 **Firejail Support (Linux)**
@@ -54,10 +54,10 @@ options(replr.worker.docker.network.isolation = TRUE)
 is_firejail_available()
 
 # Enable Firejail mode for workers
-options(replr.worker.type = "firejail")
+options(repljail.worker.type = "firejail")
 
 # Use custom Firejail profile (optional)
-options(replr.worker.firejail.profile = "/path/to/profile.profile")
+options(repljail.worker.firejail.profile = "/path/to/profile.profile")
 ```
 
 **macOS Sandbox Support (macOS only)**
@@ -66,13 +66,13 @@ options(replr.worker.firejail.profile = "/path/to/profile.profile")
 is_macos_sandbox_available()
 
 # Enable macOS sandbox mode for workers
-options(replr.worker.type = "macos-sandbox")
+options(repljail.worker.type = "macos-sandbox")
 
 # Use custom sandbox profile (optional)
-options(replr.worker.macos.sandbox.profile = "/path/to/profile.sb")
+options(repljail.worker.macos.sandbox.profile = "/path/to/profile.sb")
 ```
 
-**Worker Type Selection**: Set `replr.worker.type` to one of: `"native"`, `"docker"`, `"firejail"`, or `"macos-sandbox"` (default: `"native"`)
+**Worker Type Selection**: Set `repljail.worker.type` to one of: `"native"`, `"docker"`, `"firejail"`, or `"macos-sandbox"` (default: `"native"`)
 
 ### Debug Logging
 ```r
@@ -123,7 +123,7 @@ Main R Process (Controller) ←──nanonext REQ/REP──→ Worker R Process 
 - **inst/worker.R**: Worker script that runs in isolated process, handles code evaluation
 
 ### Worker Process Details
-- Located at `inst/worker.R` (or system.file("worker.R", package = "replr") when installed)
+- Located at `inst/worker.R` (or system.file("worker.R", package = "repljail") when installed)
 - Started with: `Rscript worker.R <port> [--debug] [--listen-all]`
 - Uses `evaluate::evaluate()` with `stop_on_error = 2` (continues after errors)
 - Plots captured via `recordedplot` objects, converted to base64 PNG data URLs
@@ -132,9 +132,9 @@ Main R Process (Controller) ←──nanonext REQ/REP──→ Worker R Process 
 ### Docker Integration
 - Dockerfile in `inst/Dockerfile` based on `rocker/r-ver:4.4`
 - Security features: non-root user, read-only filesystem, capability dropping, memory/CPU limits
-- Container naming: `replr-worker-<port>-<timestamp>` for cleanup tracking
-- Configurable via options: `replr.worker.docker.image`, `replr.worker.docker.memory`, `replr.worker.docker.cpus`
-- **Network Isolation (Sidecar Pattern)**: Optional air-gapped execution with `replr.worker.docker.network.isolation`
+- Container naming: `repljail-worker-<port>-<timestamp>` for cleanup tracking
+- Configurable via options: `repljail.worker.docker.image`, `repljail.worker.docker.memory`, `repljail.worker.docker.cpus`
+- **Network Isolation (Sidecar Pattern)**: Optional air-gapped execution with `repljail.worker.docker.network.isolation`
   - Creates `--internal` bridge network (blocks all outbound traffic including internet)
   - Worker container: Connected to isolated network only (zero internet access)
   - Gateway sidecar: `alpine/socat` container that bridges host ↔ worker communication
@@ -142,8 +142,8 @@ Main R Process (Controller) ←──nanonext REQ/REP──→ Worker R Process 
     ```
     Host (127.0.0.1:<port>) ← Docker publish → Gateway Container ← Internal Network → Worker Container (air-gapped)
     ```
-  - Network naming: `replr-network-<port>-<timestamp>`
-  - Gateway naming: `replr-gateway-<port>-<timestamp>`
+  - Network naming: `repljail-network-<port>-<timestamp>`
+  - Gateway naming: `repljail-gateway-<port>-<timestamp>`
   - Automatic cleanup of worker, gateway, and network when session stops
   - Security: Worker has ZERO external network access while host communication works via gateway proxy
 
@@ -151,7 +151,7 @@ Main R Process (Controller) ←──nanonext REQ/REP──→ Worker R Process 
 - Lightweight sandboxing for Linux systems using firejail
 - Implemented in `R/worker-wrappers.R` via `FirejailWorkerWrapper` R6 class
 - Availability detection: `is_firejail_available()` checks for firejail command
-- Configurable via options: `replr.worker.type = "firejail"`, `replr.worker.firejail.profile`
+- Configurable via options: `repljail.worker.type = "firejail"`, `repljail.worker.firejail.profile`
 - **Default Security Settings**:
   - Network isolation: `--net=lo` (loopback only, blocks external access)
   - Filesystem isolation: `--private-tmp` (isolated temp directory)
@@ -159,7 +159,7 @@ Main R Process (Controller) ←──nanonext REQ/REP──→ Worker R Process 
   - Seccomp filtering: `--seccomp` (restrict system calls)
   - No privilege escalation: `--nonewprivs`, `--noroot`
   - Hardware restrictions: `--nosound`, `--novideo`, `--no3d`, `--nodvd`, `--notv`
-- **Custom Profiles**: Support for custom firejail profile files via `replr.worker.firejail.profile` option
+- **Custom Profiles**: Support for custom firejail profile files via `repljail.worker.firejail.profile` option
 - **Process Management**: Worker executed as `firejail [options] Rscript worker.R <port>`
 - **Tests**: `tests/testthat/test-firejail.R` (skipped on CI and non-Linux systems)
 - **Demo**: `inst/examples/firejail-demo.R` shows complete usage
@@ -168,7 +168,7 @@ Main R Process (Controller) ←──nanonext REQ/REP──→ Worker R Process 
 - Native sandboxing for macOS using Apple's `sandbox-exec` command
 - Implemented in `R/worker-wrappers.R` via `MacOSSandboxWorkerWrapper` R6 class
 - Availability detection: `is_macos_sandbox_available()` checks for macOS and sandbox-exec command
-- Configurable via options: `replr.worker.type = "macos-sandbox"`, `replr.worker.macos.sandbox.profile`
+- Configurable via options: `repljail.worker.type = "macos-sandbox"`, `repljail.worker.macos.sandbox.profile`
 - **Default Security Profile** (auto-generated using Sandbox Profile Language):
   - **Filesystem access**:
     - Read: All files (allows R to read system files, libraries, data)
@@ -188,7 +188,7 @@ Main R Process (Controller) ←──nanonext REQ/REP──→ Worker R Process 
 
 ### ellmer Integration
 - Functions in `R/ellmer-tools.R` provide LLM agent tools for the ellmer package
-- Global session registry (`.replr_sessions`) tracks active sessions across tool calls
+- Global session registry (`.repljail_sessions`) tracks active sessions across tool calls
 - Auto-generated session IDs: `<color>-<animal>-<number>` (e.g., "red-eagle-742")
 - All tools return standardized responses: `list(success, message, data, error)`
 - Plot handling: Converts base64 plots to temporary PNG files for LLM consumption
@@ -297,21 +297,21 @@ jj describe -m "Descriptive commit message"
 Global options control package behavior:
 
 **General:**
-- `replr.debug` (logical): Enable debug logging
+- `repljail.debug` (logical): Enable debug logging
 
 **Worker Type Selection:**
-- `replr.worker.type` (string): Worker isolation method - one of "native", "docker", "firejail", "macos-sandbox" (default: "native")
-  - Legacy boolean options (`replr.use.docker`, `replr.use.firejail`, `replr.use.macos.sandbox`) are deprecated but supported with warnings
+- `repljail.worker.type` (string): Worker isolation method - one of "native", "docker", "firejail", "macos-sandbox" (default: "native")
+  - Legacy boolean options (`repljail.use.docker`, `repljail.use.firejail`, `repljail.use.macos.sandbox`) are deprecated but supported with warnings
 
 **Docker Configuration:**
-- `replr.worker.docker.image` (string): Docker image name (default: "replr-worker:latest")
-- `replr.worker.docker.memory` (string): Memory limit (default: "512m")
-- `replr.worker.docker.cpus` (string): CPU limit (default: "1.0")
-- `replr.worker.docker.network.isolation` (logical): Enable isolated Docker networks (default: FALSE)
+- `repljail.worker.docker.image` (string): Docker image name (default: "repljail-worker:latest")
+- `repljail.worker.docker.memory` (string): Memory limit (default: "512m")
+- `repljail.worker.docker.cpus` (string): CPU limit (default: "1.0")
+- `repljail.worker.docker.network.isolation` (logical): Enable isolated Docker networks (default: FALSE)
 
 **Firejail Configuration:**
-- `replr.worker.firejail.profile` (string): Path to custom firejail profile file (default: NULL)
+- `repljail.worker.firejail.profile` (string): Path to custom firejail profile file (default: NULL)
 
 **macOS Sandbox Configuration:**
-- `replr.worker.macos.sandbox.profile` (string): Path to custom sandbox profile (.sb) file (default: NULL)
+- `repljail.worker.macos.sandbox.profile` (string): Path to custom sandbox profile (.sb) file (default: NULL)
 - to memorize : when testing scripts and examples, always use devtools::load_all() and source from within an R session instead of using Rscript

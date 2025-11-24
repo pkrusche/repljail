@@ -1,11 +1,11 @@
 # Tests for Phase 4: Enhanced Plot Handling with Vision Integration
 here::i_am("tests/testthat/test-plots.R")
 
-test_that("replr_execute_code handles multiple plots correctly", {
+test_that("repljail_execute_code handles multiple plots correctly", {
   skip_on_check()
 
   # Create session
-  create_result <- replr_create_repl_session()
+  create_result <- repljail_create_repl_session()
   expect_true(create_result$success)
 
   session_id <- create_result$data$session_id
@@ -13,7 +13,7 @@ test_that("replr_execute_code handles multiple plots correctly", {
   tryCatch(
     {
       # Execute code that generates multiple plots
-      result <- replr_execute_code(
+      result <- repljail_execute_code(
         session_id,
         "
         set.seed(456)
@@ -40,16 +40,16 @@ test_that("replr_execute_code handles multiple plots correctly", {
     },
     finally = {
       # Clean up
-      replr_stop_session(session_id)
+      repljail_stop_session(session_id)
     }
   )
 })
 
-test_that("replr_execute_code works without plots (backward compatibility)", {
+test_that("repljail_execute_code works without plots (backward compatibility)", {
   skip_on_check()
 
   # Create session
-  create_result <- replr_create_repl_session()
+  create_result <- repljail_create_repl_session()
   expect_true(create_result$success)
 
   session_id <- create_result$data$session_id
@@ -57,7 +57,7 @@ test_that("replr_execute_code works without plots (backward compatibility)", {
   tryCatch(
     {
       # Execute code without plots
-      result <- replr_execute_code(session_id, "2 + 2", timeout = 10)
+      result <- repljail_execute_code(session_id, "2 + 2", timeout = 10)
 
       expect_true(result$success)
       expect_equal(result$data$status, "success")
@@ -68,7 +68,7 @@ test_that("replr_execute_code works without plots (backward compatibility)", {
     },
     finally = {
       # Clean up
-      replr_stop_session(session_id)
+      repljail_stop_session(session_id)
     }
   )
 })

@@ -1,4 +1,4 @@
-# Remaining Implementation Tasks for replr
+# Remaining Implementation Tasks for repljail
 
 - [ ] Add automatic worker restart logic with exponential backoff (advanced feature)
 - [ ] Implement memory usage monitoring with pryr

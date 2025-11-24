@@ -3,7 +3,7 @@
 # Test script to validate the custom Copilot environment setup
 # This script should be run inside the devcontainer to verify everything works
 
-cat("=== Testing Custom GitHub Copilot Environment for replr ===\n\n")
+cat("=== Testing Custom GitHub Copilot Environment for repljail ===\n\n")
 
 # Test 1: Check R version
 cat("1. R Version:\n")
@@ -43,19 +43,19 @@ for (pkg in dev_packages) {
 }
 
 # Test 5: Test package dependency check function
-cat("\n5. Testing replr dependency check:\n")
+cat("\n5. Testing repljail dependency check:\n")
 tryCatch(
   {
     if (file.exists("R/utils.R")) {
       source("R/utils.R")
       result <- check_dependencies()
-      cat("   ✓ replr::check_dependencies() passed\n")
+      cat("   ✓ repljail::check_dependencies() passed\n")
     } else {
       cat("   ⚠ R/utils.R not found (run from package root)\n")
     }
   },
   error = function(e) {
-    cat(sprintf("   ✗ replr::check_dependencies() failed: %s\n", e$message))
+    cat(sprintf("   ✗ repljail::check_dependencies() failed: %s\n", e$message))
   }
 )
 

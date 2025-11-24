@@ -12,7 +12,7 @@ test_that("Docker availability detection works", {
   skip_on_ci_for_docker()
 
   # Should return logical value
-  result <- replr:::is_docker_available()
+  result <- repljail:::is_docker_available()
   expect_type(result, "logical")
   expect_length(result, 1)
 })
@@ -20,7 +20,7 @@ test_that("Docker availability detection works", {
 test_that("Docker image name is defined", {
   skip_on_ci_for_docker()
 
-  image_name <- replr:::get_worker_docker_image()
+  image_name <- repljail:::get_worker_docker_image()
   expect_type(image_name, "character")
   expect_length(image_name, 1)
   expect_true(nchar(image_name) > 0)
@@ -31,12 +31,12 @@ test_that("Docker session can be created and execute commands", {
   skip_on_ci_for_docker()
 
   # Skip if Docker is not available
-  skip_if_not(replr:::is_docker_available(), "Docker not available")
+  skip_if_not(repljail:::is_docker_available(), "Docker not available")
 
   # Set option to use Docker
-  old_worker_type <- getOption("replr.worker.type")
-  on.exit(options(replr.worker.type = old_worker_type))
-  options(replr.worker.type = "docker")
+  old_worker_type <- getOption("repljail.worker.type")
+  on.exit(options(repljail.worker.type = old_worker_type))
+  options(repljail.worker.type = "docker")
 
   # Create a session (should use Docker due to option)
   session <- RREPLSession$new(timeout = 30)
@@ -63,18 +63,18 @@ test_that("Docker network isolation can be enabled", {
   skip_on_ci_for_docker()
 
   # Skip if Docker is not available
-  skip_if_not(replr:::is_docker_available(), "Docker not available")
+  skip_if_not(repljail:::is_docker_available(), "Docker not available")
 
   # Set options to use only Docker with network isolation
-  old_worker_type <- getOption("replr.worker.type")
-  old_network <- getOption("replr.worker.docker.network.isolation")
+  old_worker_type <- getOption("repljail.worker.type")
+  old_network <- getOption("repljail.worker.docker.network.isolation")
   on.exit({
-    options(replr.worker.type = old_worker_type)
-    options(replr.worker.docker.network.isolation = old_network)
+    options(repljail.worker.type = old_worker_type)
+    options(repljail.worker.docker.network.isolation = old_network)
   })
 
-  options(replr.worker.type = "docker")
-  options(replr.worker.docker.network.isolation = TRUE)
+  options(repljail.worker.type = "docker")
+  options(repljail.worker.docker.network.isolation = TRUE)
 
   # Create a session (should use Docker with network isolation)
   session <- RREPLSession$new(timeout = 30)
@@ -100,13 +100,13 @@ test_that("Docker network cleanup works", {
   skip_on_ci_for_docker()
 
   # Skip if Docker is not available
-  skip_if_not(replr:::is_docker_available(), "Docker not available")
+  skip_if_not(repljail:::is_docker_available(), "Docker not available")
 
   # Create a test network
-  test_network <- paste0("replr-network-test-", as.integer(Sys.time()))
+  test_network <- paste0("repljail-network-test-", as.integer(Sys.time()))
 
   # Create the network
-  result <- replr:::create_docker_network(test_network)
+  result <- repljail:::create_docker_network(test_network)
   expect_true(result)
 
   # Verify network exists
@@ -126,7 +126,7 @@ test_that("Docker network cleanup works", {
   expect_true(test_network %in% networks)
 
   # Clean up the network
-  result <- replr:::remove_docker_network(test_network)
+  result <- repljail:::remove_docker_network(test_network)
   expect_true(result)
 
   # Verify network is gone
@@ -151,18 +151,18 @@ test_that("Docker network is cleaned up when session stops", {
   skip_on_ci_for_docker()
 
   # Skip if Docker is not available
-  skip_if_not(replr:::is_docker_available(), "Docker not available")
+  skip_if_not(repljail:::is_docker_available(), "Docker not available")
 
   # Set options to use only Docker with network isolation
-  old_worker_type <- getOption("replr.worker.type")
-  old_network <- getOption("replr.worker.docker.network.isolation")
+  old_worker_type <- getOption("repljail.worker.type")
+  old_network <- getOption("repljail.worker.docker.network.isolation")
   on.exit({
-    options(replr.worker.type = old_worker_type)
-    options(replr.worker.docker.network.isolation = old_network)
+    options(repljail.worker.type = old_worker_type)
+    options(repljail.worker.docker.network.isolation = old_network)
   })
 
-  options(replr.worker.type = "docker")
-  options(replr.worker.docker.network.isolation = TRUE)
+  options(repljail.worker.type = "docker")
+  options(repljail.worker.docker.network.isolation = TRUE)
 
   # Create a session
   session <- RREPLSession$new(timeout = 30)
@@ -215,18 +215,18 @@ test_that("Network isolation provides inter-container isolation", {
   skip_on_ci_for_docker()
 
   # Skip if Docker is not available
-  skip_if_not(replr:::is_docker_available(), "Docker not available")
+  skip_if_not(repljail:::is_docker_available(), "Docker not available")
 
   # Set options to use only Docker with network isolation
-  old_worker_type <- getOption("replr.worker.type")
-  old_network <- getOption("replr.worker.docker.network.isolation")
+  old_worker_type <- getOption("repljail.worker.type")
+  old_network <- getOption("repljail.worker.docker.network.isolation")
   on.exit({
-    options(replr.worker.type = old_worker_type)
-    options(replr.worker.docker.network.isolation = old_network)
+    options(repljail.worker.type = old_worker_type)
+    options(repljail.worker.docker.network.isolation = old_network)
   })
 
-  options(replr.worker.type = "docker")
-  options(replr.worker.docker.network.isolation = TRUE)
+  options(repljail.worker.type = "docker")
+  options(repljail.worker.docker.network.isolation = TRUE)
 
   # Create a session with network isolation
   session <- RREPLSession$new(timeout = 30)
@@ -303,12 +303,12 @@ test_that("Network isolation provides inter-container isolation", {
 test_that("Multiple Docker workers can run simultaneously with different ports", {
   skip_on_check()
   skip_on_ci_for_docker()
-  skip_if_not(replr::is_docker_available(), "Docker not available")
+  skip_if_not(repljail::is_docker_available(), "Docker not available")
 
   # Set worker type to Docker
-  old_worker_type <- getOption("replr.worker.type")
-  on.exit(options(replr.worker.type = old_worker_type))
-  options(replr.worker.type = "docker")
+  old_worker_type <- getOption("repljail.worker.type")
+  on.exit(options(repljail.worker.type = old_worker_type))
+  options(repljail.worker.type = "docker")
 
   session1 <- RREPLSession$new(timeout = 20)
   session2 <- RREPLSession$new(timeout = 20)
@@ -347,15 +347,15 @@ test_that("Multiple Docker workers can run simultaneously with different ports",
 test_that("Docker worker startup handles port conflicts", {
   skip_on_check()
   skip_on_ci_for_docker()
-  skip_if_not(replr::is_docker_available(), "Docker not available")
+  skip_if_not(repljail::is_docker_available(), "Docker not available")
 
   # Set worker type to Docker
-  old_worker_type <- getOption("replr.worker.type")
-  on.exit(options(replr.worker.type = old_worker_type))
-  options(replr.worker.type = "docker")
+  old_worker_type <- getOption("repljail.worker.type")
+  on.exit(options(repljail.worker.type = old_worker_type))
+  options(repljail.worker.type = "docker")
 
   # Start first session on specific port
-  port1 <- replr:::get_available_port()
+  port1 <- repljail:::get_available_port()
   session1 <- RREPLSession$new(port = port1, timeout = 20)
 
   tryCatch(

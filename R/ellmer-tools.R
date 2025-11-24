@@ -1,4 +1,4 @@
-#' replr Tools for REPL Session Management
+#' repljail Tools for REPL Session Management
 #'
 #' This module provides tools designed specifically for LLM agents (e.g. in ellmer) to
 #' create, manage, and use isolated R REPL sessions. These functions provide
@@ -6,12 +6,12 @@
 #' optimized for LLM consumption.
 #'
 #' @section Session Management:
-#' The replr tools maintain a global registry of active REPL sessions,
+#' The repljail tools maintain a global registry of active REPL sessions,
 #' allowing LLM agents to create multiple concurrent sessions and manage
 #' them independently.
 #'
 #' @section Response Format:
-#' All replr tools return standardized responses with the following structure:
+#' All repljail tools return standardized responses with the following structure:
 #' \itemize{
 #'   \item \code{success} - logical, whether the operation succeeded
 #'   \item \code{message} - character, human-readable status message
@@ -19,10 +19,10 @@
 #'   \item \code{error} - character, error message (when applicable)
 #' }
 
-# Global session registry for replr tools
-.replr_sessions <- new.env(parent = emptyenv())
+# Global session registry for repljail tools
+.repljail_sessions <- new.env(parent = emptyenv())
 
-#' Create a New REPL Session for replr
+#' Create a New REPL Session for repljail
 #'
 #' Creates a new isolated R REPL session that can be used by an LLM agent.
 #' Each session runs in a separate R process and maintains its own environment.
@@ -34,13 +34,13 @@
 #' @examples
 #' \dontrun{
 #' # Create a new session with auto-generated ID
-#' result <- replr_create_repl_session()
+#' result <- repljail_create_repl_session()
 #' if (result$success) {
 #'   session_id <- result$data$session_id
 #'   cat("Created session:", session_id)
 #' }
 #' }
-replr_create_repl_session <- function(timeout = 10) {
+repljail_create_repl_session <- function(timeout = 10) {
   tryCatch(
     {
       # Auto-generate session ID
@@ -48,7 +48,7 @@ replr_create_repl_session <- function(timeout = 10) {
       counter <- 1
       while (
         is.null(session_id) ||
-          (exists(session_id, envir = .replr_sessions) && counter < 10)
+          (exists(session_id, envir = .repljail_sessions) && counter < 10)
       ) {
         session_id <- paste0(
           sample(
@@ -85,10 +85,10 @@ replr_create_repl_session <- function(timeout = 10) {
       }
 
       # Create new REPL session with Docker if available
-      session <- replr::RREPLSession$new(timeout = timeout)
+      session <- repljail::RREPLSession$new(timeout = timeout)
 
       # Store in registry
-      assign(session_id, session, envir = .replr_sessions)
+      assign(session_id, session, envir = .repljail_sessions)
 
       # Get session information
       session_info <- session$get_info()
@@ -124,7 +124,7 @@ replr_create_repl_session <- function(timeout = 10) {
 
 #' Execute R Code in a REPL Session
 #'
-#' Executes R code in a specified replr REPL session and returns the results
+#' Executes R code in a specified repljail REPL session and returns the results
 #' in a structured format suitable for LLM processing.
 #'
 #' @param session_id character, ID of the session to execute code in
@@ -135,26 +135,26 @@ replr_create_repl_session <- function(timeout = 10) {
 #' @examples
 #' \dontrun{
 #' # Create a session and execute code
-#' session_result <- replr_create_repl_session()
+#' session_result <- repljail_create_repl_session()
 #' session_id <- session_result$data$session_id
 #'
 #' # Execute simple arithmetic
-#' result <- replr_execute_code(session_id, "2 + 2")
+#' result <- repljail_execute_code(session_id, "2 + 2")
 #' if (result$success) {
 #'   cat("Output:", result$data$output)
 #' }
 #'
 #' # Execute more complex code
-#' result <- replr_execute_code(session_id, "
+#' result <- repljail_execute_code(session_id, "
 #'   data <- data.frame(x = 1:5, y = letters[1:5])
 #'   summary(data)
 #' ")
 #' }
-replr_execute_code <- function(session_id, code, timeout = 30) {
+repljail_execute_code <- function(session_id, code, timeout = 30) {
   tryCatch(
     {
       # Check if session exists
-      if (!exists(session_id, envir = .replr_sessions)) {
+      if (!exists(session_id, envir = .repljail_sessions)) {
         return(list(
           success = FALSE,
           message = paste("Session not found:", session_id),
@@ -164,7 +164,7 @@ replr_execute_code <- function(session_id, code, timeout = 30) {
       }
 
       # Get session
-      session <- get(session_id, envir = .replr_sessions)
+      session <- get(session_id, envir = .repljail_sessions)
 
       # Check if session is still alive
       if (!session$is_alive()) {
@@ -248,7 +248,7 @@ replr_execute_code <- function(session_id, code, timeout = 30) {
 
 #' Get Information About a REPL Session
 #'
-#' Retrieves detailed information about a specific replr REPL session,
+#' Retrieves detailed information about a specific repljail REPL session,
 #' including its status, process information, and activity.
 #'
 #' @param session_id character, ID of the session to query
@@ -257,16 +257,16 @@ replr_execute_code <- function(session_id, code, timeout = 30) {
 #' @examples
 #' \dontrun{
 #' # Get information about a session
-#' result <- replr_get_session_info("my_session_id")
+#' result <- repljail_get_session_info("my_session_id")
 #' if (result$success) {
 #'   print(result$data)
 #' }
 #' }
-replr_get_session_info <- function(session_id) {
+repljail_get_session_info <- function(session_id) {
   tryCatch(
     {
       # Check if session exists
-      if (!exists(session_id, envir = .replr_sessions)) {
+      if (!exists(session_id, envir = .repljail_sessions)) {
         return(list(
           success = FALSE,
           message = paste("Session not found:", session_id),
@@ -276,7 +276,7 @@ replr_get_session_info <- function(session_id) {
       }
 
       # Get session
-      session <- get(session_id, envir = .replr_sessions)
+      session <- get(session_id, envir = .repljail_sessions)
 
       # Get session information
       session_info <- session$get_info()
@@ -313,7 +313,7 @@ replr_get_session_info <- function(session_id) {
 
 #' Stop a REPL Session
 #'
-#' Gracefully stops a specified replr REPL session and removes it from
+#' Gracefully stops a specified repljail REPL session and removes it from
 #' the session registry.
 #'
 #' @param session_id character, ID of the session to stop
@@ -323,16 +323,16 @@ replr_get_session_info <- function(session_id) {
 #' @examples
 #' \dontrun{
 #' # Stop a specific session
-#' result <- replr_stop_session("my_session_id")
+#' result <- repljail_stop_session("my_session_id")
 #' if (result$success) {
 #'   cat("Session stopped successfully")
 #' }
 #' }
-replr_stop_session <- function(session_id, timeout = 5) {
+repljail_stop_session <- function(session_id, timeout = 5) {
   tryCatch(
     {
       # Check if session exists
-      if (!exists(session_id, envir = .replr_sessions)) {
+      if (!exists(session_id, envir = .repljail_sessions)) {
         return(list(
           success = FALSE,
           message = paste("Session not found:", session_id),
@@ -342,13 +342,13 @@ replr_stop_session <- function(session_id, timeout = 5) {
       }
 
       # Get session
-      session <- get(session_id, envir = .replr_sessions)
+      session <- get(session_id, envir = .repljail_sessions)
 
       # Stop the session
       stop_result <- session$stop(timeout = timeout)
 
       # Remove from registry
-      rm(list = session_id, envir = .replr_sessions)
+      rm(list = session_id, envir = .repljail_sessions)
 
       list(
         success = TRUE,
@@ -376,7 +376,7 @@ replr_stop_session <- function(session_id, timeout = 5) {
 
 #' List All Active REPL Sessions
 #'
-#' Returns a list of all currently active replr REPL sessions with their
+#' Returns a list of all currently active repljail REPL sessions with their
 #' basic information.
 #'
 #' @return list with information about all active sessions
@@ -384,17 +384,17 @@ replr_stop_session <- function(session_id, timeout = 5) {
 #' @examples
 #' \dontrun{
 #' # List all active sessions
-#' result <- replr_list_sessions()
+#' result <- repljail_list_sessions()
 #' if (result$success) {
 #'   for (session in result$data$sessions) {
 #'     cat("Session:", session$session_id, "- Alive:", session$is_alive, "\n")
 #'   }
 #' }
 #' }
-replr_list_sessions <- function() {
+repljail_list_sessions <- function() {
   tryCatch(
     {
-      session_ids <- ls(envir = .replr_sessions)
+      session_ids <- ls(envir = .repljail_sessions)
 
       if (length(session_ids) == 0) {
         return(list(
@@ -411,7 +411,7 @@ replr_list_sessions <- function() {
       # Collect information about all sessions
       sessions_info <- list()
       for (session_id in session_ids) {
-        session <- get(session_id, envir = .replr_sessions)
+        session <- get(session_id, envir = .repljail_sessions)
         session_info <- session$get_info()
 
         sessions_info[[length(sessions_info) + 1]] <- list(
@@ -447,7 +447,7 @@ replr_list_sessions <- function() {
 
 #' Clean Up Dead REPL Sessions
 #'
-#' Removes dead sessions from the replr session registry. This is useful
+#' Removes dead sessions from the repljail session registry. This is useful
 #' for cleanup when sessions may have died unexpectedly.
 #'
 #' @return list with cleanup results
@@ -455,25 +455,25 @@ replr_list_sessions <- function() {
 #' @examples
 #' \dontrun{
 #' # Clean up any dead sessions
-#' result <- replr_cleanup_sessions()
+#' result <- repljail_cleanup_sessions()
 #' cat("Cleaned up", result$data$cleaned_count, "dead sessions")
 #' }
-replr_cleanup_sessions <- function() {
+repljail_cleanup_sessions <- function() {
   tryCatch(
     {
-      session_ids <- ls(envir = .replr_sessions)
+      session_ids <- ls(envir = .repljail_sessions)
       cleaned_count <- 0
       dead_sessions <- character(0)
 
       for (session_id in session_ids) {
-        session <- get(session_id, envir = .replr_sessions)
+        session <- get(session_id, envir = .repljail_sessions)
 
         if (!session$is_alive()) {
           # Try to stop it gracefully first
           tryCatch(session$stop(timeout = 1), error = function(e) {})
 
           # Remove from registry
-          rm(list = session_id, envir = .replr_sessions)
+          rm(list = session_id, envir = .repljail_sessions)
           cleaned_count <- cleaned_count + 1
           dead_sessions <- c(dead_sessions, session_id)
         }
@@ -485,7 +485,7 @@ replr_cleanup_sessions <- function() {
         data = list(
           cleaned_count = cleaned_count,
           dead_sessions = dead_sessions,
-          remaining_sessions = length(ls(envir = .replr_sessions))
+          remaining_sessions = length(ls(envir = .repljail_sessions))
         ),
         error = NULL
       )
@@ -503,7 +503,7 @@ replr_cleanup_sessions <- function() {
 
 #' Stop All REPL Sessions
 #'
-#' Stops all active replr REPL sessions and clears the session registry.
+#' Stops all active repljail REPL sessions and clears the session registry.
 #' Useful for cleanup at the end of an LLM agent session.
 #'
 #' @param timeout numeric, timeout in seconds for each session shutdown (default: 5)
@@ -512,20 +512,20 @@ replr_cleanup_sessions <- function() {
 #' @examples
 #' \dontrun{
 #' # Stop all sessions at the end of analysis
-#' result <- replr_stop_all_sessions()
+#' result <- repljail_stop_all_sessions()
 #' cat("Stopped", result$data$stopped_count, "sessions")
 #' }
-replr_stop_all_sessions <- function(timeout = 5) {
+repljail_stop_all_sessions <- function(timeout = 5) {
   tryCatch(
     {
-      session_ids <- ls(envir = .replr_sessions)
+      session_ids <- ls(envir = .repljail_sessions)
       stopped_count <- 0
       errors <- character(0)
 
       for (session_id in session_ids) {
         tryCatch(
           {
-            session <- get(session_id, envir = .replr_sessions)
+            session <- get(session_id, envir = .repljail_sessions)
             session$stop(timeout = timeout)
             stopped_count <- stopped_count + 1
           },
@@ -536,7 +536,7 @@ replr_stop_all_sessions <- function(timeout = 5) {
       }
 
       # Clear the entire registry
-      rm(list = ls(envir = .replr_sessions), envir = .replr_sessions)
+      rm(list = ls(envir = .repljail_sessions), envir = .repljail_sessions)
 
       list(
         success = length(errors) == 0,
@@ -573,18 +573,18 @@ replr_stop_all_sessions <- function(timeout = 5) {
 #' @examples
 #' \dontrun{
 #' # Execute simple arithmetic
-#' result <- replr_run_r_code("2 + 2")
+#' result <- repljail_run_r_code("2 + 2")
 #' if (result$success) {
 #'   cat("Output:", result$data$output)
 #' }
 #'
 #' # Execute more complex code
-#' result <- replr_run_r_code("
+#' result <- repljail_run_r_code("
 #'   data <- data.frame(x = 1:5, y = letters[1:5])
 #'   summary(data)
 #' ")
 #' }
-replr_run_r_code <- function(code, timeout = 30) {
+repljail_run_r_code <- function(code, timeout = 30) {
   session_result <- NULL
   session_id <- NULL
 
@@ -597,7 +597,7 @@ replr_run_r_code <- function(code, timeout = 30) {
   tryCatch(
     {
       # Create a temporary session
-      session_result <- replr_create_repl_session(timeout = session_timeout)
+      session_result <- repljail_create_repl_session(timeout = session_timeout)
 
       if (!session_result$success) {
         return(list(
@@ -611,7 +611,7 @@ replr_run_r_code <- function(code, timeout = 30) {
       session_id <- session_result$data$session_id
 
       # Execute the code
-      exec_result <- replr_execute_code(session_id, code, timeout = timeout)
+      exec_result <- repljail_execute_code(session_id, code, timeout = timeout)
 
       # Return the execution result
       exec_result
@@ -629,7 +629,7 @@ replr_run_r_code <- function(code, timeout = 30) {
       if (!is.null(session_id)) {
         tryCatch(
           {
-            replr_stop_session(session_id, timeout = cleanup_timeout)
+            repljail_stop_session(session_id, timeout = cleanup_timeout)
           },
           error = function(e) {
             # Silent cleanup - session may already be dead
@@ -641,7 +641,7 @@ replr_run_r_code <- function(code, timeout = 30) {
 }
 
 # ellmer Tool Definitions
-# These tools wrap the replr functions to provide a standardized interface for LLM agents
+# These tools wrap the repljail functions to provide a standardized interface for LLM agents
 
 #' Create REPL Session Tool Definition
 #'
@@ -655,16 +655,16 @@ replr_run_r_code <- function(code, timeout = 30) {
 #' @examples
 #' \dontrun{
 #' # Get the tool definition
-#' create_tool <- replr_create_repl_session_tool()
+#' create_tool <- repljail_create_repl_session_tool()
 #' print(create_tool$name)
 #' print(create_tool$description)
 #' }
-replr_create_repl_session_tool <- function() {
+repljail_create_repl_session_tool <- function() {
   # Try to use ellmer::tool if available, otherwise return a basic structure
   if (requireNamespace("ellmer", quietly = TRUE)) {
     ellmer::tool(
-      replr_create_repl_session,
-      name = "replr_create_repl_session",
+      repljail_create_repl_session,
+      name = "repljail_create_repl_session",
       description = "Create a new isolated R REPL session for executing R code",
       arguments = list(
         timeout = ellmer::type_number(
@@ -676,7 +676,7 @@ replr_create_repl_session_tool <- function() {
   } else {
     # Fallback structure if ellmer is not available
     list(
-      name = "replr_create_repl_session",
+      name = "repljail_create_repl_session",
       description = "Create a new isolated R REPL session for executing R code",
       parameters = list(
         timeout = list(
@@ -685,7 +685,7 @@ replr_create_repl_session_tool <- function() {
           default = 10
         )
       ),
-      fn = replr_create_repl_session
+      fn = repljail_create_repl_session
     )
   }
 }
@@ -702,14 +702,14 @@ replr_create_repl_session_tool <- function() {
 #' @examples
 #' \dontrun{
 #' # Get the tool definition
-#' execute_tool <- replr_execute_code_tool()
+#' execute_tool <- repljail_execute_code_tool()
 #' print(execute_tool$name)
 #' }
-replr_execute_code_tool <- function() {
+repljail_execute_code_tool <- function() {
   if (requireNamespace("ellmer", quietly = TRUE)) {
     ellmer::tool(
-      replr_execute_code,
-      name = "replr_execute_code",
+      repljail_execute_code,
+      name = "repljail_execute_code",
       description = paste0(
         "Execute R code in an isolated REPL session and return structured results.",
         " When creating plots in the code, they will be saved as temporary PNG files ",
@@ -732,7 +732,7 @@ replr_execute_code_tool <- function() {
     )
   } else {
     list(
-      name = "replr_execute_code",
+      name = "repljail_execute_code",
       description = paste0(
         "Execute R code in an isolated REPL session and return structured results.",
         " When creating plots in the code, they will be saved as temporary PNG files ",
@@ -755,7 +755,7 @@ replr_execute_code_tool <- function() {
           default = 30
         )
       ),
-      fn = replr_execute_code
+      fn = repljail_execute_code
     )
   }
 }
@@ -772,14 +772,14 @@ replr_execute_code_tool <- function() {
 #' @examples
 #' \dontrun{
 #' # Get the tool definition
-#' info_tool <- replr_get_session_info_tool()
+#' info_tool <- repljail_get_session_info_tool()
 #' print(info_tool$description)
 #' }
-replr_get_session_info_tool <- function() {
+repljail_get_session_info_tool <- function() {
   if (requireNamespace("ellmer", quietly = TRUE)) {
     ellmer::tool(
-      replr_get_session_info,
-      name = "replr_get_session_info",
+      repljail_get_session_info,
+      name = "repljail_get_session_info",
       description = "Get detailed information about a REPL session including status and process info",
       arguments = list(
         session_id = ellmer::type_string(
@@ -790,7 +790,7 @@ replr_get_session_info_tool <- function() {
     )
   } else {
     list(
-      name = "replr_get_session_info",
+      name = "repljail_get_session_info",
       description = "Get detailed information about a REPL session including status and process info",
       parameters = list(
         session_id = list(
@@ -799,7 +799,7 @@ replr_get_session_info_tool <- function() {
           required = TRUE
         )
       ),
-      fn = replr_get_session_info
+      fn = repljail_get_session_info
     )
   }
 }
@@ -816,23 +816,23 @@ replr_get_session_info_tool <- function() {
 #' @examples
 #' \dontrun{
 #' # Get the tool definition
-#' list_tool <- replr_list_sessions_tool()
+#' list_tool <- repljail_list_sessions_tool()
 #' print(list_tool$name)
 #' }
-replr_list_sessions_tool <- function() {
+repljail_list_sessions_tool <- function() {
   if (requireNamespace("ellmer", quietly = TRUE)) {
     ellmer::tool(
-      replr_list_sessions,
-      name = "replr_list_sessions",
+      repljail_list_sessions,
+      name = "repljail_list_sessions",
       description = "List all active REPL sessions with their status and information",
       arguments = list()
     )
   } else {
     list(
-      name = "replr_list_sessions",
+      name = "repljail_list_sessions",
       description = "List all active REPL sessions with their status and information",
       parameters = list(),
-      fn = replr_list_sessions
+      fn = repljail_list_sessions
     )
   }
 }
@@ -849,14 +849,14 @@ replr_list_sessions_tool <- function() {
 #' @examples
 #' \dontrun{
 #' # Get the tool definition
-#' stop_tool <- replr_stop_session_tool()
+#' stop_tool <- repljail_stop_session_tool()
 #' print(stop_tool$description)
 #' }
-replr_stop_session_tool <- function() {
+repljail_stop_session_tool <- function() {
   if (requireNamespace("ellmer", quietly = TRUE)) {
     ellmer::tool(
-      replr_stop_session,
-      name = "replr_stop_session",
+      repljail_stop_session,
+      name = "repljail_stop_session",
       description = "Stop a specific REPL session and remove it from the registry",
       arguments = list(
         session_id = ellmer::type_string(
@@ -871,7 +871,7 @@ replr_stop_session_tool <- function() {
     )
   } else {
     list(
-      name = "replr_stop_session",
+      name = "repljail_stop_session",
       description = "Stop a specific REPL session and remove it from the registry",
       parameters = list(
         session_id = list(
@@ -885,7 +885,7 @@ replr_stop_session_tool <- function() {
           default = 5
         )
       ),
-      fn = replr_stop_session
+      fn = repljail_stop_session
     )
   }
 }
@@ -902,23 +902,23 @@ replr_stop_session_tool <- function() {
 #' @examples
 #' \dontrun{
 #' # Get the tool definition
-#' cleanup_tool <- replr_cleanup_sessions_tool()
+#' cleanup_tool <- repljail_cleanup_sessions_tool()
 #' print(cleanup_tool$name)
 #' }
-replr_cleanup_sessions_tool <- function() {
+repljail_cleanup_sessions_tool <- function() {
   if (requireNamespace("ellmer", quietly = TRUE)) {
     ellmer::tool(
-      replr_cleanup_sessions,
-      name = "replr_cleanup_sessions",
+      repljail_cleanup_sessions,
+      name = "repljail_cleanup_sessions",
       description = "Remove dead sessions from the registry to clean up resources",
       arguments = list()
     )
   } else {
     list(
-      name = "replr_cleanup_sessions",
+      name = "repljail_cleanup_sessions",
       description = "Remove dead sessions from the registry to clean up resources",
       parameters = list(),
-      fn = replr_cleanup_sessions
+      fn = repljail_cleanup_sessions
     )
   }
 }
@@ -935,14 +935,14 @@ replr_cleanup_sessions_tool <- function() {
 #' @examples
 #' \dontrun{
 #' # Get the tool definition
-#' stop_all_tool <- replr_stop_all_sessions_tool()
+#' stop_all_tool <- repljail_stop_all_sessions_tool()
 #' print(stop_all_tool$description)
 #' }
-replr_stop_all_sessions_tool <- function() {
+repljail_stop_all_sessions_tool <- function() {
   if (requireNamespace("ellmer", quietly = TRUE)) {
     ellmer::tool(
-      replr_stop_all_sessions,
-      name = "replr_stop_all_sessions",
+      repljail_stop_all_sessions,
+      name = "repljail_stop_all_sessions",
       description = "Stop all active REPL sessions and clear the session registry",
       arguments = list(
         timeout = ellmer::type_number(
@@ -953,7 +953,7 @@ replr_stop_all_sessions_tool <- function() {
     )
   } else {
     list(
-      name = "replr_stop_all_sessions",
+      name = "repljail_stop_all_sessions",
       description = "Stop all active REPL sessions and clear the session registry",
       parameters = list(
         timeout = list(
@@ -962,7 +962,7 @@ replr_stop_all_sessions_tool <- function() {
           default = 5
         )
       ),
-      fn = replr_stop_all_sessions
+      fn = repljail_stop_all_sessions
     )
   }
 }
@@ -979,23 +979,23 @@ replr_stop_all_sessions_tool <- function() {
 #' @examples
 #' \dontrun{
 #' # Get the tool definition
-#' run_tool <- replr_run_r_code_tool()
+#' run_tool <- repljail_run_r_code_tool()
 #' print(run_tool$name)
 #' print(run_tool$description)
 #' }
-replr_run_r_code_tool <- function() {
+repljail_run_r_code_tool <- function() {
   if (requireNamespace("ellmer", quietly = TRUE)) {
     ellmer::tool(
-      replr_run_r_code,
-      name = "replr_run_r_code",
+      repljail_run_r_code,
+      name = "repljail_run_r_code",
       description = paste0(
         "Execute R code in a temporary isolated REPL session. ",
         "The session is automatically created and cleaned up after execution. ",
         "This is a simple interface for one-off R code execution without manual session management. ",
         "When creating plots in the code, they will be saved as temporary PNG files ",
         "and returned as file paths. Note: temp files will be deleted when the function returns, ",
-        "so this tool is not suitable for plot generation. Use replr_create_repl_session and ",
-        "replr_execute_code for persistent sessions with plot support."
+        "so this tool is not suitable for plot generation. Use repljail_create_repl_session and ",
+        "repljail_execute_code for persistent sessions with plot support."
       ),
       arguments = list(
         code = ellmer::type_string(
@@ -1010,15 +1010,15 @@ replr_run_r_code_tool <- function() {
     )
   } else {
     list(
-      name = "replr_run_r_code",
+      name = "repljail_run_r_code",
       description = paste0(
         "Execute R code in a temporary isolated REPL session. ",
         "The session is automatically created and cleaned up after execution. ",
         "This is a simple interface for one-off R code execution without manual session management. ",
         "When creating plots in the code, they will be saved as temporary PNG files ",
         "and returned as file paths. Note: temp files will be deleted when the function returns, ",
-        "so this tool is not suitable for plot generation. Use replr_create_repl_session and ",
-        "replr_execute_code for persistent sessions with plot support."
+        "so this tool is not suitable for plot generation. Use repljail_create_repl_session and ",
+        "repljail_execute_code for persistent sessions with plot support."
       ),
       parameters = list(
         code = list(
@@ -1032,7 +1032,7 @@ replr_run_r_code_tool <- function() {
           default = 30
         )
       ),
-      fn = replr_run_r_code
+      fn = repljail_run_r_code
     )
   }
 }
@@ -1049,18 +1049,18 @@ replr_run_r_code_tool <- function() {
 #' @examples
 #' \dontrun{
 #' # Check valid code
-#' result <- replr_check_syntax("x <- 1 + 2\nprint(x)")
+#' result <- repljail_check_syntax("x <- 1 + 2\nprint(x)")
 #' if (result$success) {
 #'   cat("Valid syntax with", result$data$expression_count, "expressions\n")
 #' }
 #'
 #' # Check invalid code
-#' result <- replr_check_syntax("x <- mean(c(1, 2, 3)")
+#' result <- repljail_check_syntax("x <- mean(c(1, 2, 3)")
 #' if (!result$success) {
 #'   cat("Syntax error:", result$error, "\n")
 #' }
 #' }
-replr_check_syntax <- function(code) {
+repljail_check_syntax <- function(code) {
   tryCatch(
     {
       # Parse the code without executing it
@@ -1104,15 +1104,15 @@ replr_check_syntax <- function(code) {
 #' @examples
 #' \dontrun{
 #' # Get the tool definition
-#' syntax_tool <- replr_check_syntax_tool()
+#' syntax_tool <- repljail_check_syntax_tool()
 #' print(syntax_tool$name)
 #' print(syntax_tool$description)
 #' }
-replr_check_syntax_tool <- function() {
+repljail_check_syntax_tool <- function() {
   if (requireNamespace("ellmer", quietly = TRUE)) {
     ellmer::tool(
-      replr_check_syntax,
-      name = "replr_check_syntax",
+      repljail_check_syntax,
+      name = "repljail_check_syntax",
       description = paste0(
         "Check R code for syntax errors without executing it. ",
         "This is useful for validating code before execution, ",
@@ -1128,7 +1128,7 @@ replr_check_syntax_tool <- function() {
     )
   } else {
     list(
-      name = "replr_check_syntax",
+      name = "repljail_check_syntax",
       description = paste0(
         "Check R code for syntax errors without executing it. ",
         "This is useful for validating code before execution, ",
@@ -1142,7 +1142,7 @@ replr_check_syntax_tool <- function() {
           required = TRUE
         )
       ),
-      fn = replr_check_syntax
+      fn = repljail_check_syntax
     )
   }
 }
@@ -1162,18 +1162,18 @@ replr_check_syntax_tool <- function() {
 #' @examples
 #' \dontrun{
 #' # Lint simple code
-#' result <- replr_lint_code("x = 1")
+#' result <- repljail_lint_code("x = 1")
 #' if (result$success) {
 #'   print(result$data$lints)
 #' }
 #'
 #' # Lint code with specific linters
-#' result <- replr_lint_code(
+#' result <- repljail_lint_code(
 #'   "my_var <- 1",
 #'   linters = c("object_name_linter", "line_length_linter")
 #' )
 #' }
-replr_lint_code <- function(code, linters = NULL) {
+repljail_lint_code <- function(code, linters = NULL) {
   tryCatch(
     {
       # Check if lintr is available
@@ -1265,15 +1265,15 @@ replr_lint_code <- function(code, linters = NULL) {
 #' @examples
 #' \dontrun{
 #' # Get the tool definition
-#' lint_tool <- replr_lint_code_tool()
+#' lint_tool <- repljail_lint_code_tool()
 #' print(lint_tool$name)
 #' print(lint_tool$description)
 #' }
-replr_lint_code_tool <- function() {
+repljail_lint_code_tool <- function() {
   if (requireNamespace("ellmer", quietly = TRUE)) {
     ellmer::tool(
-      replr_lint_code,
-      name = "replr_lint_code",
+      repljail_lint_code,
+      name = "repljail_lint_code",
       description = paste0(
         "Analyze R code for style issues and potential problems using lintr without executing it. ",
         "This is useful for checking code quality, identifying potential issues, ",
@@ -1293,7 +1293,7 @@ replr_lint_code_tool <- function() {
     )
   } else {
     list(
-      name = "replr_lint_code",
+      name = "repljail_lint_code",
       description = paste0(
         "Analyze R code for style issues and potential problems using lintr without executing it. ",
         "This is useful for checking code quality, identifying potential issues, ",
@@ -1312,7 +1312,7 @@ replr_lint_code_tool <- function() {
           required = FALSE
         )
       ),
-      fn = replr_lint_code
+      fn = repljail_lint_code
     )
   }
 }

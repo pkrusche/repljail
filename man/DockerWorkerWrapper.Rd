@@ -13,7 +13,7 @@ Worker wrapper for Docker container isolation
 }
 \keyword{internal}
 \section{Super class}{
-\code{\link[replr:WorkerWrapper]{replr::WorkerWrapper}} -> \code{DockerWorkerWrapper}
+\code{\link[repljail:WorkerWrapper]{repljail::WorkerWrapper}} -> \code{DockerWorkerWrapper}
 }
 \section{Methods}{
 \subsection{Public methods}{
@@ -26,8 +26,8 @@ Worker wrapper for Docker container isolation
 \if{html}{\out{
 <details open><summary>Inherited methods</summary>
 <ul>
-<li><span class="pkg-link" data-pkg="replr" data-topic="WorkerWrapper" data-id="get_port"><a href='../../replr/html/WorkerWrapper.html#method-WorkerWrapper-get_port'><code>replr::WorkerWrapper$get_port()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="replr" data-topic="WorkerWrapper" data-id="get_process"><a href='../../replr/html/WorkerWrapper.html#method-WorkerWrapper-get_process'><code>replr::WorkerWrapper$get_process()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="repljail" data-topic="WorkerWrapper" data-id="get_port"><a href='../../repljail/html/WorkerWrapper.html#method-WorkerWrapper-get_port'><code>repljail::WorkerWrapper$get_port()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="repljail" data-topic="WorkerWrapper" data-id="get_process"><a href='../../repljail/html/WorkerWrapper.html#method-WorkerWrapper-get_process'><code>repljail::WorkerWrapper$get_process()</code></a></span></li>
 </ul>
 </details>
 }}

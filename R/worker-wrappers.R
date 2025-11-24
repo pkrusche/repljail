@@ -137,12 +137,12 @@ DockerWorkerWrapper <- R6::R6Class(
       }
 
       # Get configurable resource limits
-      memory_limit <- getOption("replr.worker.docker.memory", default = "512m")
-      cpu_limit <- getOption("replr.worker.docker.cpus", default = "1.0")
+      memory_limit <- getOption("repljail.worker.docker.memory", default = "512m")
+      cpu_limit <- getOption("repljail.worker.docker.cpus", default = "1.0")
 
       # Generate a unique container name for cleanup tracking
       container_name <- paste0(
-        "replr-worker-",
+        "repljail-worker-",
         port,
         "-",
         format(Sys.time(), "%Y%m%d-%H%M%S")
@@ -150,7 +150,7 @@ DockerWorkerWrapper <- R6::R6Class(
 
       # Check if network isolation is enabled
       use_network_isolation <- getOption(
-        "replr.worker.docker.network.isolation",
+        "repljail.worker.docker.network.isolation",
         default = FALSE
       )
       network_name <- NULL
@@ -158,7 +158,7 @@ DockerWorkerWrapper <- R6::R6Class(
       # Create isolated network if enabled
       if (use_network_isolation) {
         network_name <- paste0(
-          "replr-network-",
+          "repljail-network-",
           port,
           "-",
           format(Sys.time(), "%Y%m%d-%H%M%S")
@@ -179,7 +179,7 @@ DockerWorkerWrapper <- R6::R6Class(
         container_name,
         "--rm",
         "--user",
-        "replr",
+        "repljail",
         "--memory",
         memory_limit,
         "--cpus",
@@ -246,7 +246,7 @@ DockerWorkerWrapper <- R6::R6Class(
         attr(proc, "network_name") <- network_name
 
         gateway_name <- paste0(
-          "replr-gateway-",
+          "repljail-gateway-",
           port,
           "-",
           format(Sys.time(), "%Y%m%d-%H%M%S")
@@ -401,7 +401,7 @@ FirejailWorkerWrapper <- R6::R6Class(
 
       # Get custom profile if specified
       custom_profile <- getOption(
-        "replr.worker.firejail.profile",
+        "repljail.worker.firejail.profile",
         default = NULL
       )
 
@@ -517,7 +517,7 @@ MacOSSandboxWorkerWrapper <- R6::R6Class(
 
       # Get custom profile if specified
       custom_profile <- getOption(
-        "replr.worker.macos.sandbox.profile",
+        "repljail.worker.macos.sandbox.profile",
         default = NULL
       )
 
@@ -535,7 +535,7 @@ MacOSSandboxWorkerWrapper <- R6::R6Class(
         # Default macOS sandbox profile using Sandbox Profile Language (SBPL)
         # Provides network isolation and filesystem write restrictions
         profile_content <- c(
-          "; macOS Sandbox Profile for replr worker",
+          "; macOS Sandbox Profile for repljail worker",
           "; Provides network isolation and home directory write protection",
           "(version 1)",
           "",
@@ -705,30 +705,30 @@ is_firejail_available <- function() {
 #' @keywords internal
 create_worker_wrapper <- function() {
   # Get the worker type from the new unified option
-  worker_type <- getOption("replr.worker.type", default = "native")
+  worker_type <- getOption("repljail.worker.type", default = "native")
 
   # For backward compatibility, check old boolean options if new option not set
-  if (worker_type == "native" && is.null(getOption("replr.worker.type"))) {
+  if (worker_type == "native" && is.null(getOption("repljail.worker.type"))) {
     # Check legacy options in priority order: macos_sandbox > firejail > docker > native
-    if (isTRUE(getOption("replr.use.macos.sandbox"))) {
+    if (isTRUE(getOption("repljail.use.macos.sandbox"))) {
       worker_type <- "macos-sandbox"
       warning(
-        "Option 'replr.use.macos.sandbox' is deprecated. ",
-        "Please use options(replr.worker.type = \"macos-sandbox\") instead.",
+        "Option 'repljail.use.macos.sandbox' is deprecated. ",
+        "Please use options(repljail.worker.type = \"macos-sandbox\") instead.",
         call. = FALSE
       )
-    } else if (isTRUE(getOption("replr.use.firejail"))) {
+    } else if (isTRUE(getOption("repljail.use.firejail"))) {
       worker_type <- "firejail"
       warning(
-        "Option 'replr.use.firejail' is deprecated. ",
-        "Please use options(replr.worker.type = \"firejail\") instead.",
+        "Option 'repljail.use.firejail' is deprecated. ",
+        "Please use options(repljail.worker.type = \"firejail\") instead.",
         call. = FALSE
       )
-    } else if (isTRUE(getOption("replr.use.docker"))) {
+    } else if (isTRUE(getOption("repljail.use.docker"))) {
       worker_type <- "docker"
       warning(
-        "Option 'replr.use.docker' is deprecated. ",
-        "Please use options(replr.worker.type = \"docker\") instead.",
+        "Option 'repljail.use.docker' is deprecated. ",
+        "Please use options(repljail.worker.type = \"docker\") instead.",
         call. = FALSE
       )
     }

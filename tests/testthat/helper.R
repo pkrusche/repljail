@@ -1,9 +1,9 @@
 tryCatch(
   {
-    library(replr)
+    library(repljail)
   },
   error = function(e) {
-    # Try to load all source files manually if replr package is not installed
+    # Try to load all source files manually if repljail package is not installed
     tryCatch(
       {
         devtools::load_all()
@@ -11,7 +11,7 @@ tryCatch(
       error = function(e2) {
         # Skip loading if we can't load source files
         cat(
-          "Warning: Could not load replr package or source files:",
+          "Warning: Could not load repljail package or source files:",
           e2$message,
           "\n"
         )

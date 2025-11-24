@@ -8,6 +8,6 @@
 ^\.devcontainer$
 ^\.github$
 ^\.claude$
-^replr/tests/testthat/_snaps.*$
+^tests/testthat/_snaps.*$
 ^doc$
 ^Meta$

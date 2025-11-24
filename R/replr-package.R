@@ -1,4 +1,4 @@
-#' replr: Isolated REPL functionality for R
+#' repljail: Isolated REPL functionality for R
 #'
 #' Provides isolated REPL functionality for R, allowing users to execute R code
 #' in a separate environment using worker processes for security and stability.
@@ -17,7 +17,7 @@
 #'   \item Configurable timeouts and resource limits
 #' }
 #'
-#' @name replr
+#' @name repljail
 #' @importFrom nanonext socket
 #' @importFrom processx process
 #' @importFrom R6 R6Class

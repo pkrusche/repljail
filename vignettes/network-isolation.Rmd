@@ -16,7 +16,7 @@ knitr::opts_chunk$set(
 
 ## Overview
 
-The `replr` package implements **true air-gapped execution** for R worker processes using Docker's `--internal` network flag combined with a gateway sidecar pattern. This provides complete internet isolation while maintaining host-to-worker communication.
+The `repljail` package implements **true air-gapped execution** for R worker processes using Docker's `--internal` network flag combined with a gateway sidecar pattern. This provides complete internet isolation while maintaining host-to-worker communication.
 
 ## Architecture
 
@@ -46,7 +46,7 @@ The `replr` package implements **true air-gapped execution** for R worker proces
                         │ NO EXTERNAL/INTERNET ACCESS
                         ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│ Worker Container (replr-worker)                                 │
+│ Worker Container (repljail-worker)                              │
 │                                                                 │
 │  R Process                                                      │
 │  └─ nanonext REP socket                                         │
@@ -67,7 +67,7 @@ docker network create \
   --driver bridge \
   --internal \              # Blocks ALL external access
   --subnet 172.28.0.0/16 \  # Custom subnet to avoid conflicts
-  replr-network-<port>-<timestamp>
+  repljail-network-<port>-<timestamp>
 ```
 
 **Key change**: Removed `--opt com.docker.network.bridge.enable_icc=false` which was blocking gateway→worker communication.
@@ -76,16 +76,16 @@ docker network create \
 
 ```bash
 docker run \
-  --name replr-worker-<port>-<timestamp> \
-  --network replr-network-<id> \  # Isolated network only, no port publish
-  --user replr \                   # Non-root user
+  --name repljail-worker-<port>-<timestamp> \
+  --network repljail-network-<id> \  # Isolated network only, no port publish
+  --user repljail \                   # Non-root user
   --memory 512m \
   --cpus 1.0 \
   --read-only \                    # Read-only filesystem
   --tmpfs /tmp:noexec,nosuid \
   --security-opt no-new-privileges \
   --cap-drop ALL \
-  replr-worker:latest \
+  repljail-worker:latest \
   Rscript /app/worker.R <port> --listen-all --debug
 ```
 
@@ -94,13 +94,13 @@ docker run \
 ```bash
 # Step 1: Start gateway with port publish for host access
 docker run -d \
-  --name replr-gateway-<port>-<timestamp> \
+  --name repljail-gateway-<port>-<timestamp> \
   -p 127.0.0.1:<port>:8080 \
   alpine/socat \
-  TCP-LISTEN:8080,fork,reuseaddr TCP:replr-worker-<id>:<port>
+  TCP-LISTEN:8080,fork,reuseaddr TCP:repljail-worker-<id>:<port>
 
 # Step 2: Connect gateway to internal network for worker access
-docker network connect replr-network-<id> replr-gateway-<id>
+docker network connect repljail-network-<id> repljail-gateway-<id>
 ```
 
 ## Security Properties
@@ -120,8 +120,8 @@ docker network connect replr-network-<id> replr-gateway-<id>
 
 ```{r network-isolation-usage, eval = FALSE}
 # Enable Docker with network isolation
-options(replr.use.docker = TRUE)
-options(replr.worker.docker.network.isolation = TRUE)
+options(repljail.use.docker = TRUE)
+options(repljail.worker.docker.network.isolation = TRUE)
 
 # Create isolated session
 session <- RREPLSession$new()
@@ -141,17 +141,17 @@ session$stop()
 
 ```{r network-isolation-config, eval = FALSE}
 # Enable Docker workers
-options(replr.use.docker = TRUE)
+options(repljail.use.docker = TRUE)
 
 # Enable network isolation (requires Docker)
-options(replr.worker.docker.network.isolation = TRUE)
+options(repljail.worker.docker.network.isolation = TRUE)
 
 # Optional: Customize Docker image
-options(replr.worker.docker.image = "replr-worker:latest")
+options(repljail.worker.docker.image = "repljail-worker:latest")
 
 # Optional: Resource limits
-options(replr.worker.docker.memory = "512m")
-options(replr.worker.docker.cpus = "1.0")
+options(repljail.worker.docker.memory = "512m")
+options(repljail.worker.docker.cpus = "1.0")
 ```
 
 ## Cleanup
@@ -161,9 +161,9 @@ All resources are automatically cleaned up when the session stops:
 ```{r network-isolation-cleanup, eval = FALSE}
 session$stop()
 # Automatically removes:
-# 1. Worker container (replr-worker-*)
-# 2. Gateway container (replr-gateway-*)
-# 3. Internal network (replr-network-*)
+# 1. Worker container (repljail-worker-*)
+# 2. Gateway container (repljail-gateway-*)
+# 3. Internal network (repljail-network-*)
 ```
 
 Manual cleanup of orphaned resources:
@@ -192,11 +192,11 @@ enable_debug(TRUE)
 Check Docker resources:
 ```bash
 # List worker containers
-docker ps -a --filter "name=replr-worker-"
+docker ps -a --filter "name=repljail-worker-"
 
 # List gateway containers
-docker ps -a --filter "name=replr-gateway-"
+docker ps -a --filter "name=repljail-gateway-"
 
 # List networks
-docker network ls --filter "name=replr-network-"
+docker network ls --filter "name=repljail-network-"
 ```

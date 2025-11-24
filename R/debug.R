@@ -1,12 +1,12 @@
 #' Debug Logging Utilities
 #'
-#' Configurable debug logging using the cli package and the replr.debug option
+#' Configurable debug logging using the cli package and the repljail.debug option
 
 #' Check if debug logging is enabled
 #'
 #' @return logical, TRUE if debug logging is enabled
 is_debug_enabled <- function() {
-  getOption("replr.debug", default = FALSE)
+  getOption("repljail.debug", default = FALSE)
 }
 
 #' Debug log message

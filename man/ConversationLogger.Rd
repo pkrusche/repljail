@@ -17,7 +17,7 @@ in markdown format. It captures user prompts, assistant responses, tool calls
 Create a logger and attach it to an ellmer Chat object:
 \preformatted{
 library(ellmer)
-library(replr)
+library(repljail)
 
 # Create a chat
 chat <- chat_openai()
