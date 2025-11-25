@@ -1193,6 +1193,7 @@ create_docker_network <- function(network_name) {
       # The --internal flag blocks all external network access (no internet)
       # A gateway sidecar container bridges host-to-worker communication
       # Note: We do NOT use enable_icc=false because the gateway MUST communicate with the worker
+      # Note: We let Docker auto-assign the subnet to avoid conflicts with existing networks
       result <- system2(
         "docker",
         c(
@@ -1201,8 +1202,6 @@ create_docker_network <- function(network_name) {
           "--driver",
           "bridge",
           "--internal", # Block all external access (no internet)
-          "--subnet",
-          "172.28.0.0/16", # Custom subnet to avoid conflicts
           network_name
         ),
         stdout = TRUE,
