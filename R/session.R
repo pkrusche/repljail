@@ -2,7 +2,7 @@
 #'
 #' An R6 class that provides object-oriented interface for managing isolated
 #' R worker processes. This class provides automatic resource management
-#' through finalizers. Docker usage is controlled by the 'repljail.use.docker' option.
+#' through finalizers. Worker isolation type is controlled by the 'repljail.worker.type' option.
 #'
 #' @section Constructor:
 #' \code{RREPLSession$new(port = NULL, timeout = 10)}

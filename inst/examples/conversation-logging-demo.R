@@ -55,7 +55,7 @@ cat("✓ Logger attached\n\n")
 cat("Registering repljail tools...\n")
 
 # Run in Docker for isolation
-options(repljail.use.docker = TRUE)
+options(repljail.worker.type = "docker")
 
 # Get all repljail tool functions
 tools <- list(
