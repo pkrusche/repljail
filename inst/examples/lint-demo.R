@@ -58,9 +58,10 @@ cat("\n")
 cat("Example 3: Tool definition structure\n")
 cat("-------------------------------------\n")
 tool <- repljail_lint_code_tool()
-cat("Tool name:", tool$name, "\n")
-cat("Description:", substr(tool$description, 1, 80), "...\n")
-cat("Parameters:", paste(names(tool$parameters), collapse = ", "), "\n\n")
+# Note: ellmer tools are S7 objects, use @ to access properties
+cat("Tool name:", tool@name, "\n")
+cat("Description:", substr(tool@description, 1, 80), "...\n")
+cat("Input parameters:", paste(names(tool@arguments@properties), collapse = ", "), "\n\n")
 
 cat("========================================\n")
 cat("Demo complete!\n")

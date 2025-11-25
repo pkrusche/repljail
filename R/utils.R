@@ -802,6 +802,8 @@ start_docker_worker <- function(port, worker_script, worker_args, timeout) {
     )
     debug_log(paste0("Socat command: ", socat_command))
 
+    # Use alpine/socat image pinned by SHA256 digest for supply chain security
+    # (alpine/socat:latest as of 2025-11-25)
     gateway_args <- c(
       "run",
       "-d", # Detached mode
@@ -810,7 +812,7 @@ start_docker_worker <- function(port, worker_script, worker_args, timeout) {
       "--rm", # Auto-remove when stopped
       "-p",
       sprintf("127.0.0.1:%i:8080", port), # Map host port to gateway
-      "alpine/socat",
+      "alpine/socat@sha256:8370cf9b250bfae9d67a5309750bfdf882ca8b7053b6c88c943d230eca92e762",
       socat_command
     )
 

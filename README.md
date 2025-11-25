@@ -65,7 +65,7 @@ For Docker support, you need:
 
 - Docker installed and accessible
 - Permission to run `docker` commands
-- Internet access for initial image build (pulls `rocker/r-ver:4.4`)
+- Internet access for initial image build (pulls `rocker/r-ver:4.4`, pinned by SHA256 digest)
 
 The package automatically:
 

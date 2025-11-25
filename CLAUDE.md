@@ -131,13 +131,14 @@ Main R Process (Controller) ←──nanonext REQ/REP──→ Worker R Process 
 
 ### Docker Integration
 - Dockerfile in `inst/Dockerfile` based on `rocker/r-ver:4.4`
+- **Supply chain security**: All base images pinned by SHA256 digest (rocker/r-ver, alpine/socat)
 - Security features: non-root user, read-only filesystem, capability dropping, memory/CPU limits
 - Container naming: `repljail-worker-<port>-<timestamp>` for cleanup tracking
 - Configurable via options: `repljail.worker.docker.image`, `repljail.worker.docker.memory`, `repljail.worker.docker.cpus`
 - **Network Isolation (Sidecar Pattern)**: Optional air-gapped execution with `repljail.worker.docker.network.isolation`
   - Creates `--internal` bridge network (blocks all outbound traffic including internet)
   - Worker container: Connected to isolated network only (zero internet access)
-  - Gateway sidecar: `alpine/socat` container that bridges host ↔ worker communication
+  - Gateway sidecar: `alpine/socat` container (pinned by SHA256) that bridges host ↔ worker communication
   - Architecture:
     ```
     Host (127.0.0.1:<port>) ← Docker publish → Gateway Container ← Internal Network → Worker Container (air-gapped)
