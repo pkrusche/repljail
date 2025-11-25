@@ -1,5 +1,6 @@
 # Use the official Rocker R image as base
-FROM rocker/r-ver:4.4
+# Image pinned by SHA256 digest for supply chain security (rocker/r-ver:4.4 as of 2025-11-25)
+FROM rocker/r-ver@sha256:80bf33ee1b61f3252129912867abf23339ef1d9e96c837cbd86341a23c3fef07
 
 # Install system dependencies required for R packages
 RUN apt-get update -y && apt-get install -y \

@@ -261,6 +261,8 @@ DockerWorkerWrapper <- R6::R6Class(
           port
         )
 
+        # Use alpine/socat image pinned by SHA256 digest for supply chain security
+        # (alpine/socat:latest as of 2025-11-25)
         gateway_args <- c(
           "run",
           "-d",
@@ -269,7 +271,7 @@ DockerWorkerWrapper <- R6::R6Class(
           "--rm",
           "-p",
           sprintf("127.0.0.1:%i:8080", port),
-          "alpine/socat",
+          "alpine/socat@sha256:8370cf9b250bfae9d67a5309750bfdf882ca8b7053b6c88c943d230eca92e762",
           socat_command
         )
 

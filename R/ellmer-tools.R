@@ -1286,7 +1286,8 @@ repljail_lint_code_tool <- function() {
           required = TRUE
         ),
         linters = ellmer::type_array(
-          "Optional list of specific linter names to use (e.g., ['line_length_linter', 'object_name_linter']). If not provided, uses default linters.",
+          items = ellmer::type_string(),
+          description = "Optional list of specific linter names to use (e.g., ['line_length_linter', 'object_name_linter']). If not provided, uses default linters.",
           required = FALSE
         )
       )

@@ -1,6 +1,7 @@
 # Minimal Dockerfile for repljail worker containers
 # Based on R 4.4 with security hardening
-FROM rocker/r-ver:4.4
+# Image pinned by SHA256 digest for supply chain security (rocker/r-ver:4.4 as of 2025-11-25)
+FROM rocker/r-ver@sha256:80bf33ee1b61f3252129912867abf23339ef1d9e96c837cbd86341a23c3fef07
 
 # Install minimal system dependencies
 RUN apt-get update && apt-get install -y \
