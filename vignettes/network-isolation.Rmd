@@ -120,7 +120,7 @@ docker network connect repljail-network-<id> repljail-gateway-<id>
 
 ```{r network-isolation-usage, eval = FALSE}
 # Enable Docker with network isolation
-options(repljail.use.docker = TRUE)
+options(repljail.worker.type = "docker")
 options(repljail.worker.docker.network.isolation = TRUE)
 
 # Create isolated session
@@ -141,7 +141,7 @@ session$stop()
 
 ```{r network-isolation-config, eval = FALSE}
 # Enable Docker workers
-options(repljail.use.docker = TRUE)
+options(repljail.worker.type = "docker")
 
 # Enable network isolation (requires Docker)
 options(repljail.worker.docker.network.isolation = TRUE)

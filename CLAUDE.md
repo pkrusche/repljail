@@ -302,7 +302,6 @@ Global options control package behavior:
 
 **Worker Type Selection:**
 - `repljail.worker.type` (string): Worker isolation method - one of "native", "docker", "firejail", "macos-sandbox" (default: "native")
-  - Legacy boolean options (`repljail.use.docker`, `repljail.use.firejail`, `repljail.use.macos.sandbox`) are deprecated but supported with warnings
 
 **Docker Configuration:**
 - `repljail.worker.docker.image` (string): Docker image name (default: "repljail-worker:latest")

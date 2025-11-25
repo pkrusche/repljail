@@ -79,10 +79,6 @@ test_that("Firejail provides network isolation", {
   old_worker_type <- getOption("repljail.worker.type")
   on.exit(options(repljail.worker.type = old_worker_type))
   options(repljail.worker.type = "firejail")
-  # Set option to use Firejail (legacy)
-  old_option <- getOption("repljail.use.firejail")
-  on.exit(options(repljail.use.firejail = old_option), add = TRUE)
-  options(repljail.use.firejail = TRUE)
 
   # Create a session with firejail
   session <- RREPLSession$new(timeout = 30)

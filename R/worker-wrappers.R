@@ -706,35 +706,8 @@ is_firejail_available <- function() {
 #' @return WorkerWrapper object (NativeWorkerWrapper, DockerWorkerWrapper, FirejailWorkerWrapper, or MacOSSandboxWorkerWrapper)
 #' @keywords internal
 create_worker_wrapper <- function() {
-  # Get the worker type from the new unified option
+  # Get the worker type from the unified option
   worker_type <- getOption("repljail.worker.type", default = "native")
-
-  # For backward compatibility, check old boolean options if new option not set
-  if (worker_type == "native" && is.null(getOption("repljail.worker.type"))) {
-    # Check legacy options in priority order: macos_sandbox > firejail > docker > native
-    if (isTRUE(getOption("repljail.use.macos.sandbox"))) {
-      worker_type <- "macos-sandbox"
-      warning(
-        "Option 'repljail.use.macos.sandbox' is deprecated. ",
-        "Please use options(repljail.worker.type = \"macos-sandbox\") instead.",
-        call. = FALSE
-      )
-    } else if (isTRUE(getOption("repljail.use.firejail"))) {
-      worker_type <- "firejail"
-      warning(
-        "Option 'repljail.use.firejail' is deprecated. ",
-        "Please use options(repljail.worker.type = \"firejail\") instead.",
-        call. = FALSE
-      )
-    } else if (isTRUE(getOption("repljail.use.docker"))) {
-      worker_type <- "docker"
-      warning(
-        "Option 'repljail.use.docker' is deprecated. ",
-        "Please use options(repljail.worker.type = \"docker\") instead.",
-        call. = FALSE
-      )
-    }
-  }
 
   # Validate and create the appropriate wrapper
   wrapper <- switch(

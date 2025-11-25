@@ -16,7 +16,7 @@ list with process object and connection info
 }
 \description{
 Spawn a worker R process using processx that runs the worker script.
-Can use different isolation strategies: native, Docker, or firejail.
-Isolation method is controlled by options: 'repljail.use.firejail' or 'repljail.use.docker'.
+Can use different isolation strategies: native, Docker, firejail, or macOS sandbox.
+Isolation method is controlled by the 'repljail.worker.type' option.
 }
 \keyword{internal}

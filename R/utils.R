@@ -162,8 +162,8 @@ get_ipc_socket_path <- function() {
 #' Start Worker Process
 #'
 #' Spawn a worker R process using processx that runs the worker script.
-#' Can use different isolation strategies: native, Docker, or firejail.
-#' Isolation method is controlled by options: 'repljail.use.firejail' or 'repljail.use.docker'.
+#' Can use different isolation strategies: native, Docker, firejail, or macOS sandbox.
+#' Isolation method is controlled by the 'repljail.worker.type' option.
 #'
 #' @param port integer, port number for the worker to listen on
 #' @param timeout numeric, timeout in seconds to wait for worker startup
