@@ -6,7 +6,7 @@
 
 ## ⚠️ Security Disclaimer
 
-**IMPORTANT:** While `replr` provides various isolation mechanisms (process isolation, Docker containers, Firejail sandboxes, macOS sandboxes) to help contain untrusted code execution, **no security solution is 100% foolproof**. These isolation methods can reduce risk but cannot guarantee complete protection against all attack vectors.
+**IMPORTANT:** While `repljail` provides various isolation mechanisms (process isolation, Docker containers, Firejail sandboxes, macOS sandboxes) to help contain untrusted code execution, **no security solution is 100% foolproof**. These isolation methods can reduce risk but cannot guarantee complete protection against all attack vectors.
 
 **You are solely responsible for any consequences of running malicious or untrusted code.** The maintainers of this package accept no liability for damages, data loss, security breaches, or other issues arising from the execution of code in isolated environments.
 
