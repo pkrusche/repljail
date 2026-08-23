@@ -21,7 +21,6 @@ Imports:
 Suggests:
     covr,
     ellmer,
-    pryr,
     testthat (>= 3.0.0),
     here,
     devtools,
