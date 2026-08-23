@@ -22,7 +22,7 @@ for (pkg in required_packages) {
 
 # Test 3: Check suggested packages
 cat("\n3. Suggested Packages:\n")
-suggested_packages <- c("pryr", "testthat")
+suggested_packages <- c("testthat")
 for (pkg in suggested_packages) {
   if (requireNamespace(pkg, quietly = TRUE)) {
     cat(sprintf("   ✓ %s: %s\n", pkg, packageVersion(pkg)))

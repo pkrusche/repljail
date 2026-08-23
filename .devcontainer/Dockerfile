@@ -36,7 +36,7 @@ RUN Rscript -e "install.packages('evaluate', repos='https://cran.rstudio.com/', 
 RUN Rscript -e "install.packages('nanonext', repos='https://cran.rstudio.com/', dependencies=TRUE)"
 
 # Install suggested R packages
-RUN Rscript -e "install.packages(c('pryr', 'testthat'), repos='https://cran.rstudio.com/', dependencies=TRUE)"
+RUN Rscript -e "install.packages(c('testthat'), repos='https://cran.rstudio.com/', dependencies=TRUE)"
 
 # Install R development tools
 RUN Rscript -e "install.packages(c('devtools', 'roxygen2', 'pkgdown', 'lintr', 'remotes', 'here', 'languageserver', 'httpgd', 'png', 'pak', 'ellmer', 'covr', 'knitr', 'rmarkdown', 'DT', 'htmltools'), repos='https://cran.rstudio.com/', dependencies=TRUE)"
