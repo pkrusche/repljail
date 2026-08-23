@@ -1,7 +1,7 @@
 # Remaining Implementation Tasks for repljail
 
 - [ ] Add automatic worker restart logic with exponential backoff (advanced feature)
-- [ ] Implement memory usage monitoring with pryr
+- [ ] Implement memory usage monitoring
 - [ ] Add session state persistence options
 - [ ] Create batch execution capabilities
 - [ ] Add stress tests for concurrent sessions and memory usage
