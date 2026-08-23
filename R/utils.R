@@ -12,7 +12,7 @@ check_dependencies <- function() {
     "R6",
     "uuid"
   )
-  suggested_packages <- c("pryr", "testthat")
+  suggested_packages <- c("testthat")
 
   missing_required <- character(0)
   missing_suggested <- character(0)
